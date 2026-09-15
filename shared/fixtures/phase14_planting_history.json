@@ -1,0 +1,30 @@
+{
+  "planting_batch": {
+    "id": "batch-500",
+    "planting_date": "2026-03-01",
+    "initial_positions": 500,
+    "current_alive": 500
+  },
+  "replantings": [
+    {
+      "id": "replacement-01",
+      "replanting_date": "2026-04-10",
+      "tree_count": 10,
+      "notes": "First replacement round"
+    },
+    {
+      "id": "replacement-02",
+      "replanting_date": "2026-05-15",
+      "tree_count": 18,
+      "notes": "Second replacement round"
+    }
+  ],
+  "expected": {
+    "positions": 500,
+    "replantings": 28,
+    "historical_plantings": 528,
+    "living": 500,
+    "historical_losses": 28,
+    "vacant_positions": 0
+  }
+}

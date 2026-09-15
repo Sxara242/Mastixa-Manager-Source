@@ -1,0 +1,56 @@
+{
+  "plant": {
+    "id": "plant-001",
+    "field_id": "field-alpha",
+    "planting_batch_id": "batch-2026-a",
+    "label": "A-001",
+    "planted_date": "2026-02-10",
+    "variety": "Chios",
+    "latitude": 38.3701,
+    "longitude": 26.1357,
+    "status": "active",
+    "health": "good",
+    "notes": "north row"
+  },
+  "events": [
+    {
+      "id": "event-002",
+      "plant_id": "plant-001",
+      "event_date": "2026-06-01",
+      "kind": "health",
+      "value": "watch",
+      "notes": "leaf discoloration"
+    },
+    {
+      "id": "event-001",
+      "plant_id": "plant-001",
+      "event_date": "2026-05-01",
+      "kind": "note",
+      "value": "stake replaced",
+      "notes": ""
+    },
+    {
+      "id": "event-003",
+      "plant_id": "plant-001",
+      "event_date": "2026-07-03",
+      "kind": "status",
+      "value": "dead",
+      "notes": "recorded after inspection"
+    }
+  ],
+  "expected": {
+    "plant_id": "plant-001",
+    "field_id": "field-alpha",
+    "planting_batch_id": "batch-2026-a",
+    "label": "A-001",
+    "planted_date": "2026-02-10",
+    "variety": "Chios",
+    "latitude": 38.3701,
+    "longitude": 26.1357,
+    "status": "dead",
+    "health": "watch",
+    "notes": "north row",
+    "last_event_date": "2026-07-03",
+    "event_count": 3
+  }
+}

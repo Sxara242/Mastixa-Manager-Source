@@ -1,0 +1,41 @@
+plugins { id 'com.android.application' }
+
+def mastixaVersionCode = providers.gradleProperty('mastixaVersionCode').orElse('2')
+def mastixaVersionName = providers.gradleProperty('mastixaVersionName').orElse('0.40.0-alpha.1')
+
+android {
+    namespace 'gr.mastixa.manager'
+    compileSdk 36
+    defaultConfig {
+        applicationId 'gr.mastixa.manager'
+        minSdk 26
+        targetSdk 36
+        versionCode mastixaVersionCode.get().toInteger()
+        versionName mastixaVersionName.get()
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+    buildTypes {
+        checks {
+            initWith debug
+            applicationIdSuffix '.checks'
+            matchingFallbacks = ['debug']
+        }
+    }
+    testBuildType 'checks'
+    sourceSets.androidTest.assets.srcDir('../../shared/fixtures')
+}
+dependencies {
+    implementation 'org.locationtech.jts:jts-core:1.20.0'
+    implementation 'org.locationtech.proj4j:proj4j:1.4.3'
+    implementation 'org.locationtech.proj4j:proj4j-epsg:1.4.3'
+    implementation 'net.sf.geographiclib:GeographicLib-Java:2.1'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
+    implementation 'cz.adaptech.tesseract4android:tesseract4android:4.9.0'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'junit:junit:4.13.2'
+}

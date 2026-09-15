@@ -1,0 +1,46 @@
+{
+  "now_utc": "2026-09-12T12:00:00Z",
+  "stale_after_seconds": 86400,
+  "cases": [
+    {
+      "name": "fresh_good",
+      "observed_at": "2026-09-12T11:30:00Z",
+      "quality": "good",
+      "has_reading": true,
+      "stale": false,
+      "suspect": false
+    },
+    {
+      "name": "exact_threshold_is_fresh",
+      "observed_at": "2026-09-11T12:00:00Z",
+      "quality": "good",
+      "has_reading": true,
+      "stale": false,
+      "suspect": false
+    },
+    {
+      "name": "older_than_threshold_is_stale",
+      "observed_at": "2026-09-11T11:59:59Z",
+      "quality": "good",
+      "has_reading": true,
+      "stale": true,
+      "suspect": false
+    },
+    {
+      "name": "fresh_suspect",
+      "observed_at": "2026-09-12T10:00:00Z",
+      "quality": "suspect",
+      "has_reading": true,
+      "stale": false,
+      "suspect": true
+    },
+    {
+      "name": "missing",
+      "observed_at": "",
+      "quality": "",
+      "has_reading": false,
+      "stale": false,
+      "suspect": false
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "today": "2026-09-11",
+  "horizon_days": 7,
+  "tasks": [
+    {"status": "pending", "due_date": "2026-09-10", "state": "overdue", "severity": 0},
+    {"status": "pending", "due_date": "2026-09-11", "state": "due_today", "severity": 1},
+    {"status": "pending", "due_date": "2026-09-18", "state": "upcoming", "severity": 2},
+    {"status": "pending", "due_date": "2026-09-19", "state": "pending", "severity": null},
+    {"status": "completed", "due_date": "2026-09-01", "state": "completed", "severity": null},
+    {"status": "skipped", "due_date": "2026-09-11", "state": "skipped", "severity": null}
+  ]
+}

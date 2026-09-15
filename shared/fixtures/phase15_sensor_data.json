@@ -1,0 +1,86 @@
+{
+  "device": {
+    "id": "station-1",
+    "name": "North station",
+    "provider": "generic-http",
+    "field_id": "field-1",
+    "external_id": "station-42",
+    "status": "active",
+    "notes": "Phase 15 shared fixture"
+  },
+  "channels": [
+    {
+      "id": "soil-moisture",
+      "device_id": "station-1",
+      "metric": "soil_moisture",
+      "unit": "percent",
+      "label": "Root zone"
+    },
+    {
+      "id": "air-temp",
+      "device_id": "station-1",
+      "metric": "air_temperature",
+      "unit": "celsius",
+      "label": "Canopy air"
+    }
+  ],
+  "observations": [
+    {
+      "id": "obs-temp-2",
+      "channel_id": "air-temp",
+      "observed_at": "2026-09-12T01:00:00Z",
+      "value": 24.2,
+      "quality": "suspect",
+      "source_ref": "packet-102"
+    },
+    {
+      "id": "obs-soil-1",
+      "channel_id": "soil-moisture",
+      "observed_at": "2026-09-12T00:30:00Z",
+      "value": 31.0,
+      "quality": "good",
+      "source_ref": "packet-101"
+    },
+    {
+      "id": "obs-temp-1",
+      "channel_id": "air-temp",
+      "observed_at": "2026-09-12T00:00:00Z",
+      "value": 23.5,
+      "quality": "good",
+      "source_ref": "packet-100"
+    }
+  ],
+  "expected": {
+    "device_id": "station-1",
+    "field_id": "field-1",
+    "name": "North station",
+    "provider": "generic-http",
+    "external_id": "station-42",
+    "status": "active",
+    "notes": "Phase 15 shared fixture",
+    "channels": [
+      {
+        "channel_id": "air-temp",
+        "metric": "air_temperature",
+        "unit": "celsius",
+        "label": "Canopy air",
+        "latest_value": 24.2,
+        "latest_quality": "suspect",
+        "latest_observed_at": "2026-09-12T01:00:00Z",
+        "latest_source_ref": "packet-102",
+        "observation_count": 2
+      },
+      {
+        "channel_id": "soil-moisture",
+        "metric": "soil_moisture",
+        "unit": "percent",
+        "label": "Root zone",
+        "latest_value": 31.0,
+        "latest_quality": "good",
+        "latest_observed_at": "2026-09-12T00:30:00Z",
+        "latest_source_ref": "packet-101",
+        "observation_count": 1
+      }
+    ]
+  }
+}

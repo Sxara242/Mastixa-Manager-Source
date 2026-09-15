@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "program_id": "fixture-program",
+  "field_id": "fixture-field",
+  "season_year": 2026,
+  "rules": [
+    {
+      "id": "prune-winter",
+      "title": "Pruning check",
+      "category": "pruning",
+      "schedule_kind": "fixed_date",
+      "month": 2,
+      "day": 10,
+      "notes": "fixture fixed date"
+    },
+    {
+      "id": "irrigate-window",
+      "title": "Irrigation",
+      "category": "irrigation",
+      "schedule_kind": "interval_window",
+      "start_month": 5,
+      "start_day": 15,
+      "end_month": 6,
+      "end_day": 5,
+      "every_days": 7,
+      "notes": ""
+    },
+    {
+      "id": "winter-inspection",
+      "title": "Winter inspection",
+      "category": "inspection",
+      "schedule_kind": "interval_window",
+      "start_month": 12,
+      "start_day": 20,
+      "end_month": 1,
+      "end_day": 20,
+      "every_days": 15,
+      "notes": "fixture cross-year"
+    }
+  ],
+  "expected": [
+    {
+      "rule_id": "prune-winter",
+      "due_date": "2026-02-10",
+      "generation_key": "fixture-program:fixture-field:prune-winter:2026-02-10"
+    },
+    {
+      "rule_id": "irrigate-window",
+      "due_date": "2026-05-15",
+      "generation_key": "fixture-program:fixture-field:irrigate-window:2026-05-15"
+    },
+    {
+      "rule_id": "irrigate-window",
+      "due_date": "2026-05-22",
+      "generation_key": "fixture-program:fixture-field:irrigate-window:2026-05-22"
+    },
+    {
+      "rule_id": "irrigate-window",
+      "due_date": "2026-05-29",
+      "generation_key": "fixture-program:fixture-field:irrigate-window:2026-05-29"
+    },
+    {
+      "rule_id": "irrigate-window",
+      "due_date": "2026-06-05",
+      "generation_key": "fixture-program:fixture-field:irrigate-window:2026-06-05"
+    },
+    {
+      "rule_id": "winter-inspection",
+      "due_date": "2026-12-20",
+      "generation_key": "fixture-program:fixture-field:winter-inspection:2026-12-20"
+    },
+    {
+      "rule_id": "winter-inspection",
+      "due_date": "2027-01-04",
+      "generation_key": "fixture-program:fixture-field:winter-inspection:2027-01-04"
+    },
+    {
+      "rule_id": "winter-inspection",
+      "due_date": "2027-01-19",
+      "generation_key": "fixture-program:fixture-field:winter-inspection:2027-01-19"
+    }
+  ]
+}

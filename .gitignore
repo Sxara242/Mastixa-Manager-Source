@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Build
+build/
+dist/
+*.sha256
+.tools/
+
+# Backups
+backups/
+
+# Application data
+data/
+
+# Private exports and transferable profile packages
+annual_report_*.csv
+*.mastixaprofile
+exports/
+
+# Local patch/install work folders
+.mastixa_patch_backups/
+Mastixa_Manager_*_Patch*/
+Mastixa_Manager_*_Rollback*/
+
+# Local credentials, tooling caches and coverage
+.env
+.env.*
+!.env.example
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+htmlcov/
+
+# Android and signing material
+.gradle/
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore
+key.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS metadata and SQLite journals
+Thumbs.db
+.DS_Store
+*.db-wal
+*.db-shm
+*.db-journal

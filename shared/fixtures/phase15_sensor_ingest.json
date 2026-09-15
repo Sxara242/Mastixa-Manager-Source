@@ -1,0 +1,58 @@
+{
+  "device": {
+    "id": "ingest-weather-1",
+    "name": "North weather station",
+    "provider": "fixture",
+    "field_id": "",
+    "external_id": "station-42",
+    "status": "active",
+    "notes": "normalized ingestion fixture"
+  },
+  "channels": [
+    {
+      "id": "ingest-air",
+      "device_id": "ingest-weather-1",
+      "metric": "air_temperature",
+      "unit": "celsius",
+      "label": "Air"
+    },
+    {
+      "id": "ingest-soil",
+      "device_id": "ingest-weather-1",
+      "metric": "soil_moisture",
+      "unit": "percent",
+      "label": "Soil"
+    }
+  ],
+  "observations": [
+    {
+      "id": "ingest-air-001",
+      "channel_id": "ingest-air",
+      "observed_at": "2026-09-12T06:00:00Z",
+      "value": 18.5,
+      "quality": "good",
+      "source_ref": "fixture:air:001"
+    },
+    {
+      "id": "ingest-soil-001",
+      "channel_id": "ingest-soil",
+      "observed_at": "2026-09-12T06:00:00Z",
+      "value": 37.0,
+      "quality": "good",
+      "source_ref": "fixture:soil:001"
+    },
+    {
+      "id": "ingest-air-002",
+      "channel_id": "ingest-air",
+      "observed_at": "2026-09-12T07:00:00Z",
+      "value": 19.25,
+      "quality": "suspect",
+      "source_ref": "fixture:air:002"
+    }
+  ],
+  "expected": {
+    "channels_created": 2,
+    "observations_inserted": 3,
+    "replay_observations_unchanged": 3
+  }
+}

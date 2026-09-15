@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="individual_plants"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/individual_plants_shortcut"
+        android:shortcutLongLabel="@string/individual_plants_shortcut_long">
+        <intent android:action="gr.mastixa.manager.PLANT_TRACKING" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="sensor_data"
+        android:enabled="true"
+        android:shortcutShortLabel="@string/sensor_data_shortcut"
+        android:shortcutLongLabel="@string/sensor_data_shortcut_long">
+        <intent android:action="gr.mastixa.manager.SENSOR_DATA" />
+    </shortcut>
+</shortcuts>

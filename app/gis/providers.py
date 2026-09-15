@@ -1,0 +1,57 @@
+"""Capabilities must be verified before a provider is enabled."""
+from dataclasses import dataclass
+from typing import Protocol
+
+CADASTRE_LAYER = "https://gis.ktimanet.gr/inspire/rest/services/cadastralparcels/CadastralParcel/MapServer/0"
+
+
+class ParcelProvider(Protocol):
+    def fetch(self, kaek: str): ...
+
+
+class UnverifiedCadastreProvider:
+    def fetch(self, kaek: str):
+        if not kaek.strip():
+            raise ValueError("Συμπλήρωσε ΚΑΕΚ / KAEK required")
+        raise ConnectionError(
+            "Το δημοσιευμένο ArcGIS layer επέστρεψε HTTP 404 στον τελευταίο έλεγχο. "
+            "Δεν επαληθεύτηκαν schema/CRS/query. Χρησιμοποίησε εξουσιοδοτημένο αρχείο ορίων.\n"
+            "Published ArcGIS layer returned HTTP 404; live schema/CRS/query remain unverified. "
+            "Import an authorized boundary file.\n" + CADASTRE_LAYER)
+
+
+@dataclass(frozen=True)
+class BasemapProvider:
+    identity: str
+    title: str
+    attribution: str = ""
+    tile_template: str = ""
+    offline_allowed: bool = False
+    unavailable_reason: str = ""
+
+
+BASEMAPS = (
+    BasemapProvider("neutral", "Χωρίς υπόβαθρο / No basemap"),
+    BasemapProvider("osm", "OpenStreetMap · Online", "© OpenStreetMap contributors",
+                    "https://tile.openstreetmap.org/{z}/{x}/{y}.png"),
+    BasemapProvider("google", "Google satellite", unavailable_reason="Απαιτείται επίσημο SDK/API και ρύθμιση / Official SDK/API configuration required"),
+    BasemapProvider("sentinel", "Copernicus / Sentinel", unavailable_reason="Δεν έχει ρυθμιστεί υπηρεσία εικόνων / Imagery service not configured"),
+)
+
+
+@dataclass(frozen=True)
+class OfflinePackState:
+    parcel_id: str
+    bbox: tuple
+    status: str = "blocked"
+    bytes_stored: int = 0
+    progress: float = 0
+    updated_at: int | None = None
+    reason: str = "Δεν έχει ρυθμιστεί πάροχος με άδεια offline λήψης / No licensed offline provider configured"
+
+
+def offline_pack(parcel_id, bbox):
+    west,south,east,north=bbox
+    margin=max(east-west,north-south)*.1 + .0005
+    return OfflinePackState(parcel_id,(max(-180,west-margin),max(-85,south-margin),
+                                       min(180,east+margin),min(85,north+margin)))

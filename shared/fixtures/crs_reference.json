@@ -1,0 +1,9 @@
+{
+  "convention": "Always X/Y: longitude/latitude for geographic input and output",
+  "references": [
+    {"name":"Published NAD83 UTM example","source":"EPSG:4326","target":"EPSG:26917","input":[-80,50],"output":[571666.4475041276,5539109.815175673],"tolerance":0.02,"reverse_tolerance":0.0000002,"reference":"https://pyproj4.github.io/pyproj/stable/examples.html#transformations-from-crs-to-crs"},
+    {"name":"Published Web Mercator example","source":"EPSG:4326","target":"EPSG:3857","input":[15,12],"output":[1669792.3618991035,1345708.4084091093],"tolerance":0.001,"reverse_tolerance":0.00000001,"reference":"https://pyproj4.github.io/pyproj/stable/examples.html#converting-between-geographic-and-projection-coordinates-within-one-datum"},
+    {"name":"Published Greek GGRS87 datum shift","source":"EPSG:4121","target":"EPSG:4326","input":[20,35],"output":[20.00151861111111,35.00265972222222],"tolerance":0.0000002,"reverse_tolerance":0.0000003,"reference":"https://proj.org/en/stable/usage/transformation.html","note":"Published result is rounded to 0.001 arcsecond; numerical tolerance reflects that rounding, not survey accuracy."},
+    {"name":"Greek Grid cross-library reference","source":"EPSG:2100","target":"EPSG:4326","input":[500000,4200000],"output":[24.00170229423238,37.950184730939014],"tolerance":0.0000002,"reverse_tolerance":0.03,"reference":"PROJ via pyproj 3.8.0, recorded 2026-09-09; Android Proj4J is the independent comparison. Published Greek datum shift separately verifies the datum component."}
+  ]
+}

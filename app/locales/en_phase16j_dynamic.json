@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Αποτυχία αποθήκευσης": "Save failed",
+    "Έλεγξε τα στοιχεία του φυτού.": "Check the plant information.",
+    "Έλεγξε τα στοιχεία του συμβάντος.": "Check the event information.",
+    "Δεν ήταν δυνατή η αποθήκευση του φυτού.": "The plant could not be saved.",
+    "Δεν ήταν δυνατή η αποθήκευση του συμβάντος.": "The event could not be saved.",
+    "Δεν ήταν δυνατή η επαναφορά του φυτού.": "The plant could not be restored."
+  }
+}

@@ -1,0 +1,16 @@
+package gr.mastixa.manager;
+
+import java.util.Locale;
+
+/** Provider capability state is separate from geometry and rendering. */
+final class MapProviders {
+    private static boolean en(String language){return language.equals("en");}
+    static String[] labels(String language){return en(language)?new String[]{"Neutral / offline","OSM street map","Google satellite (setup required)","Copernicus / Sentinel (setup required)"}:new String[]{"Ουδέτερο / εκτός σύνδεσης","Οδικός χάρτης OSM","Google δορυφορικό (ρύθμιση)","Copernicus / Sentinel (ρύθμιση)"};}
+    static String description(int index,String language){return switch(index){
+        case 0 -> en(language)?"Offline neutral background. Boundaries, points and GNSS remain available.":"Ουδέτερο υπόβαθρο εκτός σύνδεσης. Όρια, σημεία και GNSS παραμένουν διαθέσιμα.";
+        case 1 -> en(language)?"OSM downloads only visible map tiles. The provider receives the viewed area. HTTP caching follows server expiry; offline packs are not available.":"Το OSM φορτώνει μόνο την ορατή περιοχή του χάρτη. Ο πάροχος λαμβάνει την περιοχή προβολής. Η προσωρινή αποθήκευση ακολουθεί τη λήξη HTTP· δεν διατίθενται πακέτα εκτός σύνδεσης.";
+        case 2 -> en(language)?"Requires official Google SDK/API configuration and restricted credentials. No imagery download or boundary digitization.":"Χρειάζεται ρύθμιση επίσημου Google SDK/API και περιορισμένα διαπιστευτήρια. Δεν γίνεται λήψη εικόνων ή ψηφιοποίηση ορίων.";
+        default -> en(language)?"Requires a configured, licensed Copernicus/Sentinel imagery service.":"Χρειάζεται ρυθμισμένη υπηρεσία εικόνων Copernicus/Sentinel με κατάλληλη άδεια.";};}
+    static String cadastreMessage(String language){String endpoint="https://gis.ktimanet.gr/inspire/rest/services/cadastralparcels/CadastralParcel/MapServer/0";return (en(language)?"Live verification blocked: this published ArcGIS layer and its JSON metadata returned HTTP 404 from the test environment (2026-09-09). Its fields, CRS and KAEK query capability remain unverified. Use file/manual import. This is separate from the old INSPIRE portal's 404.\n":"Η ζωντανή επαλήθευση εκκρεμεί: το συγκεκριμένο δημοσιευμένο επίπεδο ArcGIS και τα μεταδεδομένα JSON επέστρεψαν HTTP 404 στο περιβάλλον ελέγχου (2026-09-09). Πεδία, CRS και αναζήτηση ΚΑΕΚ δεν επαληθεύτηκαν. Χρησιμοποίησε εισαγωγή αρχείου/συντεταγμένων. Πρόκειται για ξεχωριστό έλεγχο από το 404 της παλιάς πύλης INSPIRE.\n")+endpoint;}
+    static String offlinePack(ParcelGeometry geometry,String language){String box=geometry==null?"—":String.format(Locale.ROOT,"%.6f, %.6f — %.6f, %.6f",Math.max(-180,geometry.bbox[0]-.002),Math.max(-85,geometry.bbox[1]-.002),Math.min(180,geometry.bbox[2]+.002),Math.min(85,geometry.bbox[3]+.002));return (en(language)?"Download blocked: no configured provider permits offline packs. Public OSM bulk downloads and Google imagery caching are not enabled.\nBBox + margin: ":"Η λήψη δεν είναι διαθέσιμη: δεν υπάρχει ρυθμισμένος πάροχος με άδεια για πακέτα εκτός σύνδεσης. Δεν ενεργοποιούνται μαζικές λήψεις δημόσιου OSM ή αποθήκευση εικόνων Google.\nBBox + περιθώριο: ")+box+(en(language)?"\nProgress: 0% · Storage: 0 bytes\nLast update: — · No pack to delete.":"\nΠρόοδος: 0% · Χώρος: 0 bytes\nΤελευταία ενημέρωση: — · Δεν υπάρχει πακέτο για διαγραφή.");}
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "unit": "kg",
+  "movements": [
+    {"id": "m1", "type": "Παραλαβή", "quantity": 20.0, "running_stock": 20.0},
+    {"id": "m2", "type": "Κατανάλωση", "quantity": 3.0, "running_stock": 17.0},
+    {"id": "m3", "type": "Διόρθωση +", "quantity": 2.5, "running_stock": 19.5},
+    {"id": "m4", "type": "Διόρθωση -", "quantity": 4.5, "running_stock": 15.0}
+  ],
+  "expected_final_stock": 15.0,
+  "exact_consume_allowed": 15.0,
+  "over_consume_rejected": 15.01
+}
