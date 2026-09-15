@@ -1,5 +1,8 @@
 # Mastixa Manager v0.40.0-alpha.1
 
+> **Source-available snapshot — PolyForm Noncommercial 1.0.0**  
+> This public repository is a clean source snapshot without the private development history or private self-hosted CI workflows. Original project material is offered under the terms described in [LICENSE.md](LICENSE.md). Third-party material remains under its own terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). This is **not OSI open source**.
+
 Αυτόνομη εφαρμογή Windows για την τοπική διαχείριση αγροτικής εκμετάλλευσης.
 
 ## Εφαρμογές και ανάπτυξη
@@ -21,10 +24,12 @@ Qt offscreen. Για Android απαιτούνται JDK 17 ή 21 και Android 
 `gradlew.bat`. Instrumentation σε emulator: `connectedChecksAndroidTest`· η
 ξεχωριστή εφαρμογή `.checks` απομονώνει τα δοκιμαστικά δεδομένα.
 
-Τα GitHub Actions ελέγχουν και τις δύο εφαρμογές χωρίς παραγωγικά κλειδιά και
-χωρίς δημοσίευση APK. Δεν απαιτείται ρύθμιση Google/Supabase στην τρέχουσα έκδοση.
-Μην προσθέτετε στο Git τοπικά SDK paths, κωδικούς υπογραφής, βάσεις ή αντίγραφα
-δεδομένων. Αναλυτικές λειτουργίες: [Android README](android/README.md).
+Το snapshot έχει περάσει τα ιδιωτικά Windows/Android verification και release gates
+του development repository πριν από τη δημοσίευσή του. Τα self-hosted GitHub Actions
+workflows δεν περιλαμβάνονται σκόπιμα στο public repository. Δεν απαιτείται ρύθμιση
+Google/Supabase στην τρέχουσα έκδοση. Μην προσθέτετε στο Git τοπικά SDK paths,
+κωδικούς υπογραφής, βάσεις ή αντίγραφα δεδομένων. Αναλυτικές λειτουργίες:
+[Android README](android/README.md).
 
 ## Βασικές λειτουργίες
 
