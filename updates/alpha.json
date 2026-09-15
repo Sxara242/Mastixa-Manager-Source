@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "product": "Mastixa Manager",
+  "version": "0.40.0-alpha.1",
+  "channel": "alpha",
+  "release_url": "https://github.com/Sxara242/Mastixa-Manager-Source",
+  "notes": "Technical-complete alpha snapshot. Direct binary updates are not published from the public source repository yet.",
+  "windows": {
+    "filename": "MastixaManager-0.40.0-alpha.1-Setup.exe",
+    "url": null,
+    "sha256": null
+  },
+  "android": {
+    "filename": "MastixaManager-0.40.0-alpha.1-Android-debug.apk",
+    "url": null,
+    "sha256": null
+  }
+}
