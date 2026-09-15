@@ -17,12 +17,12 @@ This license does not relicense third-party code, libraries, data, models, tools
 
 If a file or directory contains its own license or copyright notice, that notice controls for that material.
 
-## Snapshot
+## Snapshot provenance
 
-This licensing preparation branch was created from the verified technical-complete snapshot:
+This public source snapshot was prepared from the verified technical-complete state:
 
-- Commit: `dcf87a9bf9b1bd9b608b9b93833fb4c6b51de4d3`
-- Frozen branch: `archive/pre-futo-0.40.0-alpha.1`
-- Frozen tag: `v0.40.0-alpha.1-tech-complete`
+- Technical-complete commit: `dcf87a9bf9b1bd9b608b9b93833fb4c6b51de4d3`
+- Private archival branch: `archive/pre-futo-0.40.0-alpha.1`
+- Private frozen tag: `v0.40.0-alpha.1-tech-complete`
 
-The frozen branch and tag remain unchanged by this licensing preparation.
+The private archival branch and tag remain unchanged; this public repository has its own clean history.
