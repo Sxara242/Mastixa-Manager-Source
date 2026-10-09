@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QTabWidget, QWidget
 from app import language
 from app import product_registry
 from app.database import Database
+from app.year_context import set_active_working_year
 from app.equipment import EquipmentPage
 from app.inventory_report import InventoryReportPage
 from app.invoice_documents import InvoiceDocumentsPage
@@ -34,6 +35,7 @@ class StaticSelectorTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.db = Database(Path(self.temp.name) / "selectors.db")
+        set_active_working_year(self.db, 2027, audit=False)
         self.previous = language._active_controller
         self.previous_app = getattr(self.app, "_mastixa_language_controller", None)
         self.previous_enabled = getattr(self.previous_app, "_enabled", False)

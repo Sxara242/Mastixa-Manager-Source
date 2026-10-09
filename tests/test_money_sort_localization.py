@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 
 from app.database import Database
 from app.money import MoneyPage
+from app.year_context import set_active_working_year
 from tests.language_fixture import scoped_language
 
 
@@ -24,6 +25,7 @@ class MoneySortLocalizationTests(unittest.TestCase):
     def check_page(self, kind, initial_language, languages):
         with tempfile.TemporaryDirectory() as folder:
             db = Database(Path(folder) / "money.db")
+            set_active_working_year(db, 2027, audit=False)
             with scoped_language(self.app, initial_language) as controller:
                 page = MoneyPage(db, kind)
                 try:

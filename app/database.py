@@ -186,6 +186,14 @@ class Database:
             value TEXT NOT NULL DEFAULT '',
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS year_locks (
+            year INTEGER PRIMARY KEY,
+            is_locked INTEGER NOT NULL DEFAULT 0,
+            locked_at TEXT,
+            unlocked_at TEXT,
+            reason TEXT NOT NULL DEFAULT ''
+        );
         """
         with self.connect() as con:
             con.executescript(schema)

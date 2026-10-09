@@ -60,6 +60,8 @@ class FileDialogTests(unittest.TestCase):
         self.owner = Mock()
         o = self.owner
         o.year.currentData.return_value = 2027
+        # Annual export now consumes its immutable report snapshot.
+        o._annual_report_snapshot.return_value = SimpleNamespace(year=2027)
         o.year_filter = o.year
         o.product_filter.currentData.return_value = None
         o.table.rowCount.return_value = 1

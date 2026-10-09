@@ -109,7 +109,13 @@ class OwnerUiAcceptanceTests(unittest.TestCase):
         for key, attribute in (('expense', 'table'), ('equipment', 'equipment_table'),
                                ('history', 'table'), ('annual_report', 'finance_table')):
             with self.subTest(key=key):
-                table = getattr(self.page(key), attribute)
+                page = self.page(key)
+                # This test inspects below-fold report tables. Deliberately
+                # expose them through the same completion hook as scrolling.
+                construction = getattr(page, '_secondary_construction', None)
+                if construction is not None:
+                    construction.finish_all()
+                table = getattr(page, attribute)
                 table.setRowCount(1)
                 text = 'Long representative owner value Ω ' * 5
                 for column in range(table.columnCount()):

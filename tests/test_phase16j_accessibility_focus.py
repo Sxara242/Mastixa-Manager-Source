@@ -13,7 +13,8 @@ class FocusAccessibilityTests(unittest.TestCase):
             os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
             from PySide6.QtGui import QPalette
-            from PySide6.QtWidgets import QApplication
+            from PySide6.QtWidgets import QApplication, QWidget
+            from unittest.mock import patch
 
             from app.appearance_theme import ThemeController
             from app.focus_accessibility import (
@@ -24,6 +25,7 @@ class FocusAccessibilityTests(unittest.TestCase):
             app = QApplication.instance() or QApplication([])
             previous_stylesheet = app.styleSheet()
             previous_palette = QPalette(app.palette())
+            root = QWidget()
             controller = ThemeController(
                 app,
                 "QPushButton {{ padding: 9px 16px; }}",
@@ -55,7 +57,10 @@ class FocusAccessibilityTests(unittest.TestCase):
             """
             style = force_theme("light")
             assert "MASTIXA_ACCESSIBLE_FOCUS_LIGHT" in style
-            assert "MASTIXA_ACCESSIBLE_FOCUS_DARK" not in style
+            # Both skins are installed once; only dark descendants match these
+            # overrides. The light ring stays active on a light root.
+            assert root.property("mastixaTheme") == "light"
+            assert '[mastixaTheme="dark"] QLineEdit:focus' in style
             assert "QPushButton:focus" in style
             assert "QToolButton:focus" in style
             assert "QLineEdit:focus" in style
@@ -64,6 +69,7 @@ class FocusAccessibilityTests(unittest.TestCase):
             assert "QRadioButton:focus" in style
             assert "#1F5A43" in style
             assert style.count("MASTIXA_ACCESSIBLE_FOCUS_LIGHT") == 1
+            assert style.count("MASTIXA_ACCESSIBLE_FOCUS_DARK") == 1
             """
         )
 
@@ -76,12 +82,19 @@ class FocusAccessibilityTests(unittest.TestCase):
             assert "#9CCFB2" in style
             assert style.count("MASTIXA_ACCESSIBLE_FOCUS_LIGHT") == 1
             assert style.count("MASTIXA_ACCESSIBLE_FOCUS_DARK") == 1
-            assert style.rstrip().endswith(DARK_FOCUS_STYLESHEET.rstrip())
-
-            light_again = force_theme("light")
+            assert root.property("mastixaTheme") == "dark"
+            assert '[mastixaTheme="dark"] QLineEdit:focus' in style
+            with patch.object(app, "setStyleSheet", wraps=app.setStyleSheet) as setter:
+                light_again = force_theme("light")
+                assert root.property("mastixaTheme") == "light"
+                assert force_theme("dark") == style
+                assert root.property("mastixaTheme") == "dark"
+                assert force_theme("light") == style
+                assert root.property("mastixaTheme") == "light"
+                setter.assert_not_called()
             assert light_again.count("MASTIXA_ACCESSIBLE_FOCUS_LIGHT") == 1
-            assert "MASTIXA_ACCESSIBLE_FOCUS_DARK" not in light_again
-            assert light_again.rstrip().endswith(LIGHT_FOCUS_STYLESHEET.rstrip())
+            assert light_again.count("MASTIXA_ACCESSIBLE_FOCUS_DARK") == 1
+            assert light_again == style
             """
         )
 

@@ -12,12 +12,15 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QCoreApplication, QDate, QEvent, Qt
 from PySide6.QtWidgets import QApplication, QLabel
 
 import app
 import app.main_window as main_window
 from app.database import Database
+from app.appearance_theme import ThemeController
+from app.profile_manager import ProfileManager
+from app import language
 from app.expense_sync import delete_expense, sync_expense
 from app.inventory_sync import (
     InventoryStockError,
@@ -40,12 +43,36 @@ class StabilizationTests(unittest.TestCase):
 
         self.original_database = main_window.Database
         self.original_base_dir = main_window.BASE_DIR
-        main_window.Database = lambda: self.db
+        self.previous_style = self.qt.styleSheet()
+        self.previous_palette = self.qt.palette()
+        self.previous_language = language._active_controller
+        self.previous_app_controller = getattr(self.qt, "_mastixa_language_controller", None)
+        self.previous_enabled = getattr(self.previous_app_controller, "_enabled", False)
+        self.profiles = ProfileManager(self.root)
+        self.controller = language.LanguageController(self.qt, self.profiles)
+        self.theme = ThemeController(self.qt, self.previous_style, self.previous_palette)
+        main_window.Database = lambda *args: self.db
         main_window.BASE_DIR = self.root
-        self.window = main_window.MainWindow()
+        self.window = main_window.MainWindow(self.theme, self.profiles, self.controller)
 
     def tearDown(self) -> None:
+        self.window._skip_close_backup = True
         self.window.close()
+        self.window.deleteLater()
+        self.qt.removeEventFilter(self.theme)
+        self.qt.removeEventFilter(self.controller)
+        self.controller._enabled = False
+        self.qt._mastixa_language_controller = self.previous_app_controller
+        if self.previous_app_controller is not None:
+            self.previous_app_controller._enabled = self.previous_enabled
+            if self.previous_enabled:
+                self.qt.installEventFilter(self.previous_app_controller)
+        language.install_language_controller(self.previous_language)
+        self.theme.deleteLater()
+        self.controller.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        self.qt.setStyleSheet(self.previous_style)
+        self.qt.setPalette(self.previous_palette)
         main_window.Database = self.original_database
         main_window.BASE_DIR = self.original_base_dir
         self.temp_dir.cleanup()

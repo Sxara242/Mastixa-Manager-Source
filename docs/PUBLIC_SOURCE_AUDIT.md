@@ -2,6 +2,10 @@
 
 **Development-source publication audits PASS; rc.2 binary release remains blocked.**
 
+This page records the initial published development baseline `d98f041`.
+Subsequent public fixes and current validation are tracked in
+[PHASE5_WINDOWS_BLOCKERS.md](PHASE5_WINDOWS_BLOCKERS.md).
+
 Scope: RELEASE-INFRA / SHARED documentation and CI, with DESKTOP and ANDROID verification.
 Windows x64 is the current release target. Android remains in development.
 

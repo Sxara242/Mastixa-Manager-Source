@@ -41,14 +41,14 @@ class CoordinateExportDialog(QDialog):
         self.mode.setEnabled(self.format.currentIndex()<3)
         selected=[row for i,row in enumerate(self.records) if self.fields.item(i).checkState()==Qt.CheckState.Checked]
         self.parcels=[];self.preview.clear();self.preview.setRowCount(0)
-        if not selected:self.note.setText('Επίλεξε αγροτεμάχια');return
+        if not selected:self.note.setText(_text('Επίλεξε αγροτεμάχια'));return
         try:
             self.parcels=exports.snapshot(selected);rows=exports.table(self.parcels,self.effective_mode());self.preview.setColumnCount(len(rows[0]));self.preview.setHorizontalHeaderLabels(['Αγροτεμάχιο','KAEK','Σύστημα συντεταγμένων','EPSG','Έκταση (m²)','Περίμετρος (m)','Αριθμός κορυφών','Τμήμα','Δακτύλιος','Κορυφή',*(['Γεωγραφικό πλάτος','Γεωγραφικό μήκος'] if self.effective_mode()=='wgs84' else ['X / Γεωγραφικό μήκος','Y / Γεωγραφικό πλάτος'])]);self.preview.setRowCount(min(5,len(rows)-1))
             for r,row in enumerate(rows[1:6]):
                 for c,value in enumerate(row):self.preview.setItem(r,c,QTableWidgetItem(str(value)))
-            self.note.setText(f'{len(self.parcels)} αγροτεμάχια · {len(rows)-1} κορυφές\nGeoJSON / KML: WGS84 γεωγραφικό μήκος,πλάτος · αρχικό CRS στα μεταδεδομένα.')
+            self.note.setText(_text(f'{len(self.parcels)} αγροτεμάχια · {len(rows)-1} κορυφές\nGeoJSON / KML: WGS84 γεωγραφικό μήκος,πλάτος · αρχικό CRS στα μεταδεδομένα.'))
             self.preview.resizeColumnsToContents()
-        except Exception:self.parcels=[];self.note.setText('Η προεπισκόπηση δεν είναι διαθέσιμη. Έλεγξε τα επιλεγμένα όρια και τον αριθμό κορυφών.')
+        except Exception:self.parcels=[];self.note.setText(_text('Η προεπισκόπηση δεν είναι διαθέσιμη. Έλεγξε τα επιλεγμένα όρια και τον αριθμό κορυφών.'))
 
     def export(self):
         if not self.parcels:QMessageBox.information(self,'Εξαγωγή','Επίλεξε διαθέσιμα αγροτεμάχια');return

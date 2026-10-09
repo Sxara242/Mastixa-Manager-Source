@@ -17,6 +17,7 @@ from app import language
 from app.annual_report import AnnualFarmReportPage
 from app.database import Database
 from app.product_registry import ensure_product_links
+from app.year_context import set_active_working_year
 
 
 NAME = "Παραγωγή Ναι Αποθήκευση Έξοδα <b>tag</b> {year}"
@@ -34,6 +35,7 @@ class AnnualLocalizationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.db = Database(Path(self.temp.name) / "annual.db")
+        set_active_working_year(self.db, 2026, audit=False)
         self.db.execute("CREATE TABLE production_sales(id INTEGER PRIMARY KEY, sale_date TEXT, product TEXT, product_id INTEGER, quantity_kg REAL, total_amount REAL, income_id INTEGER)")
         self.product = self.db.execute("INSERT INTO products(name) VALUES(?)", (NAME,))
         other = self.db.execute("INSERT INTO products(name) VALUES('Other product')")

@@ -52,6 +52,19 @@ class YearContextCoreTests(unittest.TestCase):
         context.is_year_physically_locked(self.db, year)
         self.db.execute("INSERT OR REPLACE INTO year_locks(year,is_locked,reason) VALUES(?,1,'physical')", (year,))
 
+    def test_lock_lookup_is_read_only_including_legacy_missing_table(self):
+        for legacy in (False, True):
+            with self.subTest(legacy=legacy):
+                if legacy:
+                    self.db.execute("DROP TABLE year_locks")
+                with self.db.connect() as con:
+                    before = tuple(con.iterdump())
+                with patch.object(self.db, "execute", wraps=self.db.execute) as write:
+                    self.assertFalse(context.is_year_physically_locked(self.db, 2026))
+                    write.assert_not_called()
+                with self.db.connect() as con:
+                    self.assertEqual(before, tuple(con.iterdump()))
+
     def test_effective_date_leap_day_and_profile_isolation(self):
         self.assertEqual(QDate(2027, 10, 3), context.working_context_date(self.db))
         self.assertEqual(QDate(2027, 2, 28), context.qdate_in_year(2027, QDate(2024, 2, 29)))

@@ -17,6 +17,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QTableWidget
 from app import language
 from app.database import Database
+from app.year_context import set_active_working_year
 
 RAW = "Παραγωγή Αποθήκευση Ναι Έξοδα Save Production <b>tag</b> {year} User — Παραγωγή Save {2027}"
 
@@ -44,6 +45,7 @@ class GeneratedBodyTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.db = Database(Path(self.temp.name) / "body.db")
+        set_active_working_year(self.db, 2027, audit=False)
         self.previous = language._active_controller
         self.previous_app = getattr(self.app, "_mastixa_language_controller", None)
         self.previous_enabled = getattr(self.previous_app, "_enabled", False)
@@ -284,6 +286,7 @@ class GeneratedBodyTests(unittest.TestCase):
     def test_crop_task_state_category_count_and_navigation_data(self):
         from app.crop_program_store import CropProgramStore
         CropProgramStore(self.db)
+        set_active_working_year(self.db, 2020, audit=False)
         field=self.db.execute("INSERT INTO fields(name) VALUES(?)",(RAW,))
         self.db.execute("INSERT INTO crop_tasks(generation_key,program_id,rule_id,field_id,season_year,due_date,category,title,notes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",("task-64","program","rule",str(field),2020,"2020-01-02","inspection",RAW,RAW,"pending",1,1))
         before=self.snapshot()

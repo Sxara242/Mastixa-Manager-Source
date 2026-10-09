@@ -115,7 +115,10 @@ def is_correction_year(db: Database, year: int) -> bool:
 
 
 def is_year_physically_locked(db: Database, year: int) -> bool:
-    _ensure_year_lock_schema(db)
+    # A read/validation must not migrate the database. Lock writers create the
+    # table explicitly; a legacy database without it has no physical locks.
+    if db.query_one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='year_locks'") is None:
+        return False
     row = db.query_one(
         "SELECT is_locked FROM year_locks WHERE year=?",
         (int(year),),

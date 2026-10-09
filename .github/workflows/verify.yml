@@ -49,8 +49,9 @@ jobs:
       - name: Windows tests
         env:
           MASTIXA_DATA_HOME: ${{ runner.temp }}\mastixa-tests-${{ github.run_id }}-${{ github.run_attempt }}
-        run: python tools/run_windows_tests.py --jobs 2 --timeout 120
+        run: python tools/run_windows_tests.py --jobs 2 --timeout 120 --module-timeout tests.test_stabilization=360
       - name: Packaging and legal preflight (no installer)
+        if: ${{ !cancelled() }}
         run: python packaging/validate_windows_release.py
   android:
     runs-on: ubuntu-latest
@@ -64,6 +65,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - uses: gradle/actions/setup-gradle@v4
         with:
           cache-disabled: true

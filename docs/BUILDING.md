@@ -9,7 +9,7 @@ and `MASTIXA_DATA_HOME` pointing to a new disposable directory:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -c requirements-windows-rc.txt
-.\.venv\Scripts\python.exe tools/run_windows_tests.py --jobs 2 --timeout 120
+.\.venv\Scripts\python.exe tools/run_windows_tests.py --jobs 2 --timeout 120 --module-timeout tests.test_stabilization=360
 .\.venv\Scripts\python.exe tools/audit_public_source.py
 .\.venv\Scripts\python.exe packaging/validate_windows_release.py
 ```
@@ -22,7 +22,12 @@ Use synthetic fixtures and temporary profiles. Shared changes require
 Windows/Android parity consideration. Android commands are in
 [INSTALLATION.md](INSTALLATION.md). Instrumentation uses the `.checks` app.
 The runner executes every `test_*.py` module in a fresh process and bounds each
-module to 120 seconds. This avoids carrying Qt objects/timers from deleted
+module to 120 seconds, with an explicit 360-second stabilization override. That
+legacy module constructs the complete window for 23 tests; measured assertions
+completed in 284 seconds before fixture-controller cleanup. The override preserves
+every assertion and still fails on timeout, failure or unsuccessful process exit.
+Timeout diagnostics capture a Python stack before process-tree cleanup. This avoids
+carrying Qt objects/timers from deleted
 fixtures across modules. A failed module or timeout fails the run; no tests are
 silently skipped. Both unittest classes and the existing plain test functions
 are executed. Direct unittest discovery remains available for diagnosis but does
