@@ -1,0 +1,57 @@
+{
+  "scope": "Reviewed source-only inputs; no production data or release binaries",
+  "files": {
+    "android/gradle/wrapper/gradle-wrapper.jar": {
+      "sha256": "81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f",
+      "kind": "Gradle 8.13 Apache-2.0 wrapper"
+    },
+    "android/app/src/main/assets/tessdata/ell.traineddata": {
+      "sha256": "4fba8a0b461038d51f1c20d043d4f2ac38c4e778f1b90830847f7bd8fa3ba726",
+      "kind": "upstream Apache-2.0 OCR model"
+    },
+    "android/app/src/main/assets/tessdata/eng.traineddata": {
+      "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+      "kind": "upstream Apache-2.0 OCR model"
+    },
+    "android/app/src/androidTest/assets/windows-activities.zip": {
+      "sha256": "cf356483639ae7bb129f5b472427059b75b925b94aab1f65d8265d6c8b1a4187",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-catalog.zip": {
+      "sha256": "f6201444d93a9924a80528bfcf5ec80df44c28686fb5014c8a2b7cd2ff78e777",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-documents.zip": {
+      "sha256": "443f92d51b6dff284b8c746caec6c2e6d6bc29fa74da4f8b3136f87bb793d0f2",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-equipment.zip": {
+      "sha256": "b2cf4451beff957c28ea1a9e21502c2efa33b3ce626a90852263cbaa497958c1",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-inventory.zip": {
+      "sha256": "f31f40d206b1783ba6c16cc9ca2e3a4eb21d93bf1531b604b5ce05458347ea4b",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-money.zip": {
+      "sha256": "417d4665321b43411d1910ac9b2bc067fe31c075c88f19b5ee5b86ee06694fe4",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-partners.zip": {
+      "sha256": "abcd62a139d134413d6b6ce0e89924cb7033bd8bfe2930841952121c378f1724",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-plantings.zip": {
+      "sha256": "d215a639d8b7c7782d206b5347277948a10f03a20b7548f7528520b34bc764b1",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-production.zip": {
+      "sha256": "c426a882ff91362226f59ec58550f062a0ddaad9e1fbbaa43ae6c3a80cfa2876",
+      "kind": "synthetic test fixture"
+    },
+    "android/app/src/androidTest/assets/windows-work.zip": {
+      "sha256": "aea3a9a1174647c8aa2621df5c247e375b7e6a0202ada39e601bce34d988f9a2",
+      "kind": "synthetic test fixture"
+    }
+  }
+}

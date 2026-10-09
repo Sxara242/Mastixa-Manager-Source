@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox, QFormLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -7,20 +9,69 @@ from PySide6.QtWidgets import (
     QTextEdit, QVBoxLayout, QWidget,
 )
 
+from .numeric_inputs import NumericSpinBox
 from .crud import CrudPage
+from .localized_messages import _language, _text
 from .database import Database
 from .language import combo_source_text
 from .ui_helpers import table_widget
 from .widgets import area_input, date_input, money_input, quantity_input
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 from .inventory_sync import InventoryStockError, delete_consumption, ensure_can_consume, ensure_inventory_source_schema, sync_consumption
 
 
 class PlantProtectionPage(CrudPage):
     """Field-level plant-protection log with traceability metadata."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__(); self.db = db; self.selected_id: int | None = None
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self._ensure_schema()
 
         outer = QVBoxLayout(self)
@@ -69,12 +120,12 @@ class PlantProtectionPage(CrudPage):
         subtitle.setContentsMargins(0, 1, 0, 4)
         layout.addWidget(subtitle)
         self.form_box = QGroupBox("Νέα επέμβαση"); form = QFormLayout(self.form_box)
-        self.date = date_input(); self.field = QComboBox(); self.purpose = QLineEdit(); self.purpose.setPlaceholderText("Εχθρός, ασθένεια ή σκοπός επέμβασης")
+        self.date = date_input(self.db); self.field = QComboBox(); self.purpose = QLineEdit(); self.purpose.setPlaceholderText("Εχθρός, ασθένεια ή σκοπός επέμβασης")
         self.product = QComboBox(); self.product.setEditable(True); self.active_ingredient = QLineEdit(); self._authorization_number = ""
         self.dose = quantity_input(); self.dose.setSuffix(""); self.dose_unit = QComboBox(); self.dose_unit.setEditable(True); self.dose_unit.setProperty("mastixaI18nStaticItems", True); self.dose_unit.addItems(["kg/στρ.", "g/στρ.", "ml/στρ.", "L/στρ.", "%"])
         dose_row = QHBoxLayout(); dose_row.addWidget(self.dose, 1); dose_row.addWidget(self.dose_unit)
         self.inventory_quantity = quantity_input(); self.inventory_quantity.setSuffix(""); self.spray_volume = quantity_input(); self.spray_volume.setSuffix(" L"); self.area = area_input(); self.applicator = QLineEdit(); self.weather = QLineEdit()
-        self.harvest_interval = QSpinBox(); self.harvest_interval.setRange(0, 365); self.harvest_interval.setSuffix(" ημέρες")
+        self.harvest_interval = NumericSpinBox(); self.harvest_interval.setRange(0, 365); self.harvest_interval.setSuffix(" ημέρες")
         self.cost = money_input(); self.notes = QTextEdit(); self.notes.setMaximumHeight(70)
         for label, widget in (("Ημερομηνία", self.date), ("Αγροτεμάχιο", self.field), ("Στόχος / αιτία", self.purpose), ("Σκεύασμα / προϊόν", self.product), ("Δραστική ουσία", self.active_ingredient)):
             form.addRow(label, widget)
@@ -161,6 +212,8 @@ class PlantProtectionPage(CrudPage):
         year = self.date.date().year()
         if is_year_locked(self.db, year):
             warn_locked_year(self, self.db, year)
+            if self.selected_id is None:
+                self.clear_form()
             return
         original_year = self._record_year(self.selected_id) if self.selected_id else None
         if original_year and original_year != year and is_year_locked(self.db, original_year):
@@ -185,12 +238,13 @@ class PlantProtectionPage(CrudPage):
             QMessageBox.warning(self, "Ανεπαρκές απόθεμα", f"Δεν υπάρχει αρκετό απόθεμα. Διαθέσιμο: {exc.available:g}")
             return
         values=(self.date.date().toString("yyyy-MM-dd"), self.field.currentData(), inventory_item_id, purpose, product, self.active_ingredient.text().strip(), self._authorization_number, self.dose.value(), combo_source_text(self.dose_unit).strip(), self.spray_volume.value(), self.area.value(), self.applicator.text().strip(), self.weather.text().strip(), self.harvest_interval.value(), self.cost.value(), self.notes.toPlainText().strip(), inventory_quantity)
-        if self.selected_id is None:
-            record_id=self.db.execute("""INSERT INTO plant_protection_records(application_date,field_id,inventory_item_id,purpose,product_name,active_ingredient,authorization_number,dose,dose_unit,spray_volume_l,area_stremma,applicator,weather,harvest_interval_days,cost,notes,inventory_quantity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", values)
-        else:
-            self.db.execute("""UPDATE plant_protection_records SET application_date=?,field_id=?,inventory_item_id=?,purpose=?,product_name=?,active_ingredient=?,authorization_number=?,dose=?,dose_unit=?,spray_volume_l=?,area_stremma=?,applicator=?,weather=?,harvest_interval_days=?,cost=?,notes=?,inventory_quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?""", (*values,self.selected_id))
-            record_id=self.selected_id
-        sync_consumption(self.db, source_type="plant_protection", source_id=int(record_id), movement_date=self.date.date().toString("yyyy-MM-dd"), item_id=inventory_item_id, quantity=inventory_quantity, field_id=self.field.currentData(), notes=f"Αυτόματη κατανάλωση από Φυτοπροστασία #{record_id}")
+        with self.db.transaction() as tx:
+            if self.selected_id is None:
+                record_id=tx.execute("""INSERT INTO plant_protection_records(application_date,field_id,inventory_item_id,purpose,product_name,active_ingredient,authorization_number,dose,dose_unit,spray_volume_l,area_stremma,applicator,weather,harvest_interval_days,cost,notes,inventory_quantity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", values)
+            else:
+                tx.execute("""UPDATE plant_protection_records SET application_date=?,field_id=?,inventory_item_id=?,purpose=?,product_name=?,active_ingredient=?,authorization_number=?,dose=?,dose_unit=?,spray_volume_l=?,area_stremma=?,applicator=?,weather=?,harvest_interval_days=?,cost=?,notes=?,inventory_quantity=?,updated_at=CURRENT_TIMESTAMP WHERE id=?""", (*values,self.selected_id))
+                record_id=self.selected_id
+            sync_consumption(tx, source_type="plant_protection", source_id=int(record_id), movement_date=self.date.date().toString("yyyy-MM-dd"), item_id=inventory_item_id, quantity=inventory_quantity, field_id=self.field.currentData(), notes=f"Αυτόματη κατανάλωση από Φυτοπροστασία #{record_id}")
         self.clear_form(); self.refresh()
 
     def load_record(self, row: int, _column: int) -> None:
@@ -200,19 +254,19 @@ class PlantProtectionPage(CrudPage):
         locked = is_year_locked(self.db, date.year()); self.form_box.setTitle(f"Προβολή επέμβασης — ΚΛΕΙΔΩΜΕΝΟ {date.year()}" if locked else "Επεξεργασία επέμβασης"); self.save_button.setText("Κλειδωμένο" if locked else "Αποθήκευση"); self.save_button.setEnabled(not locked); self.delete_button.setEnabled(not locked); self.cancel_button.setEnabled(True)
 
     def clear_form(self) -> None:
-        self.selected_id = None; self.date.setDate(QDate.currentDate()); self._refresh_choices(); self.purpose.clear(); self.active_ingredient.clear(); self._authorization_number = ""; self.dose.setValue(0); self.dose_unit.setCurrentIndex(0); self.inventory_quantity.setValue(0); self.spray_volume.setValue(0); self.area.setValue(0); self.applicator.clear(); self.weather.clear(); self.harvest_interval.setValue(0); self.cost.setValue(0); self.notes.clear(); self.form_box.setTitle("Νέα επέμβαση"); self.save_button.setText("Προσθήκη"); self.save_button.setEnabled(True); self.cancel_button.setEnabled(False); self.delete_button.setEnabled(False); self.table.clearSelection()
+        self.selected_id = None; self.date.setDate(working_context_date(self.db)); self._refresh_choices(); self.purpose.clear(); self.active_ingredient.clear(); self._authorization_number = ""; self.dose.setValue(0); self.dose_unit.setCurrentIndex(0); self.inventory_quantity.setValue(0); self.spray_volume.setValue(0); self.area.setValue(0); self.applicator.clear(); self.weather.clear(); self.harvest_interval.setValue(0); self.cost.setValue(0); self.notes.clear(); self.form_box.setTitle("Νέα επέμβαση"); self.save_button.setText("Προσθήκη"); self.save_button.setEnabled(True); self.cancel_button.setEnabled(False); self.delete_button.setEnabled(False); self.table.clearSelection()
 
     def delete_record(self) -> None:
         if self.selected_id is None: return
         year = self._record_year(self.selected_id)
         if year and is_year_locked(self.db, year): warn_locked_year(self, self.db, year); return
         if not self.confirm_delete(self, "Διαγραφή επέμβασης", "Να διαγραφεί η επιλεγμένη καταγραφή φυτοπροστασίας;"): return
-        delete_consumption(self.db, source_type="plant_protection", source_id=self.selected_id); self.db.execute("DELETE FROM plant_protection_records WHERE id=?", (self.selected_id,)); self.clear_form(); self.refresh()
+        with self.db.transaction() as tx:
+            delete_consumption(tx, source_type="plant_protection", source_id=self.selected_id); tx.execute("DELETE FROM plant_protection_records WHERE id=?", (self.selected_id,))
+        self.clear_form(); self.refresh()
 
     def refresh(self) -> None:
-        selected_year = self.year_filter.currentData() if self.year_filter.count() else "all"; self.year_filter.blockSignals(True); self.year_filter.clear(); self.year_filter.addItem("Όλα", "all")
-        for row in self.db.query("SELECT DISTINCT substr(application_date,1,4) year FROM plant_protection_records ORDER BY year DESC"): self.year_filter.addItem(row["year"], row["year"])
-        index = self.year_filter.findData(selected_year); self.year_filter.setCurrentIndex(index if index >= 0 else 0); self.year_filter.blockSignals(False)
+        populate_year_filter(self, self.year_filter, strings=True, all_value='all')
         self._refresh_choices(self.field.currentData(), self.product.currentData(), combo_source_text(self.product))
         where=[]; params=[]
         if self.year_filter.currentData() != "all": where.append("substr(p.application_date,1,4)=?"); params.append(self.year_filter.currentData())
@@ -222,5 +276,10 @@ class PlantProtectionPage(CrudPage):
         for r,row in enumerate(rows):
             values=[row["application_date"],row["field_name"],row["purpose"],row["product_name"],f'{row["dose"]:g} {row["dose_unit"]}',f'{row["area_stremma"]:g} στρ.',f'{row["harvest_interval_days"]} ημ.',row["applicator"],f'{row["cost"]:.2f} €']
             for c,value in enumerate(values):
-                item=QTableWidgetItem(str(value)); self.table.setItem(r,c,item)
+                item=QTableWidgetItem(str(value))
+                if c == 5:
+                    self._set_body(item, "{number} {unit}", number=f'{row["area_stremma"]:g}', _labels={"unit": "στρ."})
+                elif c == 6:
+                    self._set_body(item, "{number} {unit}", number=str(row["harvest_interval_days"]), _labels={"unit": "ημ."})
+                self.table.setItem(r,c,item)
                 if c==0: item.setData(Qt.ItemDataRole.UserRole,row["id"])

@@ -1,0 +1,15 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "Εξαγωγή XLSX": "XLSX export",
+    "Το XLSX δημιουργήθηκε επιτυχώς:\n{path}": "XLSX created successfully:\n{path}",
+    "Μέγεθος": "Metric",
+    "Προϊόν / πεδίο αναφοράς": "Product / report scope",
+    "Ποσό EUR": "Amount EUR",
+    "Σημείωση": "Note",
+    "Η εξαγωγή παρήγαγε κενό αρχείο.": "The export produced an empty file.",
+    "Το κείμενο υπερβαίνει το όριο κελιού Excel (32767 χαρακτήρες).": "Text exceeds the Excel cell limit (32767 characters).",
+    "Δεν ήταν δυνατή η εγγραφή του PDF.": "The PDF could not be written.",
+    "Το stock τέλους έτους περιλαμβάνει το αδιάθετο υπόλοιπο προηγούμενων ετών.": "End-of-year stock includes unsold stock carried over from previous years."
+  }
+}

@@ -1,3 +1,5 @@
+> Retained development plan. Android remains in development; see docs/RELEASE_STATUS.md.
+
 # Mastixa Manager: Android, offline, backup, synchronization and OCR
 
 Status: implementation specification, not implemented functionality.

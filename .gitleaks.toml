@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated local build and tool caches are not source publication inputs"
+paths = ['''(^|/)(build|dist|\.gradle|__pycache__|\.venv)/''']

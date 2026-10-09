@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .localized_messages import _language, _text
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -20,7 +22,8 @@ from PySide6.QtWidgets import (
 
 from .database import Database
 from .ui_helpers import compact_decimal, format_kg, table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date, effective_working_year
 
 
 class AutoGrowingTextEdit(QTextEdit):
@@ -61,6 +64,31 @@ class DeclarationPage(QWidget):
     It does NOT upload anything externally. The Upload Center can use these
     saved drafts in the next sprint.
     """
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setProperty("mastixaI18nStaticText", False)
+        if widget is self.status and "ΚΛΕΙΔΩΜΕΝΟ" not in template:
+            self._unlocked_status_spec = (template, values)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
 
     def __init__(self, db: Database) -> None:
         super().__init__()
@@ -339,7 +367,7 @@ class DeclarationPage(QWidget):
 
     def _load_years(self) -> None:
         current = self.year.currentData()
-        current_year = QDate.currentDate().year()
+        current_year = working_context_date(self.db).year()
 
         rows = self.db.query(
             """
@@ -398,6 +426,14 @@ class DeclarationPage(QWidget):
         self._editing = False
         self._load_current_year()
 
+    def refresh_year_context_ui(self) -> None:
+        if self._editing and self._has_saved_declaration:
+            return
+        target = effective_working_year(self.db)
+        self._load_years()
+        self.year.setCurrentIndex(self.year.findData(target))
+        self._load_current_year()
+
     def refresh(self) -> None:
         # Restoring an older compatible backup can remove these newer tables.
         # Recreate them transparently when the page is refreshed.
@@ -433,7 +469,7 @@ class DeclarationPage(QWidget):
                 for row in self.db.query("SELECT id FROM fields")
             }
             self.notes.clear()
-            self.status.setText("Πρόχειρη — δεν έχει αποθηκευτεί")
+            self._composed_text(self.status, 'Πρόχειρη — δεν έχει αποθηκευτεί')
 
             # A brand-new declaration starts directly in edit mode.
             self._editing = True
@@ -456,11 +492,9 @@ class DeclarationPage(QWidget):
 
             updated_at = declaration["updated_at"] or ""
             if updated_at:
-                self.status.setText(
-                    f"Πρόχειρη — αποθηκευμένη ({updated_at})"
-                )
+                self._composed_text(self.status, 'Πρόχειρη — αποθηκευμένη ({updated_at})', updated_at=updated_at)
             else:
-                self.status.setText("Πρόχειρη — αποθηκευμένη")
+                self._composed_text(self.status, 'Πρόχειρη — αποθηκευμένη')
 
             # Draft declarations are meant to be adjusted repeatedly. Open an
             # unlocked saved draft directly in edit mode so field checkboxes
@@ -583,9 +617,7 @@ class DeclarationPage(QWidget):
             item.setFlags(flags)
 
         if locked:
-            self.status.setText(
-                f"{self.status.text()} — ΚΛΕΙΔΩΜΕΝΟ {int(year)}"
-            )
+            self._composed_text(self.status, '{status} — ΚΛΕΙΔΩΜΕΝΟ {year}', status=lambda: _text(self._unlocked_status_spec[0], **self._unlocked_status_spec[1]), year=int(year))
             self.edit_button.setVisible(False)
             self.cancel_button.setVisible(False)
             self.save_button.setVisible(True)
@@ -623,7 +655,7 @@ class DeclarationPage(QWidget):
             return
 
         self._editing = True
-        self.status.setText("Πρόχειρη — επεξεργασία")
+        self._composed_text(self.status, 'Πρόχειρη — επεξεργασία')
         self._apply_edit_mode()
         self.notes.setFocus()
 

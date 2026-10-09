@@ -1,0 +1,19 @@
+# Proposed Windows RC constraints from the retained build snapshot.
+# Apply alongside requirements.txt and requirements-build.txt, not to QA overrides.
+# Exact wheel hashes/native source/notice closure remains a build preflight blocker.
+PySide6==6.11.2
+PySide6_Essentials==6.11.2
+PySide6_Addons==6.11.2
+shiboken6==6.11.2
+pyproj==3.8.0
+shapely==2.1.2
+pyshp==2.4.2
+ezdxf==1.4.4
+defusedxml==0.7.1
+openpyxl==3.1.5
+et_xmlfile==2.0.0
+numpy==2.5.3
+fonttools==4.65.0
+pyparsing==3.3.3
+typing_extensions==4.16.0
+certifi==2026.7.22

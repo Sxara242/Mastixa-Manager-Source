@@ -1,0 +1,7 @@
+# Recognize native Windows CRLF without treating carriage returns as whitespace.
+* whitespace=cr-at-eol
+# Preserve inherited legal bytes, including original formatting, on every host.
+LICENSE -text -whitespace
+licenses/** -text -whitespace
+# Upstream reStructuredText heading delimiters use seven '=' characters.
+licenses/CRS/IAU-collection/AUTHORS.rst conflict-marker-size=32

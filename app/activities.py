@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .date_preferences import format_iso_date, refresh_date_inputs
+
 from PySide6.QtCore import QDate, QEvent, QPoint, QTimer, Qt
 from PySide6.QtWidgets import (
     QCalendarWidget,
@@ -22,11 +26,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .numeric_inputs import NumericDoubleSpinBox
 from .crud import CrudPage
+from .localized_messages import _language, _text
 from .database import Database
+from .expense_sync import delete_expense, ensure_expense_source_schema, sync_expense
 from .language import combo_source_text
 from .ui_helpers import table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 from .inventory_sync import InventoryStockError, delete_consumption, ensure_can_consume, ensure_inventory_source_schema, sync_consumption
 
 
@@ -169,8 +177,77 @@ class ClickOpenDateEdit(QDateEdit):
 class ActivitiesPage(CrudPage):
     """Ενιαίο ημερολόγιο άρδευσης και λίπανσης ανά αγροτεμάχιο."""
 
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('summary',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_activity_id: int | None = None
 
@@ -215,8 +292,9 @@ class ActivitiesPage(CrudPage):
         form = QFormLayout(self.form_box)
 
         self.date = ClickOpenDateEdit()
+        self.date.setProperty("mastixaWorkingYearDate", True)
         self.date.setDisplayFormat("dd/MM/yyyy")
-        self.date.setDate(QDate.currentDate())
+        self.date.setDate(working_context_date(self.db))
 
         self.field = ClickOpenComboBox()
 
@@ -230,12 +308,12 @@ class ActivitiesPage(CrudPage):
         self.status.setCurrentText("Ολοκληρώθηκε")
 
 
-        self.duration = QDoubleSpinBox()
+        self.duration = NumericDoubleSpinBox()
         self.duration.setRange(0, 999999)
         self.duration.setDecimals(1)
         self.duration.setSuffix(" λεπτά")
 
-        self.water_quantity = QDoubleSpinBox()
+        self.water_quantity = NumericDoubleSpinBox()
         self.water_quantity.setRange(0, 999999999)
         self.water_quantity.setDecimals(3)
         self.water_quantity.setSuffix(" m³")
@@ -252,7 +330,7 @@ class ActivitiesPage(CrudPage):
             self.product.lineEdit().setReadOnly(False)
             self.product.lineEdit().setClearButtonEnabled(True)
 
-        self.dose = QDoubleSpinBox()
+        self.dose = NumericDoubleSpinBox()
         self.dose.setRange(0, 999999999)
         self.dose.setDecimals(3)
 
@@ -266,11 +344,11 @@ class ActivitiesPage(CrudPage):
         self.dose_unit.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self.inventory_item = QComboBox()
-        self.inventory_quantity = QDoubleSpinBox()
+        self.inventory_quantity = NumericDoubleSpinBox()
         self.inventory_quantity.setRange(0, 999999999)
         self.inventory_quantity.setDecimals(3)
 
-        self.cost = QDoubleSpinBox()
+        self.cost = NumericDoubleSpinBox()
         self.cost.setRange(0, 999999999)
         self.cost.setDecimals(2)
         self.cost.setSuffix(" €")
@@ -507,6 +585,7 @@ class ActivitiesPage(CrudPage):
             """
         )
         ensure_inventory_source_schema(self.db)
+        ensure_expense_source_schema(self.db)
 
     def _update_action_fields(self, *_args) -> None:
         action_type = self.category.currentData()
@@ -677,32 +756,7 @@ class ActivitiesPage(CrudPage):
         self.field_filter.blockSignals(False)
 
     def _refresh_year_filter(self) -> None:
-        current = self.year_filter.currentData()
-        rows = self.db.query(
-            """
-            SELECT DISTINCT SUBSTR(activity_date,1,4) AS year
-            FROM farm_activities
-            WHERE activity_date IS NOT NULL AND activity_date <> ''
-            ORDER BY year DESC
-            """
-        )
-
-        years = {QDate.currentDate().year()}
-        for row in rows:
-            try:
-                years.add(int(row["year"]))
-            except (TypeError, ValueError):
-                pass
-
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-        self.year_filter.addItem("Όλα", None)
-        for year in sorted(years, reverse=True):
-            self.year_filter.addItem(str(year), year)
-
-        index = self.year_filter.findData(current)
-        self.year_filter.setCurrentIndex(index if index >= 0 else 0)
-        self.year_filter.blockSignals(False)
+        populate_year_filter(self, self.year_filter, strings=False)
 
     def _record_year(self, activity_id: int) -> int | None:
         row = self.db.query_one(
@@ -741,6 +795,8 @@ class ActivitiesPage(CrudPage):
 
     def save_activity(self) -> None:
         if self._locked_for_save():
+            if self.selected_activity_id is None:
+                self.clear_form()
             return
 
         category = combo_source_text(self.category).strip()
@@ -802,56 +858,75 @@ class ActivitiesPage(CrudPage):
             inventory_quantity,
         )
 
-        if self.selected_activity_id is None:
-            record_id = self.db.execute(
-                """
-                INSERT INTO farm_activities(
-                    activity_date,
-                    field_id,
-                    category,
-                    status,
-                    duration_minutes,
-                    water_quantity_m3,
-                    product,
-                    dose,
-                    dose_unit,
-                    cost,
-                    responsible,
-                    notes,
-                    inventory_item_id,
-                    inventory_quantity
+        with self.db.transaction() as tx:
+            if self.selected_activity_id is None:
+                record_id = tx.execute(
+                    """
+                    INSERT INTO farm_activities(
+                        activity_date,
+                        field_id,
+                        category,
+                        status,
+                        duration_minutes,
+                        water_quantity_m3,
+                        product,
+                        dose,
+                        dose_unit,
+                        cost,
+                        responsible,
+                        notes,
+                        inventory_item_id,
+                        inventory_quantity
+                    )
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    """,
+                    values,
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                """,
-                values,
-            )
-        else:
-            self.db.execute(
-                """
-                UPDATE farm_activities
-                SET
-                    activity_date=?,
-                    field_id=?,
-                    category=?,
-                    status=?,
-                    duration_minutes=?,
-                    water_quantity_m3=?,
-                    product=?,
-                    dose=?,
-                    dose_unit=?,
-                    cost=?,
-                    responsible=?,
-                    notes=?,
-                    inventory_item_id=?,
-                    inventory_quantity=?,
-                    updated_at=CURRENT_TIMESTAMP
-                WHERE id=?
-                """,
-                (*values, self.selected_activity_id),
-            )
-            record_id = self.selected_activity_id
+            else:
+                tx.execute(
+                    """
+                    UPDATE farm_activities
+                    SET
+                        activity_date=?,
+                        field_id=?,
+                        category=?,
+                        status=?,
+                        duration_minutes=?,
+                        water_quantity_m3=?,
+                        product=?,
+                        dose=?,
+                        dose_unit=?,
+                        cost=?,
+                        responsible=?,
+                        notes=?,
+                        inventory_item_id=?,
+                        inventory_quantity=?,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                    """,
+                    (*values, self.selected_activity_id),
+                )
+                record_id = self.selected_activity_id
 
-        sync_consumption(self.db, source_type="farm_activity", source_id=int(record_id), movement_date=self.date.date().toString("yyyy-MM-dd"), item_id=inventory_item_id, quantity=inventory_quantity, field_id=self.field.currentData(), notes=f"Αυτόματη κατανάλωση από Άρδευση & Λίπανση #{record_id}")
+            sync_consumption(tx, source_type="farm_activity", source_id=int(record_id), movement_date=self.date.date().toString("yyyy-MM-dd"), item_id=inventory_item_id, quantity=inventory_quantity, field_id=self.field.currentData(), notes=f"Αυτόματη κατανάλωση από Άρδευση & Λίπανση #{record_id}")
+            # Financial and stock projections belong to this activity's transaction.
+            # Provenance, not descriptions or a guessed legacy match, owns the link.
+            sync_expense(
+                tx,
+                source_type="farm_activity",
+                source_id=int(record_id),
+                entry_date=values[0],
+                field_id=values[1],
+                category="Άρδευση" if irrigation else "Λίπανση",
+                description=category + (f" — {product}" if product else ""),
+                supplier="",
+                payment_method="",
+                amount=values[9],
+                notes=(
+                    f"Αυτόματο έξοδο από Άρδευση & Λίπανση #{record_id}"
+                    + (f" | {values[11]}" if values[11] else "")
+                ),
+            )
 
         self.clear_form()
         self.refresh()
@@ -926,14 +1001,12 @@ class ActivitiesPage(CrudPage):
         )
 
         if locked:
-            self.form_box.setTitle(
-                f"Προβολή καταγραφής — ΚΛΕΙΔΩΜΕΝΟ {record_year}"
-            )
+            self._composed_text(self.form_box, 'Προβολή καταγραφής — ΚΛΕΙΔΩΜΕΝΟ {record_year}', record_year=record_year)
             self.save_button.setText("Κλειδωμένο")
             self.save_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
-            self.form_box.setTitle("Επεξεργασία καταγραφής")
+            self._composed_text(self.form_box, 'Επεξεργασία καταγραφής')
             self.save_button.setText("Αποθήκευση")
             self.save_button.setEnabled(True)
             self.delete_button.setEnabled(True)
@@ -942,7 +1015,7 @@ class ActivitiesPage(CrudPage):
 
     def clear_form(self) -> None:
         self.selected_activity_id = None
-        self.date.setDate(QDate.currentDate())
+        self.date.setDate(working_context_date(self.db))
         self.field.setCurrentIndex(0)
         self.category.setCurrentIndex(0)
         self.status.setCurrentText("Ολοκληρώθηκε")
@@ -959,7 +1032,7 @@ class ActivitiesPage(CrudPage):
         self.notes.clear()
         self._update_action_fields()
 
-        self.form_box.setTitle("Νέα καταγραφή")
+        self._composed_text(self.form_box, 'Νέα καταγραφή')
         self.save_button.setText("Προσθήκη")
         self.save_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
@@ -985,15 +1058,18 @@ class ActivitiesPage(CrudPage):
         ):
             return
 
-        delete_consumption(self.db, source_type="farm_activity", source_id=self.selected_activity_id)
-        self.db.execute(
-            "DELETE FROM farm_activities WHERE id=?",
-            (self.selected_activity_id,),
-        )
+        with self.db.transaction() as tx:
+            delete_consumption(tx, source_type="farm_activity", source_id=self.selected_activity_id)
+            delete_expense(tx, source_type="farm_activity", source_id=self.selected_activity_id)
+            tx.execute(
+                "DELETE FROM farm_activities WHERE id=?",
+                (self.selected_activity_id,),
+            )
         self.clear_form()
         self.refresh()
 
     def refresh(self, *_args) -> None:
+        refresh_date_inputs(self, self.db)
         self._ensure_schema_and_audit_triggers()
         self._refresh_field_combos()
         self._refresh_product_combo()
@@ -1080,7 +1156,7 @@ class ActivitiesPage(CrudPage):
                 details = row["description"] or ""
 
             values = [
-                row["activity_date"] or "",
+                format_iso_date(row["activity_date"], self.db),
                 field_name,
                 row["category"] or "",
                 status_value,
@@ -1092,21 +1168,25 @@ class ActivitiesPage(CrudPage):
 
             for column_index, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                if column_index == 1 and not row["field_name"]:
+                    self._set_body(item, "Γενική / όλα")
+                elif column_index == 2 and value in ACTIVITY_CATEGORIES:
+                    self._set_body(item, value)
+                elif column_index == 3 and value in ACTIVITY_STATUSES:
+                    self._set_body(item, value)
+                elif column_index == 4 and row["category"] == "Πότισμα":
+                    self._set_body(item, "{minutes} λεπτά | {water} m³", minutes=f"{float(row['duration_minutes'] or 0):g}", water=f"{float(row['water_quantity_m3'] or 0):g}")
                 if column_index == 0:
                     item.setData(
                         Qt.ItemDataRole.UserRole,
                         int(row["id"]),
                     )
                 if column_index in (4, 6, 7):
-                    item.setToolTip(str(value))
+                    item.setToolTip(item.text())
                 self.table.setItem(
                     row_index,
                     column_index,
                     item,
                 )
 
-        self.summary.setText(
-            f"Εγγραφές: {len(rows)}   |   "
-            f"Προγραμματισμένες: {planned}   |   "
-            f"Ολοκληρωμένες: {completed}"
-        )
+        self._body_label(self.summary, "Εγγραφές: {count}   |   Προγραμματισμένες: {planned}   |   Ολοκληρωμένες: {completed}", count=len(rows), planned=planned, completed=completed)

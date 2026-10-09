@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from contextlib import closing
 from datetime import datetime
 import hashlib
 import hmac
+import io
 import json
 import os
 from pathlib import Path
@@ -15,6 +17,11 @@ import stat
 import tempfile
 from uuid import uuid4
 import zipfile
+
+from .invoice_storage import (
+    ATTACHMENT_MAX_BYTES, contained_file, managed_name, owned_file, owned_root,
+    referenced_names, resolve_file,
+)
 
 
 class ProfileError(RuntimeError):
@@ -39,7 +46,7 @@ class ProfileManager:
     """Registry for fully isolated Mastixa data profiles."""
 
     VERSION = 3
-    PACKAGE_VERSION = 1
+    PACKAGE_VERSION = 2
     DEFAULT_ID = "default"
     DEFAULT_COLORS = (
         "#3F765B", "#476A8A", "#8A5D47", "#73598C", "#8A783F", "#39777A"
@@ -51,40 +58,60 @@ class ProfileManager:
     PROFILE_TOTAL_MAX_BYTES = PROFILE_DB_MAX_BYTES + PROFILE_AVATAR_MAX_BYTES + PROFILE_MANIFEST_MAX_BYTES
     PROFILE_MAX_RATIO = 1000
     PROFILE_RATIO_MIN_BYTES = 1024**2
+    # Keep the existing overall archive budget. Attachments additionally have
+    # an avatar-sized per-file cap and a finite 256 MiB / 1024-file sub-budget.
+    PROFILE_ATTACHMENT_MAX_BYTES = ATTACHMENT_MAX_BYTES
+    PROFILE_ATTACHMENTS_MAX_BYTES = 256 * 1024**2
+    PROFILE_ATTACHMENT_MAX_COUNT = 1024
 
     @staticmethod
-    def _copy_profile_member(source, output, limit: int) -> None:
+    def _copy_profile_member(source, output, limit: int) -> int:
         total = 0
         while chunk := source.read(min(65536, limit - total + 1)):
             total += len(chunk)
             if total > limit:
                 raise ProfileError("Το περιεχόμενο του πακέτου υπερβαίνει το επιτρεπτό μέγεθος.")
             output.write(chunk)
+        return total
 
     def _validate_profile_archive(self, package) -> None:
         members = package.infolist()
         names = [item.filename for item in members]
-        if not 2 <= len(members) <= 3 or len({name.casefold() for name in names}) != len(names):
+        if not 2 <= len(members) <= 3 + self.PROFILE_ATTACHMENT_MAX_COUNT or len({name.casefold() for name in names}) != len(names):
             raise ProfileError("Μη έγκυρος αριθμός ή διπλά αρχεία στο πακέτο.")
         if "manifest.json" not in names or "profile.db" not in names:
             raise ProfileError("Λείπουν απαιτούμενα αρχεία προφίλ.")
-        total = 0
+        total = attachment_total = attachment_count = avatar_count = 0
         for item in members:
             name = item.filename
             mode = stat.S_IFMT(item.external_attr >> 16)
+            attachment = name.startswith("invoice_documents/")
+            if attachment:
+                try:
+                    managed_name(name.removeprefix("invoice_documents/"))
+                except ValueError as exc:
+                    raise ProfileError("Μη ασφαλές όνομα συνημμένου στο πακέτο.") from exc
+                attachment_count += 1
+                attachment_total += item.file_size
+            avatar = bool(re.fullmatch(r"avatar\.(png|jpg|jpeg|webp|bmp)", name, re.I))
+            avatar_count += int(avatar)
             if (name not in {"manifest.json", "profile.db"}
-                    and not re.fullmatch(r"avatar\.(png|jpg|jpeg|webp|bmp)", name, re.I)):
+                    and not avatar and not attachment):
                 raise ProfileError("Μη αναμενόμενο όνομα αρχείου στο πακέτο.")
             if (mode not in (0, stat.S_IFREG) or item.flag_bits & 1
                     or item.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)):
                 raise ProfileError("Μη υποστηριζόμενο ZIP: απαιτούνται απλά αρχεία με Store/Deflate.")
             limit = (self.PROFILE_MANIFEST_MAX_BYTES if name == "manifest.json" else
-                     self.PROFILE_DB_MAX_BYTES if name == "profile.db" else self.PROFILE_AVATAR_MAX_BYTES)
+                     self.PROFILE_DB_MAX_BYTES if name == "profile.db" else
+                     self.PROFILE_ATTACHMENT_MAX_BYTES if attachment else self.PROFILE_AVATAR_MAX_BYTES)
             total += item.file_size
             if (item.file_size > limit or total > self.PROFILE_TOTAL_MAX_BYTES
                     or (item.file_size > self.PROFILE_RATIO_MIN_BYTES
                         and item.file_size > max(1, item.compress_size) * self.PROFILE_MAX_RATIO)):
                 raise ProfileError("Το μέγεθος ή η συμπίεση του πακέτου υπερβαίνει τα όρια.")
+        if (avatar_count > 1 or attachment_count > self.PROFILE_ATTACHMENT_MAX_COUNT
+                or attachment_total > self.PROFILE_ATTACHMENTS_MAX_BYTES):
+            raise ProfileError("Υπέρβαση ορίων συνημμένων ή πολλαπλές εικόνες προφίλ.")
 
     def __init__(self, base_dir: Path) -> None:
         self.base_dir = Path(base_dir).resolve()
@@ -309,13 +336,11 @@ class ProfileManager:
         try:
             with tempfile.TemporaryDirectory(prefix="mastixa_profile_") as folder:
                 snapshot = Path(folder) / "profile.db"
-                source = sqlite3.connect(str(profile.database_path), timeout=20)
-                target = sqlite3.connect(str(snapshot))
-                try:
+                with closing(sqlite3.connect(str(profile.database_path), timeout=20)) as source, closing(sqlite3.connect(str(snapshot))) as target:
                     source.backup(target)
-                finally:
-                    target.close()
-                    source.close()
+                references = referenced_names(snapshot)
+                if len(references) > self.PROFILE_ATTACHMENT_MAX_COUNT:
+                    raise ProfileError("Υπέρβαση ορίου συνημμένων προφίλ.")
                 with tempfile.NamedTemporaryFile(
                     prefix=".mastixa-profile-", suffix=".tmp", dir=destination.parent,
                     delete=False,
@@ -331,9 +356,23 @@ class ProfileManager:
                             profile.avatar_path,
                             "avatar" + profile.avatar_path.suffix.casefold(),
                         )
+                    attachment_bytes = 0
+                    for name in sorted(references):
+                        path = resolve_file(profile.database_path, name, self.data_dir / "invoice_documents")
+                        if not path.is_file():
+                            raise ProfileError(f"Λείπει συνημμένο τιμολογίου: {name}")
+                        with path.open("rb") as source, package.open("invoice_documents/" + name, "w") as output:
+                            attachment_bytes += self._copy_profile_member(
+                                source, output, min(self.PROFILE_ATTACHMENT_MAX_BYTES,
+                                    self.PROFILE_ATTACHMENTS_MAX_BYTES - attachment_bytes))
+                # Apply the same bounds to exports before replacing a good archive.
+                with zipfile.ZipFile(staging) as package:
+                    self._validate_profile_archive(package)
+                if staging.stat().st_size > self.PROFILE_TOTAL_MAX_BYTES + 1024**2:
+                    raise ProfileError("Το αρχείο πακέτου υπερβαίνει το επιτρεπτό μέγεθος.")
                 os.replace(staging, destination)
                 staging = None
-        except (OSError, sqlite3.Error, zipfile.BadZipFile) as exc:
+        except (OSError, ValueError, sqlite3.Error, zipfile.BadZipFile) as exc:
             raise ProfileError(f"Η εξαγωγή του προφίλ απέτυχε.\n\n{exc}") from exc
         finally:
             if staging is not None:
@@ -348,6 +387,7 @@ class ProfileManager:
             raise ProfileError("Το αρχείο πακέτου υπερβαίνει το επιτρεπτό μέγεθος.")
         profile_id = uuid4().hex
         profile_dir = self.profiles_dir / profile_id
+        profile_dir_created = False
         avatar_target: Path | None = None
         try:
             with zipfile.ZipFile(package_path, "r") as package:
@@ -357,7 +397,10 @@ class ProfileManager:
                     raise ProfileError("Το πακέτο προφίλ δεν είναι έγκυρο.")
                 if package.getinfo("manifest.json").file_size > 64 * 1024:
                     raise ProfileError("Το πακέτο προφίλ δεν είναι έγκυρο.")
-                manifest = json.loads(package.read("manifest.json"))
+                manifest_bytes = io.BytesIO()
+                with package.open("manifest.json") as source:
+                    copied_bytes = self._copy_profile_member(source, manifest_bytes, self.PROFILE_MANIFEST_MAX_BYTES)
+                manifest = json.loads(manifest_bytes.getvalue())
                 if not isinstance(manifest, dict):
                     raise ProfileError("Το manifest του πακέτου πρέπει να είναι αντικείμενο JSON.")
                 try:
@@ -367,7 +410,7 @@ class ProfileManager:
                     raise ProfileError("Μη έγκυρη έκδοση ή παράμετροι PIN στο πακέτο.") from exc
                 if (
                     manifest.get("format") != "mastixa-profile"
-                    or package_version != self.PACKAGE_VERSION
+                    or package_version not in (1, self.PACKAGE_VERSION)
                 ):
                     raise ProfileError("Μη υποστηριζόμενη έκδοση πακέτου προφίλ.")
                 name = self._validate_name(str(manifest.get("name", "")))
@@ -389,10 +432,37 @@ class ProfileManager:
                 ):
                     raise ProfileError("Το PIN του πακέτου δεν είναι έγκυρο.")
                 profile_dir.mkdir(parents=True, exist_ok=False)
+                profile_dir_created = True
                 database_path = profile_dir / "mastixa_manager.db"
                 with package.open("profile.db") as source, database_path.open("wb") as output:
-                    self._copy_profile_member(source, output, self.PROFILE_DB_MAX_BYTES)
+                    copied_bytes += self._copy_profile_member(source, output,
+                        min(self.PROFILE_DB_MAX_BYTES, self.PROFILE_TOTAL_MAX_BYTES - copied_bytes))
                 self._validate_sqlite(database_path)
+                references = referenced_names(database_path)
+                if len(references) > self.PROFILE_ATTACHMENT_MAX_COUNT:
+                    raise ProfileError("Υπέρβαση ορίου συνημμένων προφίλ.")
+                attachments = {item.removeprefix("invoice_documents/") for item in names
+                               if item.startswith("invoice_documents/")}
+                if ((package_version == 1 and attachments)
+                        or (package_version == 2 and attachments != references)):
+                    raise ProfileError("Τα συνημμένα δεν αντιστοιχούν στις αναφορές της βάσης προφίλ.")
+                owned_root(database_path).mkdir(parents=True, exist_ok=True)
+                attachment_bytes = 0
+                for filename in sorted(references):
+                    if package_version == 1:
+                        legacy = contained_file(self.data_dir / "invoice_documents", filename)
+                        if not legacy.is_file():
+                            raise ProfileError(f"Λείπει παλαιό συνημμένο τιμολογίου: {filename}")
+                        source_context = legacy.open("rb")
+                    else:
+                        source_context = package.open("invoice_documents/" + filename)
+                    with source_context as source, owned_file(database_path, filename).open("xb") as output:
+                        size = self._copy_profile_member(source, output, min(
+                            self.PROFILE_ATTACHMENT_MAX_BYTES,
+                            self.PROFILE_ATTACHMENTS_MAX_BYTES - attachment_bytes,
+                            self.PROFILE_TOTAL_MAX_BYTES - copied_bytes))
+                        attachment_bytes += size
+                        copied_bytes += size
                 avatar_name = next(
                     (item for item in names if re.fullmatch(
                         r"avatar\.(png|jpg|jpeg|webp|bmp)", item, re.I
@@ -402,38 +472,37 @@ class ProfileManager:
                 if avatar_name:
                     avatar_target = self.assets_dir / f"{profile_id}{Path(avatar_name).suffix.casefold()}"
                     with package.open(avatar_name) as source, avatar_target.open("wb") as output:
-                        self._copy_profile_member(source, output, self.PROFILE_AVATAR_MAX_BYTES)
+                        copied_bytes += self._copy_profile_member(source, output,
+                            min(self.PROFILE_AVATAR_MAX_BYTES, self.PROFILE_TOTAL_MAX_BYTES - copied_bytes))
                     avatar_relative = avatar_target.relative_to(self.data_dir).as_posix()
-        except ProfileError:
-            shutil.rmtree(profile_dir, ignore_errors=True)
+        except BaseException as exc:
+            if profile_dir_created:
+                shutil.rmtree(profile_dir, ignore_errors=True)
             if avatar_target:
                 avatar_target.unlink(missing_ok=True)
+            if isinstance(exc, (OSError, ValueError, zipfile.BadZipFile, sqlite3.Error)):
+                raise ProfileError(f"Η εισαγωγή του προφίλ απέτυχε.\n\n{exc}") from exc
             raise
-        except (OSError, ValueError, json.JSONDecodeError, zipfile.BadZipFile, sqlite3.Error) as exc:
-            shutil.rmtree(profile_dir, ignore_errors=True)
-            if avatar_target:
-                avatar_target.unlink(missing_ok=True)
-            raise ProfileError(f"Η εισαγωγή του προφίλ απέτυχε.\n\n{exc}") from exc
-        data = self._load()
-        unique_name = self._unique_import_name(data, name)
-        record = self._new_record(
-            profile_id,
-            unique_name,
-            Path("profiles") / profile_id / "mastixa_manager.db",
-            len(data["profiles"]),
-        )
-        record["color"] = color.upper()
-        record["language"] = language
-        if pin_hash:
-            record["pin_salt"] = pin_salt
-            record["pin_hash"] = pin_hash
-            record["pin_rounds"] = pin_rounds
-        if avatar_relative:
-            record["avatar"] = avatar_relative
-        data["profiles"].append(record)
         try:
+            data = self._load()
+            unique_name = self._unique_import_name(data, name)
+            record = self._new_record(
+                profile_id,
+                unique_name,
+                Path("profiles") / profile_id / "mastixa_manager.db",
+                len(data["profiles"]),
+            )
+            record["color"] = color.upper()
+            record["language"] = language
+            if pin_hash:
+                record["pin_salt"] = pin_salt
+                record["pin_hash"] = pin_hash
+                record["pin_rounds"] = pin_rounds
+            if avatar_relative:
+                record["avatar"] = avatar_relative
+            data["profiles"].append(record)
             self._save(data)
-        except Exception:
+        except BaseException:
             shutil.rmtree(profile_dir, ignore_errors=True)
             if avatar_target:
                 avatar_target.unlink(missing_ok=True)

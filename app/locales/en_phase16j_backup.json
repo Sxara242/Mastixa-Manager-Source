@@ -1,0 +1,20 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "Δεν βρέθηκε το αρχείο backup:\n{path}": "Backup file not found:\n{path}",
+    "Δεν βρέθηκε η βάση δεδομένων:\n{path}": "Database not found:\n{path}",
+    "Αποτυχία δημιουργίας backup:\n{detail}": "Backup creation failed:\n{detail}",
+    "Η επαναφορά απέτυχε.\n\n{detail}\n\nΔημιουργήθηκε αντίγραφο ασφαλείας πριν την επαναφορά:\n{path}": "Restore failed.\n\n{detail}\n\nA safety backup was created before restoring:\n{path}",
+    "Η βάση δεδομένων απέτυχε στον έλεγχο ακεραιότητας:\n{path}\n\nΑποτέλεσμα: {detail}": "Database integrity check failed:\n{path}\n\nResult: {detail}",
+    "Το αρχείο SQLite δεν φαίνεται να είναι backup του Mastixa Manager.\n\nΛείπουν πίνακες: {tables}": "The SQLite file does not appear to be a Mastixa Manager backup.\n\nMissing tables: {tables}",
+    "Το αρχείο δεν είναι έγκυρη βάση SQLite:\n{path}\n\n{detail}": "The file is not a valid SQLite database:\n{path}\n\n{detail}",
+    "Δεν ήταν δυνατή η δημιουργία του αυτόματου ημερήσιου backup κατά την εκκίνηση.\n\n{error}": "Could not create the automatic daily backup at startup.\n\n{error}",
+    "Το αυτόματο backup κατά το κλείσιμο απέτυχε.\n\n{error}\n\nΘέλεις να κλείσεις την εφαρμογή χωρίς νέο backup;": "The automatic backup at shutdown failed.\n\n{error}\n\nClose the application without a new backup?",
+    "Δεν δημιουργήθηκε backup του τρέχοντος προφίλ.\n\n{error}\n\nΝα συνεχιστεί η αλλαγή προφίλ;": "No backup was created for the current profile.\n\n{error}\n\nContinue switching profiles?",
+    "Αποτυχία Backup": "Backup failed",
+    "Αποτυχία επαναφοράς": "Restore failed",
+    "Αυτόματο Backup": "Automatic backup",
+    "Αποτυχία αυτόματου Backup": "Automatic backup failed",
+    "Backup πριν την αλλαγή προφίλ": "Backup before switching profiles"
+  }
+}

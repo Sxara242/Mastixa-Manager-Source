@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import re
 
-from PySide6.QtCore import QEvent, QObject, QSettings, QTimer, Signal
+from PySide6.QtCore import QEvent, QObject, QSettings, Signal
 from PySide6.QtGui import QColor, QPalette
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QComboBox, QMessageBox, QWidget
 
+from .runtime_paths import BASE_DIR
 
 APP_DIR = Path(__file__).resolve().parent
 ICON_DIR = APP_DIR / "assets" / "icons" / "mastixa_menu"
@@ -16,7 +18,8 @@ DARK_ICON = ICON_DIR / "dark_mode.png"
 _SETTINGS_ORG = "Mastixa"
 _SETTINGS_APP = "Mastixa Manager"
 _SETTINGS_KEY = "appearance/theme"
-_SETTINGS_FILE = APP_DIR.parent / "data" / "appearance.ini"
+_SETTINGS_FILE = BASE_DIR / "data" / "appearance.ini"
+_LEGACY_SETTINGS_FILE = APP_DIR.parent / "data" / "appearance.ini"
 
 
 DARK_STYLESHEET = """
@@ -38,15 +41,35 @@ QListWidget#categoryList::item:hover:!selected { background: #202D28; }
 
 QLabel { color: #E7ECEF; background: transparent; }
 QLabel#pageTitle { color: #F2F6F4; }
+DashboardPage QLabel#metricValue { color: #E7ECEF; }
+QGroupBox#metricCard QLabel#metricValue { color: #E7ECEF; }
+QGroupBox#metricCard QLabel#metricCaption { color: #BDC8C2; }
 QLabel#pageSubtitle, QLabel#mutedLabel { color: #AAB6B0; }
+
+QFrame#yearContextBar[yearContextState="active"] {
+    background: #1F2B25;
+    color: #EAF3EE;
+    border-bottom: 1px solid #496657;
+}
+QFrame#yearContextBar[yearContextState="active"] QLabel {
+    color: #EAF3EE;
+}
+QFrame#yearContextBar[yearContextState="correction"] {
+    background: #7C2D12;
+    color: white;
+    border-bottom: 2px solid #FDBA74;
+}
+QFrame#yearContextBar[yearContextState="correction"] QLabel {
+    color: white;
+}
 
 QGroupBox {
     background: #20272C;
     color: #E7ECEF;
-    border: 1px solid #3A454C;
+    border: 1px solid #4A565E;
 }
 QGroupBox::title { color: #EEF3F5; }
-QFrame { border-color: #3A454C; }
+QFrame { border-color: #4A565E; }
 
 QTabWidget::pane {
     background: #1B2227;
@@ -120,7 +143,8 @@ QComboBox QAbstractItemView::item {
     min-height: 28px;
     padding: 4px 8px;
 }
-QComboBox QAbstractItemView::item:selected {
+QComboBox QAbstractItemView::item:hover:enabled,
+QComboBox QAbstractItemView::item:selected:enabled {
     background: #4F8068;
     color: white;
 }
@@ -194,6 +218,8 @@ QToolButton[appearanceChoice="true"]:checked {
 QCheckBox, QRadioButton { color: #E7ECEF; background: transparent; }
 
 QMenuBar, QMenu { background: #20272C; color: #E7ECEF; }
+QMenu::item { background: transparent; color: #E7ECEF; }
+QMenu::item:disabled { color: #AAB6B0; }
 QMenu::item:selected { background: #4F8068; color: white; }
 QToolTip { background: #263038; color: #F3F6F7; border: 1px solid #53616A; }
 QStatusBar { background: #151A1E; color: #DCE3E6; }
@@ -214,6 +240,34 @@ QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {
 # Several pages use small local stylesheets with hard-coded light colours. A
 # single conversion per unique stylesheet keeps those widgets readable while
 # preserving the full-tree coverage that prevents mixed light/dark sections.
+_DARK_MESSAGE_BOX_STYLE = """
+QMessageBox {
+    background: #20272C;
+    color: #E7ECEF;
+}
+QMessageBox QLabel {
+    background: transparent;
+    color: #F2F6F4;
+}
+QMessageBox QPushButton {
+    background: #263139;
+    color: #EEF2F4;
+    border: 1px solid #4A565E;
+    border-radius: 5px;
+    padding: 6px 16px;
+    min-width: 72px;
+}
+QMessageBox QPushButton:hover {
+    background: #303C44;
+}
+QMessageBox QPushButton:pressed {
+    background: #355F4A;
+    color: white;
+    border-color: #6A967E;
+}
+"""
+
+
 _DARK_COLOUR_MAP = {
     "#f5f6f3": "#171d21",
     "#f1f4f2": "#20272c",
@@ -261,9 +315,43 @@ def _dark_local_style(original: str) -> str:
     return converted
 
 
+@lru_cache(maxsize=1)
+def _scoped_dark_stylesheet(stylesheet: str) -> str:
+    """Keep the existing dark rules installed without replacing the Qt cascade."""
+    def scope(match):
+        selectors, body = match.groups()
+        rules = []
+        for selector in selectors.split(","):
+            selector = selector.strip()
+            rules.append('[mastixaTheme="dark"] ' + selector)
+            if re.fullmatch(r"\w+", selector):
+                rules.append(selector + '[mastixaTheme="dark"]')
+        return ", ".join(rules) + " {" + body + "}"
+    return re.sub(r"([^{}]+)\{([^{}]*)\}", scope, stylesheet)
+
+
 def _settings() -> QSettings:
-    _SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    # QSettings creates the parent on sync and reports write failures via status,
+    # rather than blocking startup when the user-data directory is unavailable.
     return QSettings(str(_SETTINGS_FILE), QSettings.Format.IniFormat)
+
+
+def _saved_theme() -> str:
+    settings = _settings()
+    if _SETTINGS_FILE.exists():
+        return str(settings.value(_SETTINGS_KEY, "light")).casefold()
+
+    # Source runs normally use the same path. Frozen builds may still have the
+    # old preference under _internal/data. Never remove or write to that file.
+    legacy = QSettings(str(_LEGACY_SETTINGS_FILE), QSettings.Format.IniFormat)
+    saved = str(legacy.value(_SETTINGS_KEY, "")).casefold()
+    if saved in {"light", "dark"}:
+        settings.setValue(_SETTINGS_KEY, saved)
+        settings.sync()
+        # Even if sync reports AccessError, use the legacy value for this run.
+        # A later startup can retry; an existing destination always wins.
+        return saved
+    return "light"
 
 
 def _dark_palette() -> QPalette:
@@ -286,6 +374,7 @@ def _dark_palette() -> QPalette:
 
 class ThemeController(QObject):
     theme_changed = Signal(str)
+    _uses_scoped_styles = True
 
     def __init__(
         self,
@@ -297,9 +386,10 @@ class ThemeController(QObject):
         self.app = app
         self.light_stylesheet = light_stylesheet
         self.light_palette = QPalette(light_palette)
-        saved = str(_settings().value(_SETTINGS_KEY, "light")).casefold()
+        saved = _saved_theme()
         self._theme = "dark" if saved == "dark" else "light"
         self._applying = False
+        self._theme_generation = 0
         app.installEventFilter(self)
 
     @property
@@ -312,9 +402,8 @@ class ThemeController(QObject):
         self.set_theme(requested, persist=False)
 
     def apply_to(self, root: QWidget) -> None:
-        """Apply the current palette to a newly built window once."""
-        if self._theme == "dark":
-            self._apply_local_styles(root)
+        """Prepare newly constructed pages before their first visible paint."""
+        self._style_exposed_tree(root, include_hidden=True)
 
     def set_theme(self, theme: str, persist: bool = True) -> None:
         theme = "dark" if theme == "dark" else "light"
@@ -326,18 +415,27 @@ class ThemeController(QObject):
         for window in windows:
             window.setUpdatesEnabled(False)
         try:
-            if theme == "dark":
-                self.app.setPalette(_dark_palette())
-                self.app.setStyleSheet(
-                    self.light_stylesheet + "\n" + DARK_STYLESHEET
-                )
-            else:
-                self.app.setPalette(self.light_palette)
-                self.app.setStyleSheet(self.light_stylesheet)
-
+            # Replacing QApplication's stylesheet recursively restyles every
+            # cached page, including hidden pages. Install both existing skins
+            # once, then polish exposed widgets; hidden pages catch up on Show.
+            sheet = self.light_stylesheet + "\n" + _scoped_dark_stylesheet(DARK_STYLESHEET)
+            if self.app.styleSheet() != sheet:
+                self.app.setStyleSheet(sheet)
+            self._theme_generation += 1
             self._theme = theme
+            self.app.setPalette(_dark_palette() if theme == "dark" else self.light_palette)
             for window in windows:
-                self._apply_local_styles(window)
+                window.setProperty("mastixaTheme", theme)
+            window_set = set(windows)
+            for window in windows:
+                # Parented dialogs are top-level windows too, but the parent's
+                # recursive pass already includes them. Style each tree once.
+                ancestor = window.parent()
+                while ancestor is not None and ancestor not in window_set:
+                    ancestor = ancestor.parent()
+                if ancestor is None:
+                    self._style_exposed_tree(
+                        window, include_hidden=not hasattr(window, "desktop_navigation"))
         finally:
             for window in windows:
                 window.setUpdatesEnabled(True)
@@ -350,41 +448,54 @@ class ThemeController(QObject):
             settings.sync()
         self.theme_changed.emit(theme)
 
+    def _style_exposed_tree(self, root: QWidget, *, include_hidden=False) -> None:
+        root.window().setProperty("mastixaTheme", self._theme)
+        for widget in (root, *root.findChildren(QWidget)):
+            if widget is not root and not include_hidden and not widget.isVisible():
+                continue
+            if getattr(widget, "_mastixa_scoped_theme_generation", -1) == self._theme_generation:
+                continue
+            self._apply_widget_style(widget)
+            style = widget.style()
+            style.unpolish(widget)
+            style.polish(widget)
+            widget.update()
+            widget._mastixa_scoped_theme_generation = self._theme_generation
+
+    def _apply_widget_style(self, widget: QWidget) -> None:
+        if isinstance(widget, QComboBox):
+            from .ui_helpers import configure_combo_popup
+            configure_combo_popup(widget)
+        current = widget.styleSheet()
+        if not hasattr(widget, "_mastixa_light_local_style"):
+            widget._mastixa_light_local_style = current
+        original = widget._mastixa_light_local_style
+        converted = _dark_local_style(original) if self._theme == "dark" else original
+        if self._theme == "dark" and isinstance(widget, QMessageBox):
+            converted += "\n" + _DARK_MESSAGE_BOX_STYLE
+        if current != converted:
+            widget.setStyleSheet(converted)
+
     def _apply_local_styles(self, root: QWidget) -> None:
         widgets = [root, *root.findChildren(QWidget)]
         for widget in widgets:
-            current = widget.styleSheet()
-            if not hasattr(widget, "_mastixa_light_local_style"):
-                widget._mastixa_light_local_style = current
-            original = widget._mastixa_light_local_style
-            if self._theme == "light":
-                if current != original:
-                    widget.setStyleSheet(original)
-                continue
-            if not original:
-                continue
-            converted = _dark_local_style(original)
-            if current != converted:
-                widget.setStyleSheet(converted)
+            self._apply_widget_style(widget)
 
     def eventFilter(self, watched, event):
         if (
-            self._theme == "dark"
-            and not self._applying
+            not self._applying
             and event.type() == QEvent.Type.Show
             and isinstance(watched, QWidget)
         ):
-            # ChildAdded can arrive while PySide is still constructing the
-            # concrete C++ widget. Accessing event.child() at that point may
-            # cache a generic QWidget wrapper (for example for QHeaderView),
-            # which then loses methods such as setSectionResizeMode. Show is
-            # emitted only after construction has completed, so it is safe.
-            QTimer.singleShot(0, lambda w=watched: self._style_new_widget(w))
+            if getattr(watched, "_mastixa_scoped_theme_generation", -1) != self._theme_generation:
+                # Show precedes the first paint. Catch up synchronously in both
+                # directions, styling only this newly exposed subtree once.
+                self._style_exposed_tree(watched)
         return False
 
     def _style_new_widget(self, widget: QWidget) -> None:
         try:
-            if self._theme == "dark" and not self._applying:
+            if not self._applying:
                 self._apply_local_styles(widget)
         except RuntimeError:
             pass

@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Αναφορά Αποθήκης & Αξίας Αποθέματος": "Inventory & Stock Value Report",
+    "Τρέχον απόθεμα, αγορές, καταναλώσεις, μέση τιμή αγοράς και εκτιμώμενη αξία αποθέματος ανά είδος": "Current stock, purchases, consumption, average purchase price and estimated stock value by item",
+    "Είδη με απόθεμα": "Items in stock",
+    "Εκτιμώμενη αξία αποθέματος": "Estimated stock value",
+    "Τρέχον απόθεμα": "Current stock",
+    "Αξία αποθέματος": "Stock value",
+    "Η «Μέση τιμή αγοράς» υπολογίζεται σταθμισμένα από τις Παραλαβές που έχουν καταχωρημένη τιμή μονάδας. Η «Αξία αποθέματος» είναι Τρέχον απόθεμα × Μέση τιμή αγοράς και αποτελεί εκτίμηση.": "Average purchase price is weighted from Receipts with a recorded unit price. Stock value is Current stock × Average purchase price and is an estimate.",
+    "ΥΠΟ ΚΑΤΑΣΚΕΥΗ": "UNDER CONSTRUCTION",
+    "Εξαντλημένο": "Out of stock",
+    "Χαμηλό": "Low"
+  }
+}

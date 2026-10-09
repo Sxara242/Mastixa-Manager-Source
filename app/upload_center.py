@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .year_filters import YearFilteredPage, populate_year_filter
 
 import hashlib
 import json
@@ -25,11 +26,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _text, _language, _message
 from .database import Database
 from .ui_helpers import compact_decimal, table_widget
 
 
-class UploadCenterPage(QWidget):
+class UploadCenterPage(YearFilteredPage):
     """
     Local preparation center for a future external upload.
 
@@ -39,6 +41,29 @@ class UploadCenterPage(QWidget):
     - shows a human-readable preview,
     - exports the exact payload to JSON for inspection/testing.
     """
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
 
     def __init__(self, db: Database) -> None:
         super().__init__()
@@ -445,28 +470,7 @@ class UploadCenterPage(QWidget):
         )
 
     def _load_years(self) -> None:
-        current = self.year.currentData()
-
-        rows = self.db.query(
-            """
-            SELECT declaration_year
-            FROM cultivation_declarations
-            ORDER BY declaration_year DESC
-            """
-        )
-
-        self.year.blockSignals(True)
-        self.year.clear()
-
-        for row in rows:
-            year = int(row["declaration_year"])
-            self.year.addItem(str(year), year)
-
-        index = self.year.findData(current)
-        if index >= 0:
-            self.year.setCurrentIndex(index)
-
-        self.year.blockSignals(False)
+        populate_year_filter(self, self.year, all_years=False)
 
     def refresh_preview(self, *_args) -> None:
         year = self.year.currentData()
@@ -893,9 +897,7 @@ class UploadCenterPage(QWidget):
         if not restored:
             self.selected_snapshot_id = None
             self.snapshot_preview.clear()
-            self.snapshot_status.setText(
-                "Επίλεξε μία γραμμή από το ιστορικό."
-            )
+            self._composed_text(self.snapshot_status, 'Επίλεξε μία γραμμή από το ιστορικό.')
             self.snapshot_status.setStyleSheet("color: #67746d;")
             self._set_snapshot_action_state(False)
 
@@ -913,9 +915,7 @@ class UploadCenterPage(QWidget):
 
         if not selected:
             self.selected_snapshot_id = None
-            self.snapshot_status.setText(
-                "Επίλεξε μία γραμμή από το ιστορικό."
-            )
+            self._composed_text(self.snapshot_status, 'Επίλεξε μία γραμμή από το ιστορικό.')
             self.snapshot_preview.clear()
             self._set_snapshot_action_state(False)
             return
@@ -946,9 +946,7 @@ class UploadCenterPage(QWidget):
 
         if snapshot is None:
             self.selected_snapshot_id = None
-            self.snapshot_status.setText(
-                "Το snapshot δεν βρέθηκε πλέον στη βάση."
-            )
+            self._composed_text(self.snapshot_status, 'Το snapshot δεν βρέθηκε πλέον στη βάση.')
             self.snapshot_preview.clear()
             self._set_snapshot_action_state(False)
             return
@@ -963,18 +961,12 @@ class UploadCenterPage(QWidget):
         integrity_ok = self._snapshot_integrity_ok(snapshot)
 
         if integrity_ok:
-            self.snapshot_status.setText(
-                f"Snapshot #{snapshot_id} — ακέραιο — SHA-256: "
-                f"{stored_hash}"
-            )
+            self._composed_text(self.snapshot_status, 'Snapshot #{snapshot_id} — ακέραιο — SHA-256: {stored_hash}', snapshot_id=snapshot_id, stored_hash=stored_hash)
             self.snapshot_status.setStyleSheet(
                 "font-weight: 700; color: #3f604c;"
             )
         else:
-            self.snapshot_status.setText(
-                f"Snapshot #{snapshot_id} — ΠΡΟΕΙΔΟΠΟΙΗΣΗ: "
-                "το περιεχόμενο δεν συμφωνεί με το αποθηκευμένο SHA-256."
-            )
+            self._composed_text(self.snapshot_status, 'Snapshot #{snapshot_id} — ΠΡΟΕΙΔΟΠΟΙΗΣΗ: το περιεχόμενο δεν συμφωνεί με το αποθηκευμένο SHA-256.', snapshot_id=snapshot_id)
             self.snapshot_status.setStyleSheet(
                 "font-weight: 700; color: #8a3f3f;"
             )
@@ -1012,12 +1004,7 @@ class UploadCenterPage(QWidget):
             return
 
         if self._snapshot_integrity_ok(snapshot):
-            QMessageBox.information(
-                self,
-                "Έλεγχος ακεραιότητας",
-                "Το snapshot είναι ακέραιο.\n\n"
-                f"SHA-256:\n{snapshot['payload_hash']}",
-            )
+            _message(self, 'information', 'Έλεγχος ακεραιότητας', 'Το snapshot είναι ακέραιο.\n\nSHA-256:\n{value0}', value0=snapshot['payload_hash'])
         else:
             QMessageBox.critical(
                 self,
@@ -1062,7 +1049,7 @@ class UploadCenterPage(QWidget):
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή επιλεγμένου snapshot",
+            _text("Εξαγωγή επιλεγμένου snapshot"),
             f"mastixa_snapshot_{year}_{snapshot_id}.json",
             "JSON (*.json)",
         )
@@ -1079,18 +1066,10 @@ class UploadCenterPage(QWidget):
                 encoding="utf-8",
             )
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Κέντρο Αποστολής",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
-            )
+            _message(self, 'critical', 'Κέντρο Αποστολής', 'Η εξαγωγή απέτυχε.\n\n{exc}', exc=exc)
             return
 
-        QMessageBox.information(
-            self,
-            "Κέντρο Αποστολής",
-            f"Το snapshot εξήχθη επιτυχώς:\n{path}",
-        )
+        _message(self, 'information', 'Κέντρο Αποστολής', 'Το snapshot εξήχθη επιτυχώς:\n{path}', path=path)
 
     def compare_selected_snapshot(self) -> None:
         if self.selected_snapshot_id is None:
@@ -1135,17 +1114,18 @@ class UploadCenterPage(QWidget):
             )
             return
 
-        message = "\n".join(f"• {item}" for item in differences[:30])
+        def comparison_text():
+            displayed = self._diff_payloads(old_payload, new_payload)
+            message = "\n".join(f"• {item}" for item in displayed[:30])
+            if len(displayed) > 30:
+                message += _text("\n\n...και ακόμη {count} διαφορές.", count=len(displayed) - 30)
+            return message
 
-        if len(differences) > 30:
-            message += (
-                f"\n\n...και ακόμη {len(differences) - 30} διαφορές."
-            )
-
-        QMessageBox.information(
-            self,
+        _message(
+            self, "information",
             "Σύγκριση snapshot",
-            "Βρέθηκαν οι παρακάτω διαφορές:\n\n" + message,
+            "Βρέθηκαν οι παρακάτω διαφορές:\n\n{differences}",
+            differences=comparison_text,
         )
 
     def _diff_payloads(
@@ -1179,8 +1159,7 @@ class UploadCenterPage(QWidget):
     ) -> None:
         if type(old) is not type(new):
             output.append(
-                f"{path or 'root'}: αλλαγή τύπου/τιμής "
-                f"({old!r} → {new!r})"
+                _text("{path}: αλλαγή τύπου/τιμής ({old!r} → {new!r})", path=path or 'root', old=old, new=new)
             )
             return
 
@@ -1192,13 +1171,13 @@ class UploadCenterPage(QWidget):
 
                 if key not in old:
                     output.append(
-                        f"{child_path}: προστέθηκε {new[key]!r}"
+                        _text("{path}: προστέθηκε {value!r}", path=child_path, value=new[key])
                     )
                     continue
 
                 if key not in new:
                     output.append(
-                        f"{child_path}: αφαιρέθηκε {old[key]!r}"
+                        _text("{path}: αφαιρέθηκε {value!r}", path=child_path, value=old[key])
                     )
                     continue
 
@@ -1213,8 +1192,7 @@ class UploadCenterPage(QWidget):
         if isinstance(old, list):
             if len(old) != len(new):
                 output.append(
-                    f"{path}: πλήθος στοιχείων "
-                    f"{len(old)} → {len(new)}"
+                    _text("{path}: πλήθος στοιχείων {old} → {new}", path=path, old=len(old), new=len(new))
                 )
 
             for index, (old_item, new_item) in enumerate(
@@ -1274,9 +1252,7 @@ class UploadCenterPage(QWidget):
 
         self.selected_snapshot_id = None
         self.snapshot_preview.clear()
-        self.snapshot_status.setText(
-            "Επίλεξε μία γραμμή από το ιστορικό."
-        )
+        self._composed_text(self.snapshot_status, 'Επίλεξε μία γραμμή από το ιστορικό.')
         self.snapshot_status.setStyleSheet("color: #67746d;")
         self._set_snapshot_action_state(False)
         self._refresh_history()
@@ -1369,7 +1345,7 @@ class UploadCenterPage(QWidget):
         year = self.current_payload.get("year", "declaration")
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή πακέτου JSON",
+            _text("Εξαγωγή πακέτου JSON"),
             f"mastixa_declaration_{year}.json",
             "JSON (*.json)",
         )
@@ -1390,16 +1366,7 @@ class UploadCenterPage(QWidget):
                 encoding="utf-8",
             )
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Κέντρο Αποστολής",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
-            )
+            _message(self, 'critical', 'Κέντρο Αποστολής', 'Η εξαγωγή απέτυχε.\n\n{exc}', exc=exc)
             return
 
-        QMessageBox.information(
-            self,
-            "Κέντρο Αποστολής",
-            f"Το JSON δημιουργήθηκε επιτυχώς:\n{path}\n\n"
-            "Δεν έγινε καμία αποστολή σε server.",
-        )
+        _message(self, 'information', 'Κέντρο Αποστολής', 'Το JSON δημιουργήθηκε επιτυχώς:\n{path}\n\nΔεν έγινε καμία αποστολή σε server.', path=path)

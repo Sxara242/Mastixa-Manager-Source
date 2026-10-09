@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import closing
+
 import sqlite3
 import tempfile
 import time
@@ -184,7 +186,7 @@ class Phase16FRealisticPerformanceTests(unittest.TestCase):
         backup_seconds = time.perf_counter() - started
 
         self.assertTrue(backup.is_file())
-        with sqlite3.connect(backup) as con:
+        with closing(sqlite3.connect(backup)) as con, con:
             for table, expected in counts.items():
                 actual = int(con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
                 self.assertEqual(expected, actual)

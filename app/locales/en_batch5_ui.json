@@ -1,0 +1,12 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "Ημερομηνία: νεότερα πρώτα": "Date: newest first",
+    "Ημερομηνία: παλαιότερα πρώτα": "Date: oldest first",
+    "Ποσό: μικρότερο πρώτα": "Amount: lowest first",
+    "Ποσό: μεγαλύτερο πρώτα": "Amount: highest first",
+    "Όλες οι κατηγορίες": "All categories",
+    "Επίλεξε ή γράψε μονάδα": "Select or enter a unit",
+    "Δεν υπάρχουν εγγραφές ιστορικού με τα τρέχοντα φίλτρα.": "No history entries match the current filters."
+  }
+}

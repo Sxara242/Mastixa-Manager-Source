@@ -26,11 +26,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _language, _text
 from .database import Database
 from .language import tr
 from .plant_tracking import PlantEvent, PlantRecord
 from .plant_tracking_store import PlantTrackingStore
 from .ui_helpers import table_widget
+from .widgets import date_input
+from .year_context import is_year_write_blocked
+from .year_lock import warn_locked_year
 
 
 STATUS_OPTIONS = (
@@ -254,10 +258,9 @@ class PlantEventDialog(QDialog):
         layout = QVBoxLayout(self)
         form = QFormLayout()
 
-        self.event_date = QDateEdit()
+        self.event_date = date_input(getattr(parent, "db", None), selection="selected_event_id")
         self.event_date.setCalendarPopup(True)
         self.event_date.setDisplayFormat("dd/MM/yyyy")
-        self.event_date.setDate(QDate.currentDate())
         form.addRow("Ημερομηνία", self.event_date)
 
         self.kind = QComboBox()
@@ -328,8 +331,54 @@ class PlantEventDialog(QDialog):
 class PlantTrackingPage(QWidget):
     """Optional Phase 14 per-tree UI. Aggregate planting counts stay independent."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table', 'history'):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('summary',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.store = PlantTrackingStore(db)
         self.selected_id: str | None = None
@@ -494,9 +543,13 @@ class PlantTrackingPage(QWidget):
                 if column == 0:
                     item.setData(Qt.ItemDataRole.UserRole, plant.id)
                     item.setData(Qt.ItemDataRole.UserRole + 1, is_deleted)
+                if column == 4 and str(snapshot["status"]) in STATUS_LABELS:
+                    self._set_body(item, STATUS_LABELS[str(snapshot["status"])])
+                elif column == 5 and str(snapshot["health"]) in HEALTH_LABELS:
+                    self._set_body(item, HEALTH_LABELS[str(snapshot["health"])])
                 self.table.setItem(row_index, column, item)
 
-        self.summary.setText(f"{len(rows)} εγγραφές")
+        self._body_label(self.summary, "{count} εγγραφές", count=len(rows))
         self.selected_id = selected if any(p.id == selected for p, _, _ in rows) else None
         if self.selected_id is not None:
             for row in range(self.table.rowCount()):
@@ -537,7 +590,12 @@ class PlantTrackingPage(QWidget):
                 event.notes,
             ]
             for column, value in enumerate(values):
-                self.history.setItem(row, column, QTableWidgetItem(value))
+                item = QTableWidgetItem(value)
+                if column == 1 and event.kind in EVENT_LABELS:
+                    self._set_body(item, EVENT_LABELS[event.kind])
+                elif column == 2 and event.value in (HEALTH_LABELS | STATUS_LABELS):
+                    self._set_body(item, HEALTH_LABELS.get(event.value, STATUS_LABELS.get(event.value)))
+                self.history.setItem(row, column, item)
 
     def new_plant(self) -> None:
         dialog = PlantDialog(self.db, parent=self)
@@ -586,7 +644,12 @@ class PlantTrackingPage(QWidget):
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         try:
-            self.store.append_event(dialog.plant_event())
+            event = dialog.plant_event()
+            year = int(event.event_date[:4])
+            if is_year_write_blocked(self.db, year):
+                warn_locked_year(self, self.db, year)
+                return
+            self.store.append_event(event)
         except ValueError:
             _show_warning(self, "Αποτυχία αποθήκευσης", "Δεν ήταν δυνατή η αποθήκευση του συμβάντος.")
             return

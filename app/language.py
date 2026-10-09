@@ -11,6 +11,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractButton,
     QComboBox,
+    QDialogButtonBox,
     QGroupBox,
     QLabel,
     QLineEdit,
@@ -35,6 +36,31 @@ LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 DEFAULT_LANGUAGE = "el"
 COMBO_SOURCE_ROLE = int(Qt.ItemDataRole.UserRole) + 97
 logger = get_logger(__name__)
+
+
+_MESSAGE_STANDARD_BUTTON_SOURCES = {
+    QMessageBox.StandardButton.Ok: "ΟΚ",
+    QMessageBox.StandardButton.Save: "Αποθήκευση",
+    QMessageBox.StandardButton.Cancel: "Ακύρωση",
+    QMessageBox.StandardButton.Close: "Κλείσιμο",
+    QMessageBox.StandardButton.Yes: "Ναι",
+    QMessageBox.StandardButton.No: "Όχι",
+    QMessageBox.StandardButton.Apply: "Εφαρμογή",
+    QMessageBox.StandardButton.Reset: "Επαναφορά",
+    QMessageBox.StandardButton.RestoreDefaults: "Επαναφορά προεπιλογών",
+}
+
+_DIALOG_STANDARD_BUTTON_SOURCES = {
+    QDialogButtonBox.StandardButton.Ok: "ΟΚ",
+    QDialogButtonBox.StandardButton.Save: "Αποθήκευση",
+    QDialogButtonBox.StandardButton.Cancel: "Ακύρωση",
+    QDialogButtonBox.StandardButton.Close: "Κλείσιμο",
+    QDialogButtonBox.StandardButton.Yes: "Ναι",
+    QDialogButtonBox.StandardButton.No: "Όχι",
+    QDialogButtonBox.StandardButton.Apply: "Εφαρμογή",
+    QDialogButtonBox.StandardButton.Reset: "Επαναφορά",
+    QDialogButtonBox.StandardButton.RestoreDefaults: "Επαναφορά προεπιλογών",
+}
 
 
 @dataclass(frozen=True)
@@ -173,11 +199,32 @@ class LanguageController(QObject):
     def _schedule(self, widget: QWidget) -> None:
         if self._applying:
             return
+        # Parent and child Show/LayoutRequest events belong to one translation
+        # pass. Keep all requests, then visit only their topmost live subtrees.
+        queued = getattr(self, "_pending_widgets", None)
+        if queued is None:
+            queued = self._pending_widgets = {}
         identity = id(widget)
         if identity in self._pending:
             return
         self._pending.add(identity)
-        QTimer.singleShot(0, lambda w=widget, key=identity: self._apply_pending(w, key))
+        queued[identity] = widget
+        if len(queued) == 1:
+            QTimer.singleShot(0, self._drain_pending)
+
+    def _drain_pending(self) -> None:
+        queued = self._pending_widgets
+        self._pending_widgets = {}
+        self._pending.difference_update(queued)
+        for widget in queued.values():
+            try:
+                parent = widget.parentWidget()
+                while parent is not None and id(parent) not in queued:
+                    parent = parent.parentWidget()
+                if parent is None:
+                    self.apply_to(widget)
+            except RuntimeError:
+                pass  # A short-lived popup may already have been deleted.
 
     def _apply_pending(self, widget: QWidget, identity: int) -> None:
         self._pending.discard(identity)
@@ -240,10 +287,28 @@ class LanguageController(QObject):
         if rendered != current:
             setter(rendered)
 
+    def _translate_standard_buttons(self, widget: QWidget) -> None:
+        if isinstance(widget, QMessageBox):
+            for standard, source in _MESSAGE_STANDARD_BUTTON_SOURCES.items():
+                button = widget.button(standard)
+                if button is None:
+                    continue
+                button.setProperty("mastixaI18nSkipText", True)
+                button.setText(self.translate(source))
+
+        if isinstance(widget, QDialogButtonBox):
+            for standard, source in _DIALOG_STANDARD_BUTTON_SOURCES.items():
+                button = widget.button(standard)
+                if button is None:
+                    continue
+                button.setProperty("mastixaI18nSkipText", True)
+                button.setText(self.translate(source))
+
     def _translate_widget(self, widget: QWidget) -> None:
-        self._set_text_property(
-            widget, "windowTitle", widget.windowTitle, widget.setWindowTitle
-        )
+        if not widget.property("mastixaI18nSkipWindowTitle"):
+            self._set_text_property(
+                widget, "windowTitle", widget.windowTitle, widget.setWindowTitle
+            )
         self._set_text_property(widget, "toolTip", widget.toolTip, widget.setToolTip)
         self._set_text_property(
             widget, "statusTip", widget.statusTip, widget.setStatusTip
@@ -268,7 +333,7 @@ class LanguageController(QObject):
             "mastixaI18nSkipText"
         ):
             self._set_text_property(widget, "text", widget.text, widget.setText)
-        if isinstance(widget, QGroupBox):
+        if isinstance(widget, QGroupBox) and not widget.property("mastixaI18nSkipTitle"):
             self._set_text_property(widget, "title", widget.title, widget.setTitle)
         if isinstance(widget, QLineEdit):
             self._set_text_property(
@@ -315,6 +380,10 @@ class LanguageController(QObject):
         if isinstance(widget, QTreeWidget):
             self._translate_tree_header(widget)
         if isinstance(widget, QMessageBox):
+            if widget.property("mastixaI18nSkipText"):
+                # Scoped template owners render dynamic/user values themselves.
+                self._translate_standard_buttons(widget)
+                return
             self._set_text_property(widget, "messageText", widget.text, widget.setText)
             self._set_text_property(
                 widget,
@@ -328,6 +397,9 @@ class LanguageController(QObject):
                 widget.detailedText,
                 widget.setDetailedText,
             )
+            self._translate_standard_buttons(widget)
+        elif isinstance(widget, QDialogButtonBox):
+            self._translate_standard_buttons(widget)
 
     def _translate_action(self, action: QAction) -> None:
         self._set_text_property(action, "text", action.text, action.setText)

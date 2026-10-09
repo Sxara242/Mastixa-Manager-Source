@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 from .database import Database
+from .year_context import require_writable_years
 from .plant_tracking import PlantEvent, PlantRecord, project_plant
 
 
@@ -253,6 +254,7 @@ class PlantTrackingStore:
     def append_event(self, input_event: PlantEvent) -> None:
         event = _normalized_event(input_event)
         event.validate()
+        require_writable_years(self.db, [int(event.event_date[:4])])
         plant = self.plant(event.plant_id)
         if self.db.query_one("SELECT 1 FROM plant_events WHERE id=?", (event.id,)) is not None:
             raise ValueError("Plant event id already exists")

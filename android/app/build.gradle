@@ -1,7 +1,7 @@
 plugins { id 'com.android.application' }
 
-def mastixaVersionCode = providers.gradleProperty('mastixaVersionCode').orElse('2')
-def mastixaVersionName = providers.gradleProperty('mastixaVersionName').orElse('0.40.0-alpha.1')
+def mastixaVersionCode = providers.gradleProperty('mastixaVersionCode').orElse('3')
+def mastixaVersionName = providers.gradleProperty('mastixaVersionName').orElse('0.40.0-alpha.2')
 
 android {
     namespace 'gr.mastixa.manager'

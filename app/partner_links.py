@@ -10,6 +10,17 @@ PARTNER_TYPES = (
 
 
 def ensure_partner_link_schema(db) -> None:
+    # Keep the same live checks/backfill, but use one connection and commit.
+    # Transaction helpers already supplied by a caller have no transaction().
+    transaction = getattr(db, "transaction", None)
+    if callable(transaction):
+        with transaction() as tx:
+            _ensure_partner_link_schema(tx)
+    else:
+        _ensure_partner_link_schema(db)
+
+
+def _ensure_partner_link_schema(db) -> None:
     # The registry is needed before MoneyPage is constructed.
     db.execute(
         """

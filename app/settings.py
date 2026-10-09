@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _text, _language, _message
 from .database import BASE_DIR, Database
 from .appearance_theme import DARK_ICON, LIGHT_ICON, ThemeController
 from .language import LanguageController
@@ -175,14 +176,40 @@ class SettingsPage(QWidget):
 
     profile_switch_requested = Signal(str)
 
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
     def __init__(
         self,
         db: Database,
         theme: ThemeController,
         profiles: ProfileManager,
         language: LanguageController,
+        *, staged=False, parent=None,
     ) -> None:
-        super().__init__()
+        super().__init__(parent)
+        self._staged = bool(staged and parent is not None and parent.isVisible())
+        self._lazy_settings_tabs = {}
         self.db = db
         self.theme = theme
         self.profiles = profiles
@@ -221,12 +248,28 @@ class SettingsPage(QWidget):
         layout.addWidget(subtitle)
 
         self.tabs = QTabWidget()
-        self.tabs.setDocumentMode(True)
+        self.tabs.setDocumentMode(False)
+        self.tabs.setObjectName("settingsTabs")
+        self.tabs.setStyleSheet("QTabWidget#settingsTabs::pane { border: 1px solid #C7D3CC; background: #F5F6F3; top: -1px; }")
         layout.addWidget(self.tabs)
 
         self._build_general_tab()
-        self._build_backup_tab()
-        self._build_open_source_tab()
+        from .layout_preferences import add_layout_preference
+        add_layout_preference(self)
+        source_box = QGroupBox("Πωλήσεις")
+        source_form = QFormLayout(source_box)
+        self.default_sale_source = QComboBox()
+        self.default_sale_source.addItem("Συνολικό απόθεμα", "pooled")
+        self.default_sale_source.addItem("Ανά αγροτεμάχιο", "field")
+        source_form.addRow("Προεπιλεγμένη πηγή πώλησης", self.default_sale_source)
+        self.tabs.widget(0).layout().addWidget(source_box)
+        if self._staged:
+            self._add_lazy_settings_tab("Αντίγραφα ασφαλείας", self._build_backup_tab)
+            self._add_lazy_settings_tab("Κώδικας && Άδεια", self._build_open_source_tab)
+            self.tabs.currentChanged.connect(self._ensure_settings_tab)
+        else:
+            self._build_backup_tab()
+            self._build_open_source_tab()
 
         actions = QHBoxLayout()
         self.save_button = QPushButton("Αποθήκευση ρυθμίσεων")
@@ -241,6 +284,40 @@ class SettingsPage(QWidget):
         layout.addStretch()
 
         self.refresh()
+        stage = getattr(self, "_secondary_construction", None)
+        if stage is not None:
+            scroll.verticalScrollBar().valueChanged.connect(stage.finish)
+
+    def _add_lazy_settings_tab(self, title, builder):
+        tab = QWidget()
+        index = self.tabs.addTab(tab, title)
+        self._lazy_settings_tabs[index] = builder
+
+    def _ensure_settings_tab(self, index):
+        builder = self._lazy_settings_tabs.pop(index, None)
+        if builder is None:
+            return
+        old = self.tabs.widget(index)
+        title = self.tabs.tabText(index)
+        icon = self.tabs.tabIcon(index)
+        current = self.tabs.currentIndex()
+        blocked = self.tabs.blockSignals(True)
+        try:
+            # Existing builders append exactly one tab; keep its original slot.
+            builder()
+            tab = self.tabs.widget(self.tabs.count() - 1)
+            self.tabs.removeTab(self.tabs.count() - 1)
+            tab.hide()
+            if index == 1:
+                self._refresh_backup_controls()
+            from .staged_construction import prepare_subtree
+            prepare_subtree(self, tab)
+            self.tabs.removeTab(index)
+            self.tabs.insertTab(index, tab, icon, title)
+            self.tabs.setCurrentIndex(current)
+            old.deleteLater()
+        finally:
+            self.tabs.blockSignals(blocked)
 
     def _build_general_tab(self) -> None:
         tab = QWidget()
@@ -350,6 +427,31 @@ class SettingsPage(QWidget):
         profile_layout.addWidget(self.profile_status)
         layout.addWidget(profile_box)
 
+        self._general_section = QWidget(tab)
+        self._general_section.setMinimumHeight(780)
+        self._general_layout = QVBoxLayout(self._general_section)
+        self._general_layout.setContentsMargins(0, 0, 0, 0)
+        self._general_layout.setSpacing(12)
+        layout.addWidget(self._general_section)
+        if self._staged and self.window().height() < 800:
+            from .staged_construction import AfterFirstPaint
+            self._secondary_construction = AfterFirstPaint(self, self._finish_general_section, viewport_limit=610)
+        else:
+            self._build_general_section()
+        layout.addStretch()
+
+        self.tabs.addTab(tab, "Γενικά")
+
+    def _finish_general_section(self):
+        self._general_section.hide()
+        self._build_general_section()
+        self._refresh_farm_controls()
+        from .staged_construction import prepare_subtree
+        prepare_subtree(self, self._general_section)
+        self._general_section.show()
+
+    def _build_general_section(self):
+        layout = self._general_layout
         appearance_box = QGroupBox("Εμφάνιση εφαρμογής")
         appearance_layout = QVBoxLayout(appearance_box)
         appearance_layout.setSpacing(10)
@@ -455,9 +557,7 @@ class SettingsPage(QWidget):
         diagnostics_note.setWordWrap(True)
         diagnostics_form.addRow("", diagnostics_note)
         layout.addWidget(diagnostics_box)
-        layout.addStretch()
-
-        self.tabs.addTab(tab, "Γενικά")
+        self._general_section.setMinimumHeight(0)
 
     def _refresh_profiles(self, selected_id: str | None = None) -> None:
         if not hasattr(self, "profile_combo"):
@@ -499,7 +599,7 @@ class SettingsPage(QWidget):
             self.activate_profile_button.setEnabled(False)
             self.rename_profile_button.setEnabled(False)
             self.archive_profile_button.setEnabled(False)
-            self.profile_status.clear()
+            self._composed_text(self.profile_status, "")
             return
         try:
             profile = self.profiles.get(profile_id)
@@ -526,9 +626,7 @@ class SettingsPage(QWidget):
         self.remove_pin_button.setEnabled(profile.has_pin)
         state = "Ενεργό προφίλ" if profile.is_active else "Ανενεργό προφίλ"
         pin_state = "PIN ενεργό" if profile.has_pin else "χωρίς PIN"
-        self.profile_status.setText(
-            f"{state} · {pin_state}\nΒάση: {profile.database_path}"
-        )
+        self._composed_text(self.profile_status, '{state} · {pin_state}\nΒάση: {value2}', state=lambda: _text(state), pin_state=lambda: _text(pin_state), value2=profile.database_path)
 
     def create_profile(self) -> None:
         name, accepted = QInputDialog.getText(
@@ -541,16 +639,10 @@ class SettingsPage(QWidget):
         try:
             profile = self.profiles.create(name)
         except ProfileError as exc:
-            QMessageBox.warning(self, "Νέο προφίλ", str(exc))
+            _message(self, 'warning', 'Νέο προφίλ', '{error}', error=str(exc))
             return
         self._refresh_profiles(profile.id)
-        QMessageBox.information(
-            self,
-            "Νέο προφίλ",
-            f"Δημιουργήθηκε το προφίλ «{profile.name}» με κενή, "
-            "ανεξάρτητη βάση δεδομένων.\n\n"
-            "Πάτησε «Ενεργοποίηση» για να μεταβείς σε αυτό.",
-        )
+        _message(self, 'information', 'Νέο προφίλ', 'Δημιουργήθηκε το προφίλ «{name}» με κενή, ανεξάρτητη βάση δεδομένων.\n\nΠάτησε «Ενεργοποίηση» για να μεταβείς σε αυτό.', name=profile.name)
 
     def rename_profile(self) -> None:
         profile_id = self._selected_profile_id()
@@ -568,7 +660,7 @@ class SettingsPage(QWidget):
         try:
             renamed = self.profiles.rename(profile_id, name)
         except ProfileError as exc:
-            QMessageBox.warning(self, "Μετονομασία προφίλ", str(exc))
+            _message(self, 'warning', 'Μετονομασία προφίλ', '{error}', error=str(exc))
             return
         self._refresh_profiles(renamed.id)
 
@@ -578,16 +670,16 @@ class SettingsPage(QWidget):
             return
         selected, _filter = QFileDialog.getOpenFileName(
             self,
-            "Εικόνα προφίλ",
+            _text("Εικόνα προφίλ"),
             "",
-            "Εικόνες (*.png *.jpg *.jpeg *.webp *.bmp)",
+            _text("Εικόνες") + " (*.png *.jpg *.jpeg *.webp *.bmp)",
         )
         if not selected:
             return
         try:
             self.profiles.set_avatar(profile_id, Path(selected))
         except ProfileError as exc:
-            QMessageBox.warning(self, "Εικόνα προφίλ", str(exc))
+            _message(self, 'warning', 'Εικόνα προφίλ', '{error}', error=str(exc))
             return
         self._refresh_profiles(profile_id)
 
@@ -651,7 +743,7 @@ class SettingsPage(QWidget):
         try:
             self.profiles.set_pin(profile_id, pin)
         except ProfileError as exc:
-            QMessageBox.warning(self, "PIN", str(exc))
+            _message(self, 'warning', 'PIN', '{error}', error=str(exc))
             return
         self._refresh_profiles(profile_id)
         QMessageBox.information(self, "PIN", "Το PIN αποθηκεύτηκε με ασφάλεια.")
@@ -679,41 +771,35 @@ class SettingsPage(QWidget):
         profile = self.profiles.get(profile_id)
         selected, _filter = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή προφίλ",
+            _text("Εξαγωγή προφίλ"),
             f"{profile.name}.mastixaprofile",
-            "Προφίλ Mastixa (*.mastixaprofile)",
+            _text("Προφίλ Mastixa") + " (*.mastixaprofile)",
         )
         if not selected:
             return
         try:
             exported = self.profiles.export_profile(profile_id, Path(selected))
         except ProfileError as exc:
-            QMessageBox.warning(self, "Εξαγωγή προφίλ", str(exc))
+            _message(self, 'warning', 'Εξαγωγή προφίλ', '{error}', error=str(exc))
             return
-        QMessageBox.information(
-            self, "Εξαγωγή προφίλ", f"Το πλήρες προφίλ αποθηκεύτηκε εδώ:\n{exported}"
-        )
+        _message(self, 'information', 'Εξαγωγή προφίλ', 'Το πλήρες προφίλ αποθηκεύτηκε εδώ:\n{exported}', exported=exported)
 
     def import_profile(self) -> None:
         selected, _filter = QFileDialog.getOpenFileName(
             self,
-            "Εισαγωγή προφίλ",
+            _text("Εισαγωγή προφίλ"),
             "",
-            "Προφίλ Mastixa (*.mastixaprofile)",
+            _text("Προφίλ Mastixa") + " (*.mastixaprofile)",
         )
         if not selected:
             return
         try:
             profile = self.profiles.import_profile(Path(selected))
         except ProfileError as exc:
-            QMessageBox.warning(self, "Εισαγωγή προφίλ", str(exc))
+            _message(self, 'warning', 'Εισαγωγή προφίλ', '{error}', error=str(exc))
             return
         self._refresh_profiles(profile.id)
-        QMessageBox.information(
-            self,
-            "Εισαγωγή προφίλ",
-            f"Το προφίλ «{profile.name}» εισήχθη με τη δική του βάση δεδομένων.",
-        )
+        _message(self, 'information', 'Εισαγωγή προφίλ', 'Το προφίλ «{name}» εισήχθη με τη δική του βάση δεδομένων.', name=profile.name)
 
     def archive_profile(self) -> None:
         profile_id = self._selected_profile_id()
@@ -722,28 +808,16 @@ class SettingsPage(QWidget):
         profile = self.profiles.get(profile_id)
         if not self._request_profile_pin(profile_id, "Διαγραφή προφίλ"):
             return
-        answer = QMessageBox.warning(
-            self,
-            "Διαγραφή προφίλ",
-            f"Να αφαιρεθεί το προφίλ «{profile.name}»;\n\n"
-            "Η βάση και τα backups του θα μεταφερθούν σε φάκελο "
-            "ανάκτησης και δεν θα διαγραφούν οριστικά.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
+        answer = _message(self, 'warning', 'Διαγραφή προφίλ', 'Να αφαιρεθεί το προφίλ «{name}»;\n\nΗ βάση και τα backups του θα μεταφερθούν σε φάκελο ανάκτησης και δεν θα διαγραφούν οριστικά.', QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No, name=profile.name)
         if answer != QMessageBox.StandardButton.Yes:
             return
         try:
             recovery_path = self.profiles.archive(profile_id)
         except ProfileError as exc:
-            QMessageBox.warning(self, "Διαγραφή προφίλ", str(exc))
+            _message(self, 'warning', 'Διαγραφή προφίλ', '{error}', error=str(exc))
             return
         self._refresh_profiles()
-        QMessageBox.information(
-            self,
-            "Το προφίλ αφαιρέθηκε",
-            f"Τα αρχεία του παραμένουν ανακτήσιμα εδώ:\n{recovery_path}",
-        )
+        _message(self, 'information', 'Το προφίλ αφαιρέθηκε', 'Τα αρχεία του παραμένουν ανακτήσιμα εδώ:\n{recovery_path}', recovery_path=recovery_path)
 
     def activate_profile(self) -> None:
         profile_id = self._selected_profile_id()
@@ -754,15 +828,7 @@ class SettingsPage(QWidget):
             return
         if not self._request_profile_pin(profile_id, "Ενεργοποίηση προφίλ"):
             return
-        answer = QMessageBox.question(
-            self,
-            "Ενεργοποίηση προφίλ",
-            f"Να ενεργοποιηθεί το προφίλ «{profile.name}»;\n\n"
-            "Το παράθυρο θα ανανεωθεί αμέσως με την ανεξάρτητη βάση του. "
-            "Αποθήκευσε πρώτα τυχόν φόρμες που επεξεργάζεσαι.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
+        answer = _message(self, 'question', 'Ενεργοποίηση προφίλ', 'Να ενεργοποιηθεί το προφίλ «{name}»;\n\nΤο παράθυρο θα ανανεωθεί αμέσως με την ανεξάρτητη βάση του. Αποθήκευσε πρώτα τυχόν φόρμες που επεξεργάζεσαι.', QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No, name=profile.name)
         if answer == QMessageBox.StandardButton.Yes:
             self.profile_switch_requested.emit(profile_id)
 
@@ -887,13 +953,35 @@ class SettingsPage(QWidget):
         box_layout = QVBoxLayout(box)
 
         message = QLabel(
-            "Η άδεια open-source και οι λεπτομέρειες δημόσιας διάθεσης "
-            "δεν έχουν οριστικοποιηθεί ακόμη. Η επιλογή άδειας θα γίνει "
-            "πριν από την πρώτη δημόσια έκδοση και δεν επηρεάζει τα "
-            "δεδομένα της εφαρμογής."
+            "Mastixa Manager — AGPL-3.0-only\n"
+            "Copyright: Mastixa Manager contributors.\n"
+            "Η εφαρμογή παρέχεται χωρίς εγγύηση. Επιτρέπεται αναδιανομή "
+            "και τροποποίηση σύμφωνα με την AGPL-3.0-only.\n"
+            "Χρησιμοποιεί PySide6 / Qt υπό LGPLv3 και άλλες άδειες ανά component. "
+            "Οι βιβλιοθήκες διατηρούν τις δικές τους άδειες."
         )
         message.setWordWrap(True)
         box_layout.addWidget(message)
+        from pathlib import Path
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        legal_root = Path(__file__).resolve().parents[1]
+        for caption, relative in (
+            ("AGPL-3.0-only", "LICENSE"),
+            ("Third-party notices / Qt licenses", "THIRD_PARTY_NOTICES.md"),
+            ("Corresponding source / library replacement", "DISTRIBUTION_SOURCE.md"),
+        ):
+            path = legal_root / relative
+            if not path.exists() and relative == "DISTRIBUTION_SOURCE.md":
+                path = legal_root / "docs" / relative
+            button = QPushButton(caption)
+            button.clicked.connect(lambda _checked=False, target=path:
+                                   QDesktopServices.openUrl(QUrl.fromLocalFile(str(target))))
+            box_layout.addWidget(button)
+        source_button = QPushButton("Source: github.com/Sxara242/Mastixa-Manager-Source")
+        source_button.clicked.connect(lambda: QDesktopServices.openUrl(
+            QUrl("https://github.com/Sxara242/Mastixa-Manager-Source")))
+        box_layout.addWidget(source_button)
 
         self.tabs.addTab(tab, "Open Source")
         layout.addWidget(box)
@@ -901,12 +989,24 @@ class SettingsPage(QWidget):
 
     def refresh(self) -> None:
         self._refresh_profiles()
+        if hasattr(self, "refresh_layout_preference"):
+            self.refresh_layout_preference()
+        index = self.default_sale_source.findData(self.db.get_app_setting("default_sale_source", "pooled"))
+        self.default_sale_source.setCurrentIndex(max(0,index))
         self.ask_profile_on_startup.blockSignals(True)
         self.ask_profile_on_startup.setChecked(self.profiles.ask_on_startup)
         self.ask_profile_on_startup.blockSignals(False)
+        if hasattr(self, "farm_name"):
+            self._refresh_farm_controls()
+        if hasattr(self, "auto_backup_enabled"):
+            self._refresh_backup_controls()
+
+    def _refresh_farm_controls(self):
         self.farm_name.setText(
             self.db.get_app_setting("farm_name", "")
         )
+
+    def _refresh_backup_controls(self):
         self.auto_backup_enabled.setChecked(
             self.db.get_app_setting_bool(
                 "auto_backup_enabled",
@@ -950,7 +1050,7 @@ class SettingsPage(QWidget):
             start = str(self.profiles.default_backup_dir().resolve())
         selected = QFileDialog.getExistingDirectory(
             self,
-            "Επιλογή φακέλου backups",
+            _text("Επιλογή φακέλου backups"),
             start,
         )
         if selected:
@@ -969,11 +1069,7 @@ class SettingsPage(QWidget):
         try:
             folder.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Φάκελος backups",
-                f"Δεν ήταν δυνατή η δημιουργία του φακέλου.\n\n{exc}",
-            )
+            _message(self, 'critical', 'Φάκελος backups', 'Δεν ήταν δυνατή η δημιουργία του φακέλου.\n\n{exc}', exc=exc)
             return
         QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(folder.resolve()))
@@ -989,6 +1085,11 @@ class SettingsPage(QWidget):
         )
 
     def save(self) -> None:
+        if getattr(self, "_staged", False):
+            stage = getattr(self, "_secondary_construction", None)
+            if stage is not None:
+                stage.finish()
+            self._ensure_settings_tab(1)
         folder_text = self.backup_dir.text().strip()
         folder = Path(
             folder_text or self.profiles.default_backup_dir()
@@ -997,12 +1098,7 @@ class SettingsPage(QWidget):
         try:
             folder.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Μη έγκυρος φάκελος backups",
-                "Δεν ήταν δυνατή η χρήση του επιλεγμένου φακέλου.\n\n"
-                f"{exc}",
-            )
+            _message(self, 'critical', 'Μη έγκυρος φάκελος backups', 'Δεν ήταν δυνατή η χρήση του επιλεγμένου φακέλου.\n\n{exc}', exc=exc)
             return
 
         default_dir = self.profiles.default_backup_dir().resolve()
@@ -1012,6 +1108,7 @@ class SettingsPage(QWidget):
         self.db.save_app_settings(
             {
                 "farm_name": self.farm_name.text().strip(),
+                "default_sale_source": self.default_sale_source.currentData(),
                 "auto_backup_enabled": (
                     "1" if self.auto_backup_enabled.isChecked() else "0"
                 ),

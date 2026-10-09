@@ -1,0 +1,166 @@
+{
+  "baseline": "5c9316b460a8c036c48a776f611fa916c358b06a",
+  "canvas": [
+    512,
+    512
+  ],
+  "annotation_method": "Per-file native-resolution outer-metal contour, reviewed on full images and eight 5x nearest-neighbor edge patches. No brightness classifier.",
+  "oracle_policy": "Frozen original-source Bezier annotations provide independent protected regions. Legacy protected.png files are initial mask complements, retained as history only. Tests never regenerate references or calculate protection from cleanup geometry.",
+  "icons": {
+    "production.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "original_sha256": "450681aa2cbf88fe077199614144406d87de1b78b873845210dbdd698cbfb9d9",
+      "expected_rgba_sha256": "787ebc70ca7d3a85a431107bbf0813ad6bae3cf7439d9e933657336fe733523d",
+      "protected_mask_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_mask_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": null,
+      "review_note": "Very small exterior clearance and ambiguous bright outer trim; the proposed contour could trim the existing anti-aliased metallic edge. No mask applied.",
+      "independent_protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse"
+    },
+    "irrigation_fertilization.png": {
+      "status": "PROTOTYPE_READY",
+      "original_sha256": "22a4432e56f498f34dd38f7e95b7c223bcf1cb3d43583619e3a40f1e33d85ef4",
+      "expected_rgba_sha256": "38b69b21aeb9a62099a526df4d971cda8412d88b429ab8dc85a6398e8394e1c9",
+      "protected_mask_sha256": "2887ae46685e6473fc07e85d8734ee98661dc2889727c229c619e8f6ca55ea56",
+      "removal_mask_sha256": "ea5b94b8181af1cdb4fe97872434c67783c895b41c10b29280fea4e4bc430d73",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          192
+        ]
+      },
+      "review_note": "Outer bright trim, dark outline, and all inward artwork are protected. Native coordinates and 512x512 canvas retained; only alpha outside this per-file contour may become zero.",
+      "independent_protected_sha256": "d9def33957e256e624a0ac6a47190834c7687a33d0e8acec4c255f1c89267119",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse",
+      "independent_reference_conflicts_at_authoring": 192,
+      "conservative_boundary_restored_pixels": 192
+    },
+    "labor.png": {
+      "status": "PROTOTYPE_READY",
+      "original_sha256": "4c481d360962b4918ab1135284c3b1dae26de8ae5274f9009f5f2b4003c5e3b7",
+      "expected_rgba_sha256": "0441e0ff19640b2e04dba10eb6496cdc2aaab5df4ac6a0063a54a1179e9cf6a6",
+      "protected_mask_sha256": "9da5c9b9ec970e5dbab0f0a3d471bb2de8b1d677cd14cda06aab4889bb614ba1",
+      "removal_mask_sha256": "09f45329e318a9e589d262bb04b925a269f392c17d4cb115111e3ca83fcccfe2",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": {
+        "center": [
+          254.5,
+          248.5
+        ],
+        "radii": [
+          226.5,
+          231.5
+        ]
+      },
+      "review_note": "Outer bright trim, dark outline, and all inward artwork are protected. Native coordinates and 512x512 canvas retained; only alpha outside this per-file contour may become zero.",
+      "independent_protected_sha256": "845c6033cf322b634aeaf129b41baf7363150c902b88dd7a27c37afdc517be3e",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse",
+      "independent_reference_conflicts_at_authoring": 45,
+      "conservative_boundary_restored_pixels": 45
+    },
+    "calendar.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "original_sha256": "e51c7742d7c05828264a99714c20dae4567152b89172984a81acdd67ae3276a0",
+      "expected_rgba_sha256": "84b7d74887b9916ecebd0870e71126c5696570d6c789a8634abc4d9b7fbfab13",
+      "protected_mask_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_mask_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": null,
+      "review_note": "Asymmetric / partly canvas-limited exterior. A circle would cut the broad glossy metal and dark rim. No mask applied.",
+      "independent_protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse"
+    },
+    "partners.png": {
+      "status": "PROTOTYPE_READY",
+      "original_sha256": "26a349c19937a2a29f506c7dc43c503a7e7751ddaf9f57227726d3e76a6880bd",
+      "expected_rgba_sha256": "f39ed8247fbcf98fc2c81c85cd3d0dd5226c715550f56a5e21001c59fcb906e9",
+      "protected_mask_sha256": "c07a7fef1801eb7b809546ac059f5f59f8f4a115705f8f0e86bf2d6bc45e6488",
+      "removal_mask_sha256": "614425022bf58524aa7585b2c62ccb1cecca8ce2244ed550ac3ec233543a9a54",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": {
+        "center": [
+          255.5,
+          249.0
+        ],
+        "radii": [
+          207.5,
+          208.5
+        ]
+      },
+      "review_note": "Outer bright trim, dark outline, and all inward artwork are protected. Native coordinates and 512x512 canvas retained; only alpha outside this per-file contour may become zero.",
+      "independent_protected_sha256": "e92fd13230c8fd563923711cbd63f3919e86428a4ddafc93e894810a81710c01",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse",
+      "independent_reference_conflicts_at_authoring": 9,
+      "conservative_boundary_restored_pixels": 9
+    },
+    "finance.png": {
+      "status": "PROTOTYPE_READY",
+      "original_sha256": "2ab96fc535af3a8ccffcbbba9c56e61c038bf298842c9ed947b688bd210249fa",
+      "expected_rgba_sha256": "f7010bbaa626603f5562b7cceb4b977cd60e66b6d9811e5c8984cac6a26e2325",
+      "protected_mask_sha256": "2eade12f48fc6a0573a4aef3cdff5ff473ce078786ce173d5d04535a9c78de31",
+      "removal_mask_sha256": "9f950d1714f775eb4e50ffe43e5192f2b3f51075335ad12ec8def48f1454d932",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": {
+        "center": [
+          255,
+          253
+        ],
+        "radii": [
+          215.5,
+          222.5
+        ]
+      },
+      "review_note": "Outer bright trim, dark outline, and all inward artwork are protected. Native coordinates and 512x512 canvas retained; only alpha outside this per-file contour may become zero.",
+      "independent_protected_sha256": "86d093b9964655913c345e4188949c970fab76716a4b28de54fcad3be967f24b",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse",
+      "independent_reference_conflicts_at_authoring": 0
+    },
+    "annual_report.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "original_sha256": "5ecdbd1f8c711d918cbd59fc24711ba6ee489f5c9e18db341bf147317d8c4a47",
+      "expected_rgba_sha256": "c213cbf7420e59d8db47c017b214ce878d51e9173898252faeaebb1773b4744a",
+      "protected_mask_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_mask_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "source_translation": [
+        0,
+        0
+      ],
+      "source_resampling": false,
+      "boundary": null,
+      "review_note": "Difficult control: irregular pre-existing alpha cuts and metal reaching the canvas edge. Missing-versus-disposable boundary is not reliably separable. No mask applied.",
+      "independent_protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "independent_reference": "independent_source_annotations.json; original dark-trim Bezier paths, not a cleanup-mask inverse"
+    }
+  }
+}

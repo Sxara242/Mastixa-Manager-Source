@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout, QFrame,
@@ -8,11 +10,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .numeric_inputs import NumericDoubleSpinBox
 from .crud import CrudPage
+from .widgets import date_input
+from .localized_messages import _language, _text
 from .database import Database
 from .language import combo_source_text
 from .ui_helpers import table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context_ui import working_year_mutation
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 from .expense_sync import delete_expense, ensure_expense_source_schema, sync_expense
 
 
@@ -22,19 +29,65 @@ METER_TYPES = [("Ώρες", "hours"), ("Χιλιόμετρα", "km"), ("Χωρί
 SERVICE_TYPES = ["Τακτικό service", "Επισκευή", "Αλλαγή λαδιών", "Φίλτρα", "Ελαστικά", "Έλεγχος", "Άλλο"]
 
 
-class CompactMoneySpinBox(QDoubleSpinBox):
+class CompactMoneySpinBox(NumericDoubleSpinBox):
     """Money input: keeps cents precision, hides unnecessary trailing zeroes."""
 
     def textFromValue(self, value: float) -> str:
         text = f"{value:.2f}".rstrip("0").rstrip(".")
-        return text or "0"
+        return (text + ('' if self.hasFocus() else getattr(self, '_unit_suffix', ''))) if value else ''
 
 
 class EquipmentPage(CrudPage):
     """Μητρώο μηχανημάτων, ιστορικό και προγραμματισμός συντήρησης."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('equipment_table', 'service_table'):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_equipment_id: int | None = None
         self.selected_service_id: int | None = None
@@ -72,13 +125,14 @@ class EquipmentPage(CrudPage):
 
         self.equipment_box = QGroupBox("Νέο μηχάνημα")
         form = QFormLayout(self.equipment_box)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.name = QLineEdit()
         self.name.setPlaceholderText("Π.χ. Τρακτέρ κτήματος")
         self.category = QComboBox(); self.category.setEditable(True); self.category.setProperty("mastixaI18nStaticItems", True); self.category.addItems(CATEGORIES)
         self.brand_model = QLineEdit()
         self.code = QLineEdit()
         self.has_purchase_date = QCheckBox("Καταχώριση ημερομηνίας αγοράς")
-        self.purchase_date = QDateEdit(QDate.currentDate()); self.purchase_date.setCalendarPopup(True); self.purchase_date.setDisplayFormat("dd/MM/yyyy")
+        self.purchase_date = date_input(self.db, selection="selected_equipment_id"); self.purchase_date.setCalendarPopup(True); self.purchase_date.setDisplayFormat("dd/MM/yyyy")
         self.has_purchase_date.toggled.connect(self.purchase_date.setEnabled)
         self.purchase_date.setEnabled(False)
         purchase_row = QHBoxLayout(); purchase_row.addWidget(self.has_purchase_date); purchase_row.addWidget(self.purchase_date)
@@ -110,8 +164,9 @@ class EquipmentPage(CrudPage):
 
         self.service_box = QGroupBox("Νέα συντήρηση / υπενθύμιση")
         service_form = QFormLayout(self.service_box)
+        service_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.service_equipment = QComboBox()
-        self.service_date = QDateEdit(QDate.currentDate()); self.service_date.setCalendarPopup(True); self.service_date.setDisplayFormat("dd/MM/yyyy")
+        self.service_date = date_input(self.db, selection="selected_service_id"); self.service_date.setCalendarPopup(True); self.service_date.setDisplayFormat("dd/MM/yyyy")
         self.service_type = QComboBox(); self.service_type.setEditable(True); self.service_type.setProperty("mastixaI18nStaticItems", True); self.service_type.addItems(SERVICE_TYPES)
         self.service_cost = CompactMoneySpinBox()
         self.service_cost.setRange(0, 999999999)
@@ -122,7 +177,8 @@ class EquipmentPage(CrudPage):
         self.service_meter = self._number()
         self.technician = QLineEdit()
         self.next_date_enabled = QCheckBox("Υπενθύμιση σε ημερομηνία")
-        self.next_date = QDateEdit(QDate.currentDate().addMonths(6)); self.next_date.setCalendarPopup(True); self.next_date.setDisplayFormat("dd/MM/yyyy"); self.next_date.setEnabled(False)
+        self.next_date = QDateEdit(working_context_date(self.db).addMonths(6)); self.next_date.setCalendarPopup(True); self.next_date.setDisplayFormat("dd/MM/yyyy"); self.next_date.setEnabled(False)
+        self.service_date.dateChanged.connect(self._default_next_service_date)
         self.next_date_enabled.toggled.connect(self.next_date.setEnabled)
         next_date_row = QHBoxLayout(); next_date_row.addWidget(self.next_date_enabled); next_date_row.addWidget(self.next_date)
         self.next_meter_enabled = QCheckBox("Υπενθύμιση σε μετρητή")
@@ -144,6 +200,8 @@ class EquipmentPage(CrudPage):
         history = QGroupBox("Ιστορικό & προγραμματισμένες συντηρήσεις")
         history_layout = QVBoxLayout(history)
         filters = QGridLayout()
+        self.year_filter = QComboBox(); self.year_filter.currentIndexChanged.connect(self.refresh)
+        filters.addWidget(QLabel("Έτος"), 1, 0); filters.addWidget(self.year_filter, 1, 1)
         self.service_filter = QComboBox(); self.service_filter.currentIndexChanged.connect(self.refresh)
         self.reminder_filter = QComboBox(); self.reminder_filter.addItem("Όλες", None); self.reminder_filter.addItem("Επερχόμενες", "upcoming"); self.reminder_filter.addItem("Εκπρόθεσμες", "overdue"); self.reminder_filter.currentIndexChanged.connect(self.refresh)
         filters.addWidget(QLabel("Μηχάνημα"), 0, 0); filters.addWidget(self.service_filter, 0, 1)
@@ -156,7 +214,7 @@ class EquipmentPage(CrudPage):
 
     @staticmethod
     def _number(decimals: int = 1) -> QDoubleSpinBox:
-        widget = QDoubleSpinBox(); widget.setRange(0, 999999999); widget.setDecimals(decimals); widget.setMinimumHeight(36); return widget
+        widget = NumericDoubleSpinBox(); widget.setRange(0, 999999999); widget.setDecimals(decimals); widget.setMinimumHeight(36); return widget
 
     @staticmethod
     def _metric(caption: str):
@@ -190,6 +248,7 @@ class EquipmentPage(CrudPage):
             """CREATE TRIGGER IF NOT EXISTS audit_equipment_maintenance_delete AFTER DELETE ON equipment_maintenance BEGIN INSERT INTO audit_events(event_time,table_name,action,record_id,details) VALUES(datetime('now','localtime'),'equipment_maintenance','DELETE',CAST(OLD.id AS TEXT),'Service: '||OLD.service_date); END""",
         ): self.db.execute(sql)
 
+    @working_year_mutation(selection="selected_equipment_id", reset="clear_equipment")
     def save_equipment(self) -> None:
         name = self.name.text().strip()
         if not name: QMessageBox.warning(self,"Ελλιπή στοιχεία","Συμπλήρωσε το όνομα του μηχανήματος."); return
@@ -221,13 +280,14 @@ class EquipmentPage(CrudPage):
         record=self.db.query_one("SELECT * FROM equipment WHERE id=?",(equipment_id,)) if equipment_id else None
         if record is None:return
         self.selected_equipment_id=int(record["id"]); self.name.setText(record["name"] or ""); self.category.setEditText(record["category"] or ""); self.brand_model.setText(record["brand_model"] or ""); self.code.setText(record["equipment_code"] or "")
-        parsed=QDate.fromString(record["purchase_date"] or "","yyyy-MM-dd"); self.has_purchase_date.setChecked(parsed.isValid()); self.purchase_date.setDate(parsed if parsed.isValid() else QDate.currentDate())
+        parsed=QDate.fromString(record["purchase_date"] or "","yyyy-MM-dd"); self.has_purchase_date.setChecked(parsed.isValid()); self.purchase_date.setDate(parsed if parsed.isValid() else working_context_date(self.db))
         self.fuel.setText(record["fuel"] or ""); index=self.meter_type.findData(record["meter_type"]); self.meter_type.setCurrentIndex(index if index>=0 else 0); self.current_meter.setValue(float(record["current_meter"] or 0)); self.status.setCurrentText(record["status"] or "Ενεργό"); self.equipment_notes.setText(record["notes"] or "")
         self.equipment_box.setTitle("Επεξεργασία μηχανήματος"); self.equipment_save.setText("Αποθήκευση"); self.equipment_cancel.setEnabled(True); self.equipment_delete.setEnabled(True)
 
     def clear_equipment(self)->None:
-        self.selected_equipment_id=None; self.name.clear(); self.category.setCurrentIndex(0); self.brand_model.clear(); self.code.clear(); self.has_purchase_date.setChecked(False); self.purchase_date.setDate(QDate.currentDate()); self.meter_type.setCurrentIndex(0); self.current_meter.setValue(0); self.fuel.clear(); self.status.setCurrentIndex(0); self.equipment_notes.clear(); self.equipment_box.setTitle("Νέο μηχάνημα"); self.equipment_save.setText("Προσθήκη μηχανήματος"); self.equipment_cancel.setEnabled(False); self.equipment_delete.setEnabled(False); self.equipment_table.clearSelection()
+        self.selected_equipment_id=None; self.name.clear(); self.category.setCurrentIndex(0); self.brand_model.clear(); self.code.clear(); self.has_purchase_date.setChecked(False); self.purchase_date.setDate(working_context_date(self.db)); self.meter_type.setCurrentIndex(0); self.current_meter.setValue(0); self.fuel.clear(); self.status.setCurrentIndex(0); self.equipment_notes.clear(); self.equipment_box.setTitle("Νέο μηχάνημα"); self.equipment_save.setText("Προσθήκη μηχανήματος"); self.equipment_cancel.setEnabled(False); self.equipment_delete.setEnabled(False); self.equipment_table.clearSelection()
 
+    @working_year_mutation()
     def delete_equipment(self)->None:
         if self.selected_equipment_id is None:return
         count=self.db.query_one("SELECT COUNT(*) total FROM equipment_maintenance WHERE equipment_id=?",(self.selected_equipment_id,))
@@ -246,6 +306,8 @@ class EquipmentPage(CrudPage):
 
     def save_service(self) -> None:
         if self._service_locked():
+            if self.selected_service_id is None:
+                self.clear_service()
             return
 
         equipment_id = self.service_equipment.currentData()
@@ -284,92 +346,93 @@ class EquipmentPage(CrudPage):
             ),
         )
 
-        if self.selected_service_id is None:
-            service_id = int(
-                self.db.execute(
-                    """
-                    INSERT INTO equipment_maintenance(
-                        equipment_id,
-                        service_date,
-                        service_type,
-                        cost,
-                        meter_value,
-                        technician,
-                        notes,
-                        next_service_date,
-                        next_service_meter
+        with self.db.transaction() as tx:
+            if self.selected_service_id is None:
+                service_id = int(
+                    tx.execute(
+                        """
+                        INSERT INTO equipment_maintenance(
+                            equipment_id,
+                            service_date,
+                            service_type,
+                            cost,
+                            meter_value,
+                            technician,
+                            notes,
+                            next_service_date,
+                            next_service_meter
+                        )
+                        VALUES(?,?,?,?,?,?,?,?,?)
+                        """,
+                        values,
                     )
-                    VALUES(?,?,?,?,?,?,?,?,?)
-                    """,
-                    values,
                 )
+            else:
+                service_id = self.selected_service_id
+                tx.execute(
+                    """
+                    UPDATE equipment_maintenance
+                    SET
+                        equipment_id=?,
+                        service_date=?,
+                        service_type=?,
+                        cost=?,
+                        meter_value=?,
+                        technician=?,
+                        notes=?,
+                        next_service_date=?,
+                        next_service_meter=?,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                    """,
+                    (*values, service_id),
+                )
+
+            equipment_row = tx.query_one(
+                "SELECT name FROM equipment WHERE id=?",
+                (equipment_id,),
             )
-        else:
-            service_id = self.selected_service_id
-            self.db.execute(
+            equipment_name = (
+                equipment_row["name"]
+                if equipment_row
+                else f"Μηχάνημα #{equipment_id}"
+            )
+
+            expense_id = sync_expense(
+                tx,
+                source_type="equipment_maintenance",
+                source_id=int(service_id),
+                entry_date=service_date,
+                category="Μηχανήματα & Συντήρηση",
+                description=f"{service_type} — {equipment_name}",
+                supplier=technician,
+                payment_method="",
+                amount=cost,
+                notes=(
+                    f"Αυτόματο έξοδο από συντήρηση μηχανήματος #{service_id}"
+                    + (f" | {notes}" if notes else "")
+                ),
+            )
+
+            tx.execute(
                 """
                 UPDATE equipment_maintenance
+                SET expense_id=?
+                WHERE id=?
+                """,
+                (expense_id, service_id),
+            )
+
+            tx.execute(
+                """
+                UPDATE equipment
                 SET
-                    equipment_id=?,
-                    service_date=?,
-                    service_type=?,
-                    cost=?,
-                    meter_value=?,
-                    technician=?,
-                    notes=?,
-                    next_service_date=?,
-                    next_service_meter=?,
+                    current_meter=MAX(current_meter,?),
                     updated_at=CURRENT_TIMESTAMP
                 WHERE id=?
                 """,
-                (*values, service_id),
+                (self.service_meter.value(), equipment_id),
             )
-
-        equipment_row = self.db.query_one(
-            "SELECT name FROM equipment WHERE id=?",
-            (equipment_id,),
-        )
-        equipment_name = (
-            equipment_row["name"]
-            if equipment_row
-            else f"Μηχάνημα #{equipment_id}"
-        )
-
-        expense_id = sync_expense(
-            self.db,
-            source_type="equipment_maintenance",
-            source_id=int(service_id),
-            entry_date=service_date,
-            category="Μηχανήματα & Συντήρηση",
-            description=f"{service_type} — {equipment_name}",
-            supplier=technician,
-            payment_method="",
-            amount=cost,
-            notes=(
-                f"Αυτόματο έξοδο από συντήρηση μηχανήματος #{service_id}"
-                + (f" | {notes}" if notes else "")
-            ),
-        )
-
-        self.db.execute(
-            """
-            UPDATE equipment_maintenance
-            SET expense_id=?
-            WHERE id=?
-            """,
-            (expense_id, service_id),
-        )
-
-        self.db.execute(
-            """
-            UPDATE equipment
-            SET
-                current_meter=MAX(current_meter,?),
-                updated_at=CURRENT_TIMESTAMP
-            WHERE id=?
-            """,
-            (self.service_meter.value(), equipment_id),
-        )
 
         self.clear_service()
         self.refresh()
@@ -378,11 +441,11 @@ class EquipmentPage(CrudPage):
         item=self.service_table.item(row,0); service_id=item.data(Qt.ItemDataRole.UserRole) if item else None; record=self.db.query_one("SELECT * FROM equipment_maintenance WHERE id=?",(service_id,)) if service_id else None
         if record is None:return
         self.selected_service_id=int(record["id"]); self.service_equipment.setCurrentIndex(max(0,self.service_equipment.findData(record["equipment_id"]))); parsed=QDate.fromString(record["service_date"],"yyyy-MM-dd"); self.service_date.setDate(parsed); self.service_type.setEditText(record["service_type"] or ""); self.service_cost.setValue(float(record["cost"] or 0)); self.service_meter.setValue(float(record["meter_value"] or 0)); self.technician.setText(record["technician"] or ""); self.service_notes.setText(record["notes"] or "")
-        next_date=QDate.fromString(record["next_service_date"] or "","yyyy-MM-dd"); self.next_date_enabled.setChecked(next_date.isValid()); self.next_date.setDate(next_date if next_date.isValid() else QDate.currentDate().addMonths(6)); self.next_meter_enabled.setChecked(record["next_service_meter"] is not None); self.next_meter.setValue(float(record["next_service_meter"] or 0))
+        next_date=QDate.fromString(record["next_service_date"] or "","yyyy-MM-dd"); self.next_date_enabled.setChecked(next_date.isValid()); self.next_date.setDate(next_date if next_date.isValid() else working_context_date(self.db).addMonths(6)); self.next_meter_enabled.setChecked(record["next_service_meter"] is not None); self.next_meter.setValue(float(record["next_service_meter"] or 0))
         year=parsed.year(); locked=is_year_locked(self.db,year); self.service_box.setTitle(f"Προβολή συντήρησης — ΚΛΕΙΔΩΜΕΝΟ {year}" if locked else "Επεξεργασία συντήρησης"); self.service_save.setText("Κλειδωμένο" if locked else "Αποθήκευση"); self.service_save.setEnabled(not locked); self.service_cancel.setEnabled(True); self.service_delete.setEnabled(not locked)
 
     def clear_service(self)->None:
-        self.selected_service_id=None; self.service_date.setDate(QDate.currentDate()); self.service_type.setCurrentIndex(0); self.service_cost.setValue(0); self.service_meter.setValue(0); self.technician.clear(); self.next_date_enabled.setChecked(False); self.next_date.setDate(QDate.currentDate().addMonths(6)); self.next_meter_enabled.setChecked(False); self.next_meter.setValue(0); self.service_notes.clear(); self.service_box.setTitle("Νέα συντήρηση / υπενθύμιση"); self.service_save.setText("Προσθήκη συντήρησης"); self.service_save.setEnabled(True); self.service_cancel.setEnabled(False); self.service_delete.setEnabled(False); self.service_table.clearSelection()
+        self.selected_service_id=None; self.service_date.setDate(working_context_date(self.db)); self.service_type.setCurrentIndex(0); self.service_cost.setValue(0); self.service_meter.setValue(0); self.technician.clear(); self.next_date_enabled.setChecked(False); self.next_date.setDate(working_context_date(self.db).addMonths(6)); self.next_meter_enabled.setChecked(False); self.next_meter.setValue(0); self.service_notes.clear(); self.service_box.setTitle("Νέα συντήρηση / υπενθύμιση"); self.service_save.setText("Προσθήκη συντήρησης"); self.service_save.setEnabled(True); self.service_cancel.setEnabled(False); self.service_delete.setEnabled(False); self.service_table.clearSelection()
 
     def delete_service(self) -> None:
         if self.selected_service_id is None:
@@ -403,16 +466,17 @@ class EquipmentPage(CrudPage):
         ):
             return
 
-        delete_expense(
-            self.db,
-            source_type="equipment_maintenance",
-            source_id=self.selected_service_id,
-        )
+        with self.db.transaction() as tx:
+            delete_expense(
+                tx,
+                source_type="equipment_maintenance",
+                source_id=self.selected_service_id,
+            )
 
-        self.db.execute(
-            "DELETE FROM equipment_maintenance WHERE id=?",
-            (self.selected_service_id,),
-        )
+            tx.execute(
+                "DELETE FROM equipment_maintenance WHERE id=?",
+                (self.selected_service_id,),
+            )
 
         self.clear_service()
         self.refresh()
@@ -424,6 +488,10 @@ class EquipmentPage(CrudPage):
             if all_label:combo.addItem(all_label,None)
             for row in rows:combo.addItem(row["name"],row["id"])
             index=combo.findData(current); combo.setCurrentIndex(index if index>=0 else 0); combo.blockSignals(False)
+
+    def _default_next_service_date(self, date) -> None:
+        if self.selected_service_id is None and not self.next_date_enabled.isChecked():
+            self.next_date.setDate(date.addMonths(6))
 
     def _reminder_status(self,row)->tuple[str,str]:
         today=QDate.currentDate(); due_date=QDate.fromString(row["next_service_date"] or "","yyyy-MM-dd"); due_meter=row["next_service_meter"]; current=float(row["current_meter"] or 0)
@@ -442,10 +510,24 @@ class EquipmentPage(CrudPage):
         for i,row in enumerate(equipment):
             state,next_text=self._reminder_status(row); overdue_count+=state=="Εκπρόθεσμη"; upcoming_count+=state=="Επερχόμενη"
             values=[row["name"],row["category"],row["brand_model"],row["equipment_code"],f"{float(row['current_meter'] or 0):g} {row['meter_label']}",row["status"],next_text]
-            for c,value in enumerate(values):item=QTableWidgetItem(str(value or "")); item.setData(Qt.ItemDataRole.UserRole,int(row["id"])) if c==0 else None; self.equipment_table.setItem(i,c,item)
+            for c,value in enumerate(values):
+                item=QTableWidgetItem(str(value or ""))
+                if c==0: item.setData(Qt.ItemDataRole.UserRole,int(row["id"]))
+                if c == 4:
+                    self._set_body(item, "{number} {unit}", number=f"{float(row['current_meter'] or 0):g}", _labels={"unit": row["meter_label"]})
+                elif c == 5 and row["status"] in STATUSES:
+                    self._set_body(item, row["status"])
+                elif c == 6 and row["meter_label"] == "ώρες" and row["next_service_meter"] is not None:
+                    self._set_body(item, "{date}{number} {unit}", date=(QDate.fromString(row["next_service_date"] or "", "yyyy-MM-dd").toString("dd/MM/yyyy") + " / ") if QDate.fromString(row["next_service_date"] or "", "yyyy-MM-dd").isValid() else "", number=f"{float(row['next_service_meter']):g}", _labels={"unit": "ώρες"})
+                self.equipment_table.setItem(i,c,item)
         self.total_metric[1].setText(str(len(equipment))); self.upcoming_metric[1].setText(str(upcoming_count)); self.overdue_metric[1].setText(str(overdue_count))
         equipment_id=self.service_filter.currentData(); params=[]; condition=""
         if equipment_id is not None:condition="WHERE m.equipment_id=?";params=[equipment_id]
+        populate_year_filter(self, self.year_filter, strings=True)
+        year = self.year_filter.currentData()
+        if year is not None:
+            condition += (" AND " if condition else "WHERE ") + "substr(m.service_date,1,4)=?"
+            params.append(year)
         services=self.db.query(f"""SELECT m.*,e.name equipment_name,e.current_meter,CASE e.meter_type WHEN 'km' THEN 'km' WHEN 'hours' THEN 'ώρες' ELSE '' END meter_label FROM equipment_maintenance m JOIN equipment e ON e.id=m.equipment_id {condition} ORDER BY m.service_date DESC,m.id DESC""",params)
         reminder=self.reminder_filter.currentData(); visible=[]
         for row in services:
@@ -456,4 +538,13 @@ class EquipmentPage(CrudPage):
         self.service_table.setRowCount(len(visible))
         for i,(row,state,next_text) in enumerate(visible):
             values=[row["service_date"],row["equipment_name"],row["service_type"],f"{float(row['cost'] or 0):.2f} €",f"{float(row['meter_value'] or 0):g} {row['meter_label']}",row["technician"],next_text,state]
-            for c,value in enumerate(values):item=QTableWidgetItem(str(value or "")); item.setData(Qt.ItemDataRole.UserRole,int(row["id"])) if c==0 else None; self.service_table.setItem(i,c,item)
+            for c,value in enumerate(values):
+                item=QTableWidgetItem(str(value or ""))
+                if c==0: item.setData(Qt.ItemDataRole.UserRole,int(row["id"]))
+                if c == 4:
+                    self._set_body(item, "{number} {unit}", number=f"{float(row['meter_value'] or 0):g}", _labels={"unit": row["meter_label"]})
+                elif c == 7:
+                    self._set_body(item, state)
+                elif c == 6 and row["meter_label"] == "ώρες" and row["next_service_meter"] is not None:
+                    self._set_body(item, "{date}{number} {unit}", date=(QDate.fromString(row["next_service_date"] or "", "yyyy-MM-dd").toString("dd/MM/yyyy") + " / ") if QDate.fromString(row["next_service_date"] or "", "yyyy-MM-dd").isValid() else "", number=f"{float(row['next_service_meter']):g}", _labels={"unit": "ώρες"})
+                self.service_table.setItem(i,c,item)

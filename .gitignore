@@ -69,3 +69,19 @@ Thumbs.db
 *.db-wal
 *.db-shm
 *.db-journal
+
+# Private signing, credentials and developer state
+*.pfx
+*.p12
+*.key
+*.pem
+!licenses/**
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+credentials*.json
+service-account*.json
+google-services.json
+audit-output/

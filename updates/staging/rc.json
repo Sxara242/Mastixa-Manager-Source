@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "product": "Mastixa Manager",
+  "version": "1.0.0-rc.2",
+  "channel": "rc",
+  "release_url": "https://github.com/Sxara242/Mastixa-Manager-Source/releases",
+  "notes": "Offline staging fixture. No published release or downloadable artifact.",
+  "windows": null,
+  "android": null
+}

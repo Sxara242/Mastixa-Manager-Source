@@ -1,5 +1,29 @@
 from __future__ import annotations
 
+from PySide6.QtCore import QObject, QSignalBlocker, Slot
+
+from .localized_messages import _language, _text
+
+
+class _InactiveProductLabel(QObject):
+    """Refresh only the owned suffix; names and units never enter translation."""
+
+    def __init__(self, combo, controller):
+        super().__init__(combo)
+        self.combo = combo
+        self.product_id = None
+        self.prefix = ""
+        controller.language_changed.connect(self.refresh)
+
+    @Slot(str)
+    def refresh(self, _code):
+        if self.product_id is None:
+            return
+        index = self.combo.findData(self.product_id)
+        if index >= 0:
+            with QSignalBlocker(self.combo):
+                self.combo.setItemText(index, self.prefix + _text("Ανενεργό"))
+
 
 def ensure_product_links(db) -> None:
     """Create/backfill stable product links while preserving legacy text.
@@ -72,6 +96,64 @@ def ensure_product_links(db) -> None:
             )
 
 
+class ProductionStockError(ValueError):
+    def __init__(self, product: str, sold: float, proposed: float, *, field=None, unit=None):
+        super().__init__("Existing sales require more production")
+        self.product = product
+        self.sold = sold
+        self.proposed = proposed
+        self.field = field
+        self.unit = unit
+
+
+def ensure_production_stock(db, production_id: int, *, product_id=None, quantity=0.0, field_id=None):
+    """Check an edit/deletion without writing; None target means deletion.
+
+    Page initialization/refresh already repairs legacy links via ensure_product_links.
+    Like SalesPage, totals include all fields/years and inactive-product history.
+    Valid IDs, not historical names, own stock even after a product rename.
+    """
+    old = db.query_one("SELECT product_id,field_id FROM production WHERE id=?", (production_id,))
+    if old is None:
+        return
+    # A fresh profile may reach Production before the lazy Sales page creates
+    # its table. There are no sales to constrain production in that case.
+    if db.query_one("SELECT 1 FROM sqlite_master WHERE type='table' AND name='production_sales'") is None:
+        return
+    for affected_id in dict.fromkeys((old["product_id"], product_id)):
+        if affected_id is None:
+            continue
+        totals = db.query_one(
+            """SELECT
+                (SELECT COALESCE(SUM(quantity_kg),0) FROM production
+                 WHERE product_id=? AND id<>?) AS remaining,
+                (SELECT COALESCE(SUM(quantity_kg),0) FROM production_sales
+                 WHERE product_id=?) AS sold""",
+            (affected_id, production_id, affected_id),
+        )
+        proposed = float(totals["remaining"]) + (quantity if affected_id == product_id else 0.0)
+        sold = float(totals["sold"])
+        # Match SalesPage.save_sale's practical floating-point tolerance.
+        if proposed + 0.000001 < sold:
+            product = product_row(db, affected_id)
+            raise ProductionStockError(product["name"] if product else str(affected_id), sold, proposed)
+
+    # Moving/removing production must also preserve its explicit field-sale history.
+    if old["field_id"] is not None and old["product_id"] is not None:
+        from .report_quantities import source_rows
+        remaining = sum(float(r["quantity_kg"] or 0) for r in source_rows(
+            db, "production", product_id=old["product_id"], field_id=old["field_id"])
+            if r["id"] != production_id)
+        proposed = remaining + (quantity if product_id == old["product_id"] and field_id == old["field_id"] else 0)
+        sold = sum(float(r["quantity_kg"] or 0) for r in source_rows(
+            db, "production_sales", product_id=old["product_id"], source=old["field_id"]))
+        if proposed + 0.000001 < sold:
+            product = product_row(db, old["product_id"])
+            field = db.query_one("SELECT name FROM fields WHERE id=?", (old["field_id"],))
+            raise ProductionStockError(product["name"], sold, proposed,
+                                       field=field["name"] if field else str(old["field_id"]), unit=product["unit"])
+
+
 def product_row(db, product_id: int | None):
     if product_id is None:
         return None
@@ -83,6 +165,9 @@ def product_row(db, product_id: int | None):
 
 def add_product_choices(combo, db, *, selected_id=None, legacy_name="") -> None:
     """Active products for new records; retain selected inactive/legacy value."""
+    label = getattr(combo, "_mastixa_inactive_product_label", None)
+    if label is not None:
+        label.product_id = None
     combo.clear()
     combo.addItem("Επίλεξε προϊόν", None)
     rows = db.query(
@@ -97,10 +182,18 @@ def add_product_choices(combo, db, *, selected_id=None, legacy_name="") -> None:
     if selected_id is not None and int(selected_id) not in included:
         row = product_row(db, int(selected_id))
         if row is not None:
+            prefix = f"{row['name']} ({row['unit']}) — "
             combo.addItem(
-                f"{row['name']} ({row['unit']}) — Ανενεργό",
+                prefix + _text("Ανενεργό"),
                 int(row["id"]),
             )
+            controller = _language()
+            if controller is not None:
+                if label is None:
+                    label = _InactiveProductLabel(combo, controller)
+                    combo._mastixa_inactive_product_label = label
+                label.product_id = int(row["id"])
+                label.prefix = prefix
             included.add(int(row["id"]))
 
     index = combo.findData(selected_id)

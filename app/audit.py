@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
 
 from PySide6.QtCore import QDate
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QFileDialog,
     QGroupBox,
+    QGridLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -21,8 +23,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _text, _language, _message
 from .database import Database
-from .ui_helpers import table_widget
+from .ui_helpers import table_widget, scrollable_entry_layout
 
 
 TABLE_LABELS = {
@@ -64,13 +67,59 @@ class AuditPage(QWidget):
     reconstructed retroactively.
     """
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('count_label', 'empty_label'):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
 
         self._ensure_schema_and_triggers()
 
-        layout = QVBoxLayout(self)
+        layout = scrollable_entry_layout(self)
 
         title = QLabel("Ιστορικό Ενεργειών")
         title.setObjectName("pageTitle")
@@ -91,40 +140,40 @@ class AuditPage(QWidget):
         )
         filters_layout.addWidget(filters_title)
 
-        row = QHBoxLayout()
+        row = QGridLayout()
 
-        row.addWidget(QLabel("Από"))
+        row.addWidget(QLabel("Από"), 0, 0)
         self.date_from = QDateEdit()
         self.date_from.setCalendarPopup(True)
         self.date_from.setDisplayFormat("dd/MM/yyyy")
         self.date_from.setDate(QDate.currentDate().addYears(-10))
         self.date_from.dateChanged.connect(self.refresh)
-        row.addWidget(self.date_from)
+        row.addWidget(self.date_from, 0, 1)
 
-        row.addWidget(QLabel("Έως"))
+        row.addWidget(QLabel("Έως"), 0, 2)
         self.date_to = QDateEdit()
         self.date_to.setCalendarPopup(True)
         self.date_to.setDisplayFormat("dd/MM/yyyy")
         self.date_to.setDate(QDate.currentDate())
         self.date_to.dateChanged.connect(self.refresh)
-        row.addWidget(self.date_to)
+        row.addWidget(self.date_to, 0, 3)
 
-        row.addWidget(QLabel("Ενότητα"))
+        row.addWidget(QLabel("Ενότητα"), 1, 0)
         self.section = QComboBox()
         self.section.addItem("Όλες", None)
         for table_name, label in TABLE_LABELS.items():
             self.section.addItem(label, table_name)
         self.section.currentIndexChanged.connect(self.refresh)
-        row.addWidget(self.section)
+        row.addWidget(self.section, 1, 1)
 
-        row.addWidget(QLabel("Ενέργεια"))
+        row.addWidget(QLabel("Ενέργεια"), 1, 2)
         self.action = QComboBox()
         self.action.addItem("Όλες", None)
         self.action.addItem("Προσθήκη", "INSERT")
         self.action.addItem("Επεξεργασία", "UPDATE")
         self.action.addItem("Διαγραφή", "DELETE")
         self.action.currentIndexChanged.connect(self.refresh)
-        row.addWidget(self.action)
+        row.addWidget(self.action, 1, 3)
 
         self.search = QLineEdit()
         self.search.setPlaceholderText(
@@ -132,7 +181,9 @@ class AuditPage(QWidget):
         )
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.refresh)
-        row.addWidget(self.search, 1)
+        row.addWidget(self.search, 2, 0, 1, 4)
+        row.setColumnStretch(1, 1)
+        row.setColumnStretch(3, 1)
 
         filters_layout.addLayout(row)
         layout.addWidget(filters_box)
@@ -174,6 +225,10 @@ class AuditPage(QWidget):
         )
         self.table.setMinimumHeight(420)
 
+        self.empty_label = QLabel()
+        self.empty_label.setWordWrap(True)
+        layout.addWidget(self.empty_label)
+
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(
             0,
@@ -193,7 +248,7 @@ class AuditPage(QWidget):
         )
         header.setSectionResizeMode(
             4,
-            QHeaderView.ResizeMode.Stretch,
+            QHeaderView.ResizeMode.ResizeToContents,
         )
 
         layout.addWidget(self.table)
@@ -610,7 +665,11 @@ class AuditPage(QWidget):
         ]
 
         for sql in triggers:
-            self.db.execute(sql)
+            # Lazy pages/older backups may not have created their tables yet.
+            # Install their audit triggers on a later refresh, once they exist.
+            target = re.search(r"\bON\s+(\w+)", sql, re.IGNORECASE).group(1)
+            if self.db.query_one("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (target,)):
+                self.db.execute(sql)
 
     def refresh(self, *_args) -> None:
         # A restore from an older backup can remove the audit table/triggers.
@@ -668,6 +727,8 @@ class AuditPage(QWidget):
         )
 
         self.table.setRowCount(len(rows))
+        self._body_label(self.empty_label, "Δεν υπάρχουν εγγραφές ιστορικού με τα τρέχοντα φίλτρα.")
+        self.empty_label.setVisible(not rows)
 
         for row_index, row in enumerate(rows):
             values = [
@@ -686,9 +747,13 @@ class AuditPage(QWidget):
 
             for column_index, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                if column_index == 1 and row["table_name"] in TABLE_LABELS:
+                    self._set_body(item, TABLE_LABELS[row["table_name"]])
+                elif column_index == 2 and row["action"] in ACTION_LABELS:
+                    self._set_body(item, ACTION_LABELS[row["action"]])
 
                 if column_index == 4:
-                    item.setToolTip(str(value))
+                    item.setToolTip(item.text())
 
                 self.table.setItem(
                     row_index,
@@ -697,13 +762,9 @@ class AuditPage(QWidget):
                 )
 
         if len(rows) >= 5000:
-            self.count_label.setText(
-                "5.000+ εγγραφές (εμφανίζονται οι νεότερες 5.000)"
-            )
+            self._body_label(self.count_label, "5.000+ εγγραφές (εμφανίζονται οι νεότερες 5.000)")
         else:
-            self.count_label.setText(
-                f"{len(rows)} εγγραφές"
-            )
+            self._body_label(self.count_label, "{count} εγγραφές", count=len(rows))
 
     def export_csv(self) -> None:
         if self.table.rowCount() == 0:
@@ -716,7 +777,7 @@ class AuditPage(QWidget):
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή ιστορικού CSV",
+            _text("Εξαγωγή ιστορικού CSV"),
             "mastixa_audit_history.csv",
             "CSV (*.csv)",
         )
@@ -753,15 +814,7 @@ class AuditPage(QWidget):
                         ]
                     )
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Ιστορικό Ενεργειών",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
-            )
+            _message(self, 'critical', 'Ιστορικό Ενεργειών', 'Η εξαγωγή απέτυχε.\n\n{exc}', exc=exc)
             return
 
-        QMessageBox.information(
-            self,
-            "Ιστορικό Ενεργειών",
-            f"Το CSV δημιουργήθηκε επιτυχώς:\n{path}",
-        )
+        _message(self, 'information', 'Ιστορικό Ενεργειών', 'Το CSV δημιουργήθηκε επιτυχώς:\n{path}', path=path)

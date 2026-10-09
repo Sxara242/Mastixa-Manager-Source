@@ -7,7 +7,15 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QComboBox, QLineEdit, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialogButtonBox,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QWidget,
+)
 
 from app.language import LanguageController
 from app.profile_manager import ProfileManager
@@ -72,6 +80,45 @@ class LocalizationBoundaryTests(unittest.TestCase):
             self.assertEqual(expected, status.text())
             self.assertEqual(expected, combo.currentText())
             self.assertEqual(1, combo.currentData())
+
+    def test_qt_standard_buttons_follow_application_language(self):
+        message = QMessageBox(self.root)
+        message.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        dialog_buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel,
+            self.root,
+        )
+
+        for code in self.cycles():
+            with self.subTest(language=code):
+                expected_yes = "Yes" if code == "en" else "Ναι"
+                expected_no = "No" if code == "en" else "Όχι"
+                expected_save = "Save" if code == "en" else "Αποθήκευση"
+                expected_cancel = "Cancel" if code == "en" else "Ακύρωση"
+
+                self.assertEqual(
+                    expected_yes,
+                    message.button(QMessageBox.StandardButton.Yes).text(),
+                )
+                self.assertEqual(
+                    expected_no,
+                    message.button(QMessageBox.StandardButton.No).text(),
+                )
+                self.assertEqual(
+                    expected_save,
+                    dialog_buttons.button(
+                        QDialogButtonBox.StandardButton.Save
+                    ).text(),
+                )
+                self.assertEqual(
+                    expected_cancel,
+                    dialog_buttons.button(
+                        QDialogButtonBox.StandardButton.Cancel
+                    ).text(),
+                )
 
     def test_accessible_description_and_help_follow_language_changes(self):
         button = QPushButton("Αποθήκευση", self.root)

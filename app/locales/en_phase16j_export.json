@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Η εξαγωγή απέτυχε.\n\n{error}": "Export failed.\n\n{error}",
+    "Το CSV δημιουργήθηκε επιτυχώς:\n{path}": "CSV created successfully:\n{path}",
+    "Η αναφορά αποθηκεύτηκε:\n{path}": "Report saved:\n{path}",
+    "Το PDF δημιουργήθηκε:\n{path}": "PDF created:\n{path}",
+    "Το Excel δημιουργήθηκε:\n{path}": "Excel created:\n{path}",
+    "Η δημιουργία ZIP απέτυχε.\n\n{error}": "ZIP creation failed.\n\n{error}",
+    "Το ZIP δημιουργήθηκε και ελέγχθηκε επιτυχώς.\n\n{path}": "ZIP created and verified successfully.\n\n{path}",
+    "Το ZIP δημιουργήθηκε, αλλά ο έλεγχος βρήκε πρόβλημα.\n\n{detail}": "ZIP created, but verification found a problem.\n\n{detail}",
+    "Ο έλεγχος απέτυχε.\n\n{detail}": "Verification failed.\n\n{detail}",
+    "Τελευταίο ZIP: {path}": "Last ZIP: {path}",
+    "CRC πρόβλημα στο αρχείο: {file}": "CRC problem in file: {file}",
+    "Λείπει το αναμενόμενο αρχείο: {file}": "Expected file is missing: {file}",
+    "Λείπει το manifest.json.": "manifest.json is missing.",
+    "Λείπει το README.txt.": "README.txt is missing.",
+    "Μη αναμενόμενο schema στο manifest.": "Unexpected schema in manifest."
+  }
+}

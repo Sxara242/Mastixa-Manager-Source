@@ -662,7 +662,7 @@ public final class MainActivity extends Activity {
         saveForm(words("Εργατικά & Προσωπικό","Labor & Personnel"),form,()->work().saveLabor(new WorkStore.Labor(a==null?null:a.id(),date.getText().toString().trim(),ids.get(field.getSelectedItemPosition()),workers.get(worker.getSelectedItemPosition()).id(),work_type.getText().toString().trim(),decimal(hours),decimal(hourly_rate),0,notes.getText().toString(),"")));
     }
     private ActivityStore activities(){return new ActivityStore(store);}
-    private String activityLabel(String value){return switch(value){case "Πότισμα"->words(value,"Irrigation");case "Λίπανση"->words(value,"Fertilization");case "Προγραμματισμένη"->words(value,"Planned");case "Ολοκληρώθηκε"->words(value,"Completed");case "Ακυρώθηκε"->words(value,"Cancelled");default->value;};}
+    private String activityLabel(String value){return ActivityDisplayLabels.label(value,profile.language().equals("en"));}
     private String activityField(String id){return store.fields().stream().filter(f->f.id().equals(id)).map(FarmStore.Field::name).findFirst().orElse(id.isEmpty()?words("Χωρίς αγροτεμάχιο","No field"):words("Διαγραμμένο αγροτεμάχιο","Deleted field"));}
     private void activityFilter(String title,java.util.List<String> values,java.util.function.Consumer<String> selected){var options=new java.util.ArrayList<String>();options.add("");options.addAll(values);new AlertDialog.Builder(this).setTitle(title).setItems(options.stream().map(x->x.isEmpty()?words("Όλα","All"):activityLabel(x)).toArray(String[]::new),(d,n)->{selected.accept(options.get(n));showHome();}).show();}
     private void showActivities(){

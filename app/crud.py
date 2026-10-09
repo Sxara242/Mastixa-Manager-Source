@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from PySide6.QtWidgets import QMessageBox, QTableWidget, QWidget
+from .year_filters import YearFilteredPage
 
 
-class CrudPage(QWidget):
+class CrudPage(YearFilteredPage):
     """Common helpers for pages that use a searchable CRUD table."""
 
     @staticmethod

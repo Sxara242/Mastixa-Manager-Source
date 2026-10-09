@@ -1,4 +1,30 @@
+# Public source preparation — 2026-10-09 (unpublished)
+
+- First-party AGPL-3.0-only scope and owner contribution-rights baseline recorded;
+  inherited third-party license texts and EPSG/PROJ obligations retained.
+- Public installation/development/release-status documentation and hosted Windows/
+  Android verification prepared; regular CI creates no installers or artifacts.
+- Local paths and signed public-download URLs sanitized; source privacy and
+  secret checks added. Private history and existing local work preserved.
+- Current source targets Windows rc.2; rc.1 owner findings require the new
+  candidate. Android remains in development. See docs/RELEASE_STATUS.md.
+
+---
+
 # Changelog
+
+## Windows v1.0.0-rc.1 — preparation, 2026-10-07 (not published)
+
+- AGPL-3.0-only application licensing, local legal links and contributor intake
+  policy preserving future commercial-licensing intent.
+- Windows RC version/channel metadata; unsigned internal candidate configuration.
+- Offline staging JSON feed, strict RC/stable channel consistency and preserved
+  failed-download retry / SHA-256 / explicit installation confirmation.
+- Exclude unused Qt VirtualKeyboard module/plugin/resources; check output absence.
+- Artwork provenance ledger and third-party license text collection.
+- RC build remains blocked by exact native notices/source/redist closure and
+  matching corresponding-source delivery. No installer or RC artifact built.
+- Android parity is recorded for after Windows v1; Android is not version-bumped.
 
 ## v0.40.0-alpha.1 — 2026-08-29
 

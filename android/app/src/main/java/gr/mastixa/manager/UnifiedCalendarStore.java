@@ -60,14 +60,14 @@ public final class UnifiedCalendarStore {
         try (Cursor c = db.rawQuery("SELECT id,activity_date,field_id,category,status,description,product,water_quantity_m3,dose,dose_unit,cost,notes FROM farm_activities WHERE deleted_at IS NULL", null)) {
             while (c.moveToNext()) {
                 var parts = new ArrayList<String>();
-                parts.add(c.getString(4));
+                parts.add(ActivityDisplayLabels.label(c.getString(4), english));
                 if (!c.getString(5).isBlank()) parts.add(c.getString(5));
                 if (!c.getString(6).isBlank()) parts.add(c.getString(6));
                 if (c.getDouble(7) > 0) parts.add(ReportStore.n(c.getDouble(7)) + " m³");
                 if (c.getDouble(8) > 0) parts.add(ReportStore.n(c.getDouble(8)) + " " + c.getString(9));
                 if (c.getDouble(10) > 0) parts.add(ReportStore.n(c.getDouble(10)) + " €");
                 if (!c.getString(11).isBlank()) parts.add(c.getString(11));
-                rows.add(new Entry(c.getString(1),"activity",w("Άρδευση & Λίπανση","Irrigation & Fertilization"),c.getString(2),fieldName(fields,c.getString(2)),c.getString(3),String.join(" · ",parts),c.getString(0),""));
+                rows.add(new Entry(c.getString(1),"activity",w("Άρδευση & Λίπανση","Irrigation & Fertilization"),c.getString(2),fieldName(fields,c.getString(2)),ActivityDisplayLabels.label(c.getString(3), english),String.join(" · ",parts),c.getString(0),""));
             }
         }
         try (Cursor c = db.rawQuery("SELECT id,application_date,field_id,product_name,purpose,dose,dose_unit,cost,notes FROM plant_protection_records WHERE deleted_at IS NULL", null)) {

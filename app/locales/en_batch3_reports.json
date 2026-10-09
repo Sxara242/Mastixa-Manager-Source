@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Μέση τιμή / μονάδα": "Average price / unit",
+    "Τιμή / μονάδα": "Price / unit",
+    "Κόστος / μονάδα": "Cost / unit",
+    "Έτος: {year}": "Year: {year}",
+    "Τα γενικά / μη κατανεμημένα ποσά εμφανίζονται ξεχωριστά και δεν μοιράζονται αυτόματα. Τα αυτόματα έξοδα Άρδευσης & Λίπανσης μετριούνται μία φορά. Κόστη ημερολογίων χωρίς συνδεδεμένο έξοδο προστίθενται χωριστά. Χειροκίνητες διπλές καταχωρήσεις δεν αντιστοιχίζονται αυτόματα.": "General / unallocated amounts are shown separately and are not allocated automatically. Automatic irrigation and fertilization expenses are counted once. Journal costs without a linked expense are added separately. Manual duplicate entries are not matched automatically."
+  }
+}

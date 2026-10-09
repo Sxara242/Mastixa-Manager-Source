@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
 from PySide6.QtCore import Qt
 import csv
 from pathlib import Path
@@ -20,17 +22,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _text, _message
 from .database import Database
+from .report_quantities import quantities, quantity_text, coherent_quantity, unposted_activity_cost
 from .ui_helpers import compact_decimal, table_widget
 
 
-class FieldFinancePage(QWidget):
+class FieldFinancePage(YearFilteredPage):
     """
     Direct cost / profitability analysis per field.
 
     Important accounting rule:
     - income / expenses count only when explicitly assigned to a field
-    - activity, plant-protection, labor and planting costs are added as direct operational costs
+    - only activity costs without a linked automatic expense are added separately
+    - plant-protection, labor and planting costs remain direct operational costs
     - unassigned income / expenses stay visible separately and are NOT allocated
       proportionally, so the report does not invent accounting data
     """
@@ -121,12 +126,10 @@ class FieldFinancePage(QWidget):
         note_layout.addWidget(note_title)
 
         note = QLabel(
-            "Στα έσοδα και έξοδα χρησιμοποιούνται μόνο οι καταχωρήσεις που "
-            "έχεις συνδέσει ρητά με αγροτεμάχιο. Τα γενικά / μη κατανεμημένα "
-            "ποσά εμφανίζονται ξεχωριστά και δεν μοιράζονται αυτόματα. "
-            "Το κόστος Άρδευσης & Λίπανσης, Φυτοπροστασίας, Εργατικών και Φυτεύσεων "
-            "προστίθεται από τα αντίστοιχα ημερολόγια. Αν περάσεις το ίδιο κόστος και ως Έξοδο, "
-            "θα μετρηθεί δύο φορές."
+            "Τα γενικά / μη κατανεμημένα ποσά εμφανίζονται ξεχωριστά και δεν μοιράζονται αυτόματα. "
+            "Τα αυτόματα έξοδα Άρδευσης & Λίπανσης μετριούνται μία φορά. "
+            "Κόστη ημερολογίων χωρίς συνδεδεμένο έξοδο προστίθενται χωριστά. "
+            "Χειροκίνητες διπλές καταχωρήσεις δεν αντιστοιχίζονται αυτόματα."
         )
         note.setWordWrap(True)
         note.setStyleSheet("color: #67746d;")
@@ -146,7 +149,7 @@ class FieldFinancePage(QWidget):
         self.table = table_widget(
             [
                 "Αγροτεμάχιο",
-                "Παραγωγή kg",
+                "Παραγωγή",
                 "Έσοδα",
                 "Έξοδα",
                 "Άρδευση / Λίπανση",
@@ -155,7 +158,7 @@ class FieldFinancePage(QWidget):
                 "Φυτεύσεις",
                 "Σύνολο κόστους",
                 "Άμεσο αποτέλεσμα",
-                "€/kg",
+                "Κόστος / μονάδα",
             ]
         )
         self.table.setMinimumHeight(340)
@@ -221,51 +224,7 @@ class FieldFinancePage(QWidget):
         return any(row["name"] == column_name for row in rows)
 
     def _load_years(self) -> None:
-        current = self.year.currentData()
-
-        years: set[str] = set()
-
-        sources = [
-            ("production", "entry_date"),
-            ("income", "entry_date"),
-            ("expenses", "entry_date"),
-            ("farm_activities", "activity_date"),
-            ("plant_protection_records", "application_date"),
-            ("labor_entries", "work_date"),
-            ("planting_batches", "planting_date"),
-        ]
-
-        for table_name, date_column in sources:
-            if not self._table_exists(table_name):
-                continue
-
-            rows = self.db.query(
-                f"""
-                SELECT DISTINCT SUBSTR({date_column},1,4) AS year
-                FROM {table_name}
-                WHERE
-                    {date_column} IS NOT NULL
-                    AND {date_column} <> ''
-                """
-            )
-
-            for row in rows:
-                value = str(row["year"] or "").strip()
-                if value:
-                    years.add(value)
-
-        self.year.blockSignals(True)
-        self.year.clear()
-        self.year.addItem("Όλα τα έτη", None)
-
-        for value in sorted(years, reverse=True):
-            self.year.addItem(value, value)
-
-        index = self.year.findData(current)
-        if index >= 0:
-            self.year.setCurrentIndex(index)
-
-        self.year.blockSignals(False)
+        populate_year_filter(self, self.year, strings=True)
 
     def _sum_for_field(
         self,
@@ -341,34 +300,6 @@ class FieldFinancePage(QWidget):
 
         return float(row["total"] or 0) if row else 0.0
 
-    def _production_for_field(
-        self,
-        field_id: int,
-        year: str | None,
-    ) -> float:
-        if year is None:
-            row = self.db.query_one(
-                """
-                SELECT COALESCE(SUM(quantity_kg),0) AS total
-                FROM production
-                WHERE field_id=?
-                """,
-                (field_id,),
-            )
-        else:
-            row = self.db.query_one(
-                """
-                SELECT COALESCE(SUM(quantity_kg),0) AS total
-                FROM production
-                WHERE
-                    field_id=?
-                    AND SUBSTR(entry_date,1,4)=?
-                """,
-                (field_id, year),
-            )
-
-        return float(row["total"] or 0) if row else 0.0
-
     def refresh(self, *_args) -> None:
         self._load_years()
         year = self.year.currentData()
@@ -390,10 +321,7 @@ class FieldFinancePage(QWidget):
         for field in fields:
             field_id = int(field["id"])
 
-            production = self._production_for_field(
-                field_id,
-                year,
-            )
+            production = quantities(self.db, year=year, field_id=field_id)
 
             assigned_income = self._sum_for_field(
                 table="income",
@@ -409,13 +337,7 @@ class FieldFinancePage(QWidget):
                 date_column="entry_date",
                 year=year,
             )
-            activity_cost = self._sum_for_field(
-                table="farm_activities",
-                amount_column="cost",
-                field_id=field_id,
-                date_column="activity_date",
-                year=year,
-            )
+            activity_cost = unposted_activity_cost(self.db, field_id, year)
             protection_cost = self._sum_for_field(
                 table="plant_protection_records",
                 amount_column="cost",
@@ -446,11 +368,9 @@ class FieldFinancePage(QWidget):
                 + planting_cost
             )
             direct_result = assigned_income - direct_cost
-            cost_per_kg = (
-                direct_cost / production
-                if production > 0
-                else 0.0
-            )
+            coherent = coherent_quantity(production, single_product=True)
+            cost_per_unit = (f"{self._money(direct_cost/coherent[0])}/{coherent[1]}"
+                             if coherent and coherent[0] > 0 else "—")
 
             total_cost += direct_cost
             total_assigned_income += assigned_income
@@ -459,7 +379,7 @@ class FieldFinancePage(QWidget):
             rows.append(
                 [
                     field["name"] or f"ID {field_id}",
-                    compact_decimal(production, 3),
+                    quantity_text(production),
                     self._money(assigned_income),
                     self._money(assigned_expenses),
                     self._money(activity_cost),
@@ -468,7 +388,7 @@ class FieldFinancePage(QWidget):
                     self._money(planting_cost),
                     self._money(direct_cost),
                     self._money(direct_result),
-                    self._money(cost_per_kg),
+                    cost_per_unit,
                 ]
             )
 
@@ -513,7 +433,7 @@ class FieldFinancePage(QWidget):
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή κόστους ανά αγροτεμάχιο",
+            _text("Εξαγωγή κόστους ανά αγροτεμάχιο"),
             f"mastixa_field_costs_{suffix}.csv",
             "CSV (*.csv)",
         )
@@ -551,15 +471,7 @@ class FieldFinancePage(QWidget):
                         ]
                     )
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Κόστη ανά Αγροτεμάχιο",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
-            )
+            _message(self, 'critical', 'Κόστη ανά Αγροτεμάχιο', 'Η εξαγωγή απέτυχε.\n\n{exc}', exc=exc)
             return
 
-        QMessageBox.information(
-            self,
-            "Κόστη ανά Αγροτεμάχιο",
-            f"Το CSV δημιουργήθηκε:\n{path}",
-        )
+        _message(self, 'information', 'Κόστη ανά Αγροτεμάχιο', 'Το CSV δημιουργήθηκε:\n{path}', path=path)

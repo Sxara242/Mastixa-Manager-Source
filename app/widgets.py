@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QDate, QLocale
+from PySide6.QtCore import QDate, QLocale, QTimer
 from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QComboBox,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from .numeric_inputs import NumericDoubleSpinBox
 
 
 class EntryForm(QWidget):
@@ -35,11 +36,69 @@ class EntryForm(QWidget):
         layout.addLayout(row)
 
 
-def date_input() -> QDateEdit:
-    widget = QDateEdit(QDate.currentDate())
+class WorkingYearDateEdit(QDateEdit):
+    """Date input whose new-record default follows the active/correction year."""
+
+    def __init__(self, parent=None, *, db=None, selection=None) -> None:
+        from .year_context import working_context_date
+
+        super().__init__(working_context_date(db), parent)
+        self.working_db = db
+        self.setProperty("mastixaWorkingYearDate", True)
+        self.setProperty("mastixaWorkingYearSelection", selection)
+
+    def _editing_existing_record(self) -> bool:
+        current = self.parent()
+        selection = self.property("mastixaWorkingYearSelection")
+        while current is not None:
+            try:
+                values = vars(current)
+            except TypeError:
+                values = {}
+            for name, value in values.items():
+                if selection and name != selection:
+                    continue
+                normalized = name.casefold()
+                if (
+                    normalized.startswith("selected")
+                    and normalized.endswith("id")
+                    and value is not None
+                ):
+                    return True
+            current = current.parent()
+        return False
+
+    def setDate(self, date: QDate) -> None:
+        value = date
+        if (
+            isinstance(date, QDate)
+            and date.isValid()
+            and date == QDate.currentDate()
+            and not self._editing_existing_record()
+        ):
+            try:
+                from .year_context import working_context_date
+
+                value = working_context_date(self.working_db)
+            except Exception:
+                value = date
+        super().setDate(value)
+
+
+def date_input(db=None, *, selection=None) -> QDateEdit:
+    from .date_preferences import qt_date_format, selected_date_format, DEFAULT_DATE_FORMAT
+    widget = WorkingYearDateEdit(db=db, selection=selection)
     widget.setCalendarPopup(True)
-    widget.setDisplayFormat("dd/MM/yyyy")
+    widget.setDisplayFormat(qt_date_format(selected_date_format(db) if db is not None else DEFAULT_DATE_FORMAT))
     return widget
+
+
+class UnitLineEdit(QLineEdit):
+    """A newly focused unit is replaced on typing; custom unit text stays literal."""
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        QTimer.singleShot(0, self, self.selectAll)
 
 
 def _numeric_spinbox(
@@ -49,7 +108,7 @@ def _numeric_spinbox(
     suffix: str,
     step: float,
 ) -> QDoubleSpinBox:
-    widget = QDoubleSpinBox()
+    widget = NumericDoubleSpinBox()
 
     # Σταθερά "." ως δεκαδικός διαχωριστής ανεξάρτητα από τα Windows/Greek locale.
     widget.setLocale(QLocale.c())
@@ -76,12 +135,14 @@ def money_input() -> QDoubleSpinBox:
     )
 
 
-
-class CompactQuantitySpinBox(QDoubleSpinBox):
+class CompactQuantitySpinBox(NumericDoubleSpinBox):
     """Keep 3-decimal precision but hide trailing zeroes."""
 
     def textFromValue(self, value: float) -> str:
-        return f"{value:.{self.decimals()}f}".rstrip("0").rstrip(".") or "0"
+        if value == 0:
+            return ''
+        text = f"{value:.{self.decimals()}f}".rstrip("0").rstrip(".")
+        return text if self.hasFocus() else text + getattr(self, '_unit_suffix', '')
 
 
 def quantity_input() -> QDoubleSpinBox:

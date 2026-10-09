@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Εισαγωγή τιμολογίων": "Import invoices",
+    "Όλα τα αρχεία": "All files",
+    "Γεωμετρία": "Geometry",
+    "Εικόνες": "Images",
+    "Προφίλ Mastixa": "Mastixa profile"
+  }
+}

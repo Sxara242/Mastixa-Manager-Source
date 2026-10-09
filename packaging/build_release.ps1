@@ -2,14 +2,25 @@
 param(
     [switch]$SkipInstaller,
     [string]$PythonPath = "",
+    [string]$PyInstallerWorkPath = "",
+    [string]$PyInstallerDistPath = "",
     [string]$InstallerOutputDir = "",
     [int]$InstallerBuildAttempts = 3
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$venvPython = Join-Path $repoRoot ".venv\Scripts\python.exe"
+$tlsLock = Get-Content -LiteralPath (Join-Path $PSScriptRoot "windows-tls-inputs.json") -Raw | ConvertFrom-Json
+$venvPython = Join-Path (Join-Path $repoRoot $tlsLock.python.build_venv) "Scripts\python.exe"
 $spec = Join-Path $PSScriptRoot "MastixaManager.spec"
+$releaseConfig = Get-Content -LiteralPath (Join-Path $PSScriptRoot "windows-rc.json") -Raw | ConvertFrom-Json
+$releaseVersion = $releaseConfig.version
+if ($releaseVersion -notmatch '^\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?$') {
+    throw "Unsafe release output version: $releaseVersion"
+}
+# A candidate invocation supplies separate paths; existing CI defaults stay usable.
+$releaseWork = if ($PyInstallerWorkPath) { [IO.Path]::GetFullPath($PyInstallerWorkPath) } else { Join-Path $repoRoot "build" }
+$releaseDist = if ($PyInstallerDistPath) { [IO.Path]::GetFullPath($PyInstallerDistPath) } else { Join-Path $repoRoot "dist" }
 
 function Get-BundleRelativePath {
     param(
@@ -44,15 +55,31 @@ else {
 
 Push-Location $repoRoot
 try {
-    & $python -m PyInstaller --noconfirm --clean $spec
+    & $python (Join-Path $PSScriptRoot "validate_windows_release.py")
+    if ($LASTEXITCODE -ne 0) {
+        throw "BLOCKED BEFORE RC BUILD: close the release preflight findings before packaging."
+    }
+    & $python -m PyInstaller --noconfirm --clean --workpath $releaseWork --distpath $releaseDist $spec
     if ($LASTEXITCODE -ne 0) {
         throw "PyInstaller failed with exit code $LASTEXITCODE"
     }
 
-    $bundle = Join-Path $repoRoot "dist\MastixaManager"
+    $bundle = Join-Path $releaseDist "MastixaManager"
     $exe = Join-Path $bundle "MastixaManager.exe"
     if (-not (Test-Path -LiteralPath $exe)) {
         throw "Packaged executable was not created: $exe"
+    }
+    & $python (Join-Path $PSScriptRoot "crt_policy.py") --bundle $bundle
+    if ($LASTEXITCODE -ne 0) {
+        throw "B2 BLOCKED: central-runtime CRT packaging policy failed."
+    }
+    & $python (Join-Path $PSScriptRoot "validate_windows_release.py") --bundle $bundle
+    if ($LASTEXITCODE -ne 0) {
+        throw "Packaged legal/resource/VirtualKeyboard/privacy validation failed."
+    }
+    & $python (Join-Path $PSScriptRoot "tls_inputs.py") --bundle $bundle
+    if ($LASTEXITCODE -ne 0) {
+        throw "B5 BLOCKED: frozen TLS files do not match qualified supplier inputs."
     }
 
     $bundledDataDir = Join-Path $bundle "_internal\data"
@@ -124,12 +151,15 @@ try {
         throw "Could not read MyAppVersion from $installerScript"
     }
     $version = $versionMatch.Groups[1].Value
+    if ($version -ne $releaseVersion) {
+        throw "Installer version does not match release metadata: $version / $releaseVersion"
+    }
 
     if ($InstallerOutputDir) {
         $installerOutput = [System.IO.Path]::GetFullPath($InstallerOutputDir)
     }
     else {
-        $installerOutput = Join-Path $repoRoot "dist\installer"
+        $installerOutput = Join-Path $releaseDist "installer"
     }
     New-Item -ItemType Directory -Force -Path $installerOutput | Out-Null
 
@@ -164,7 +194,7 @@ try {
             }
         }
 
-        & $compiler $outputArg $filenameArg $installerScript
+        & $compiler $outputArg $filenameArg "/DMyAppSourceDir=$bundle" $installerScript
         $compilerExitCode = $LASTEXITCODE
         if ($compilerExitCode -eq 0) {
             $successfulAttemptSetup = $attemptSetup

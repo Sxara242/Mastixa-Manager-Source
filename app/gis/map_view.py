@@ -7,7 +7,15 @@ import math
 import time
 from pathlib import Path
 from PySide6.QtCore import Qt, QTimer, QUrl, QBuffer, QByteArray, QIODevice
-from PySide6.QtGui import QColor, QPainterPath, QPen, QBrush, QPixmap, QImageReader
+from PySide6.QtGui import (
+    QColor,
+    QPalette,
+    QPainterPath,
+    QPen,
+    QBrush,
+    QPixmap,
+    QImageReader,
+)
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkDiskCache, QNetworkRequest
 from PySide6.QtWidgets import QGraphicsView, QGraphicsScene
 from .geometry import parts, transformer
@@ -20,12 +28,13 @@ class ParcelMap(QGraphicsView):
         super().__init__(parent)
         self.setScene(QGraphicsScene(self))
         self.scene().setSceneRect(-WORLD,-WORLD,WORLD*2,WORLD*2)
-        self.setBackgroundBrush(QColor('#edf1e8'))
+        self.boundaries=[];self.markers=[];self.center_marker=None;self.bounds=None
+        self.point_markers=[];self.track_items=[]
+        self._dark_map = False
+        self._apply_palette_theme()
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setMinimumHeight(330)
-        self.boundaries=[];self.markers=[];self.center_marker=None;self.bounds=None
-        self.point_markers=[];self.track_items=[]
         self.tiles={};self.pending={};self.failed={};self.provider=None;self.generation=0
         self.network=QNetworkAccessManager(self)
         cache=QNetworkDiskCache(self.network)
@@ -35,6 +44,43 @@ class ParcelMap(QGraphicsView):
         self.timer.timeout.connect(self.load_visible_tiles)
         self.horizontalScrollBar().valueChanged.connect(self.schedule_tiles)
         self.verticalScrollBar().valueChanged.connect(self.schedule_tiles)
+
+    def _is_dark_palette(self):
+        colour = self.palette().color(QPalette.ColorRole.Window)
+        return colour.lightness() < 128
+
+    def _apply_palette_theme(self):
+        self._dark_map = self._is_dark_palette()
+        if self._dark_map:
+            self.setBackgroundBrush(QColor("#151A1E"))
+            boundary_colour = QColor("#72C69A")
+            vertex_outline = QColor("#9FD8B8")
+            vertex_fill = QColor("#F2F6F4")
+        else:
+            self.setBackgroundBrush(QColor("#EDF1E8"))
+            boundary_colour = QColor("#23683E")
+            vertex_outline = QColor("#173C29")
+            vertex_fill = QColor("white")
+
+        for item in self.boundaries:
+            pen = item.pen()
+            pen.setColor(boundary_colour)
+            item.setPen(pen)
+        for item in self.markers:
+            pen = item.pen()
+            pen.setColor(vertex_outline)
+            item.setPen(pen)
+            item.setBrush(QBrush(vertex_fill))
+
+        self.viewport().update()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() in {
+            event.Type.PaletteChange,
+            event.Type.ApplicationPaletteChange,
+        }:
+            self._apply_palette_theme()
 
     def set_geometry(self, geometry, fit=True):
         for item in self.boundaries+self.markers+([self.center_marker] if self.center_marker else []):
@@ -49,11 +95,14 @@ class ParcelMap(QGraphicsView):
                     if index==0:path.moveTo(x,-y)
                     else:path.lineTo(x,-y)
                     if index<len(ring)-1:
-                        dot=self.scene().addEllipse(-3,-3,6,6,QPen(QColor('#173c29')),QBrush(QColor('white')))
+                        dot_pen = QColor("#9FD8B8") if self._dark_map else QColor("#173C29")
+                        dot_fill = QColor("#F2F6F4") if self._dark_map else QColor("white")
+                        dot=self.scene().addEllipse(-3,-3,6,6,QPen(dot_pen),QBrush(dot_fill))
                         dot.setPos(x,-y);dot.setFlag(dot.GraphicsItemFlag.ItemIgnoresTransformations);dot.setZValue(3)
                         self.markers.append(dot)
                 path.closeSubpath()
-        pen=QPen(QColor('#23683e'));pen.setWidth(3);pen.setCosmetic(True)
+        boundary_colour = QColor("#72C69A") if self._dark_map else QColor("#23683E")
+        pen=QPen(boundary_colour);pen.setWidth(3);pen.setCosmetic(True)
         boundary=self.scene().addPath(path,pen,QBrush(QColor(60,140,80,55)));boundary.setZValue(2)
         self.boundaries.append(boundary);self.bounds=path.boundingRect()
         self.center_marker=self.scene().addEllipse(-4,-4,8,8,QPen(QColor('white')),QBrush(QColor('#c5571f')))
@@ -130,7 +179,7 @@ class ParcelMap(QGraphicsView):
             if key in self.tiles or key in self.pending or self.failed.get(key,0)>time.monotonic():continue
             z,x,y=key
             request=QNetworkRequest(QUrl(self.provider.tile_template.format(z=z,x=x,y=y)))
-            request.setRawHeader(b'User-Agent',b'MastixaManager/0.40 (+https://github.com/Sxara242/Mastixa-Manager)')
+            request.setRawHeader(b'User-Agent',b'MastixaManager/0.40 (+private archive (not published))')
             request.setTransferTimeout(10000)
             reply=self.network.get(request);self.pending[key]=reply;reply.setReadBufferSize(1024*1024+1)
             body=bytearray()

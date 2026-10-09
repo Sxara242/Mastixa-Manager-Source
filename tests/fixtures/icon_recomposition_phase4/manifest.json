@@ -1,0 +1,192 @@
+{
+  "phase": "4",
+  "strategy": "canonical_badge_recomposition_with_owner_approved_production_cleanup",
+  "canonical_reference": "finance.png",
+  "canonical_ring_sha256": "26177370aeb3f9861ecc6820261dc3a6744eb5b10d4fd490d1edfcb0dfb4583d",
+  "recomposed_icons": [
+    "annual_report.png",
+    "calendar.png",
+    "alerts.png",
+    "declaration.png",
+    "fields.png",
+    "producer.png",
+    "products.png",
+    "search.png",
+    "settings.png"
+  ],
+  "preserved_cleanup_icons": [
+    "production.png"
+  ],
+  "products_seal_witness_xy": [
+    379,
+    333
+  ],
+  "products_seal_exclusion_bbox_xyxy": [
+    300,
+    250,
+    430,
+    405
+  ],
+  "icons": {
+    "production.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "preserved_source_cleanup",
+      "original_sha256": "450681aa2cbf88fe077199614144406d87de1b78b873845210dbdd698cbfb9d9",
+      "bundled_sha256": "5297cef05ce147225faddc3c7af9f4404206a5a93b97927e9d2f5990c14f9f89",
+      "alpha_bbox_xyxy_inclusive": [
+        3,
+        1,
+        506,
+        511
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "annual_report.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "5ecdbd1f8c711d918cbd59fc24711ba6ee489f5c9e18db341bf147317d8c4a47",
+      "bundled_sha256": "7a253801ca1e49f2e6938a1166da10b72d492c5fba543dd705dd50e4df63fc7b",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "calendar.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "e51c7742d7c05828264a99714c20dae4567152b89172984a81acdd67ae3276a0",
+      "bundled_sha256": "0b48696c8d11243af656e6cbd2dd0466abce39479880e8c495c1680ba1fc743a",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "alerts.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "a87b36792f0d575e6ff0959410bf0140e73fa59eeca88565b67494d1afb0e499",
+      "bundled_sha256": "baaff9402af8ae8e71190d1a186d63334a498be33948ae02d6b847b3cf76e17c",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "declaration.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "c6110dc612035ce5ddf5f23a9b818514d69f5dd9be2e7a99dbd4ec6d5e2dd061",
+      "bundled_sha256": "07bba918ce36f672fdf0ed007af3b38c77ef952df21aec4cd24826d77ce4b9ac",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "fields.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "11b5d9c51d15c8548f2b0d93d6bccc46dae58408f4c91f0ad337677424ceac4b",
+      "bundled_sha256": "a9da70ac2d884c2d89bd05fdcc4950d206e510e641fb04b08c8d82df607c74cc",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "producer.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "0839783f9e34a681fc7df74960b5ea11c94814a425c89d857c3db992d9d1b81c",
+      "bundled_sha256": "d2106d33dc78db6ca31a479bb17a5241b7f8cf7a8a3af3232b55b5bab0c8f19c",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "products.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "e007c5b4c76319eca8273b0a4f129124be36ac2d6b6cb1fe171737ca3777b026",
+      "bundled_sha256": "c4bff4c1242183ac5e6999c67be185cf07040df8cd3bb92da321fe7514afc56b",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "search.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "451f9cb8d131f77db1c3671fd850b1f8cacfbfc87a8128f999541454989bf5f5",
+      "bundled_sha256": "3620338473f28b2f0e375b4b132210682c350d73d69c09d767f14dc43cde3255",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    },
+    "settings.png": {
+      "status": "OWNER_APPROVED",
+      "strategy": "canonical_recomposition",
+      "original_sha256": "53454fda6ee6f961db7db9f8da5d2e1363b5680dcde714c8dafef46b87d24d1e",
+      "bundled_sha256": "7068b3c047a06bc9eb1e908e416f7c955c796c1a5b13dbf7e77d9786a6d10da7",
+      "alpha_bbox_xyxy_inclusive": [
+        40,
+        31,
+        470,
+        475
+      ],
+      "canvas": [
+        512,
+        512
+      ]
+    }
+  }
+}

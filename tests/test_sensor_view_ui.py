@@ -7,7 +7,8 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QAbstractButton, QComboBox, QLabel, QLineEdit
 
 from app.database import Database
 from app.sensor_data import SensorChannel, SensorDevice, SensorObservation
@@ -63,13 +64,30 @@ class SensorViewUiTest(unittest.TestCase):
             finally:
                 page.deleteLater()
 
+    def test_runtime_sensor_page_is_locked_and_marked_under_construction(self) -> None:
+        from app.sensor_view_integration import SensorViewPage as RuntimeSensorViewPage
+
+        page = RuntimeSensorViewPage(object())
+        try:
+            texts = [label.text() for label in page.findChildren(QLabel)]
+            self.assertIn("Αισθητήρες / API", texts)
+            self.assertIn("ΥΠΟ ΚΑΤΑΣΚΕΥΗ", texts)
+            self.assertEqual(Qt.FocusPolicy.NoFocus, page.focusPolicy())
+            self.assertEqual([], page.findChildren(QAbstractButton))
+            self.assertEqual([], page.findChildren(QComboBox))
+            self.assertEqual([], page.findChildren(QLineEdit))
+        finally:
+            page.deleteLater()
+
     def test_startup_integration_appends_sensor_view_without_shifting_existing_indices(self) -> None:
-        from app import crop_program_integration, main_window, plant_tracking_integration, sensor_view_integration
+        from app import crop_program_integration, crop_programs, main_window, plant_tracking_integration, sensor_view_integration
 
         original_window = main_window.MainWindow
         original_crop_page = crop_program_integration.CropProgramsPage
         original_plant_page = plant_tracking_integration.PlantTrackingPage
         original_sensor_page = sensor_view_integration.SensorViewPage
+        original_module_crop_page = crop_programs.CropProgramsPage
+        original_rule_dialog = crop_programs.RuleDialog
 
         class BaseWindow:
             def __init__(self, *args, **kwargs) -> None:
@@ -108,6 +126,8 @@ class SensorViewUiTest(unittest.TestCase):
             crop_program_integration.CropProgramsPage = original_crop_page
             plant_tracking_integration.PlantTrackingPage = original_plant_page
             sensor_view_integration.SensorViewPage = original_sensor_page
+            crop_programs.CropProgramsPage = original_module_crop_page
+            crop_programs.RuleDialog = original_rule_dialog
 
 
 if __name__ == "__main__":

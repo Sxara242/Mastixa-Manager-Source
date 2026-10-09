@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Ενέργειες κλειδωμένου έτους": "Locked-year actions",
+    "Αιτία ενέργειας": "Reason for action",
+    "Μόνιμο ξεκλείδωμα έτους": "Permanently unlock year",
+    "Συμπλήρωσε αιτία ενέργειας.": "Enter a reason for this action.",
+    "Το ενεργό έτος άλλαξε επιτυχώς σε {year}.": "The active year was successfully changed to {year}.",
+    "Κλειδωμένο έτος {year} — Μόνο προβολή": "Locked year {year} — Read only",
+    "Να ξεκλειδωθεί μόνιμα το έτος {year};\n\nΑιτία ενέργειας: {reason}": "Permanently unlock year {year}?\n\nReason for action: {reason}",
+    "Το έτος {year} είναι κλειδωμένο — Μόνο προβολή.\n\nΓια αλλαγές: Ασφάλεια → Κλείδωμα Έτους → Προσωρινή διόρθωση.": "Year {year} is locked — Read only.\n\nFor changes: Security → Year Lock → Temporary correction.",
+    "Το έτος {year} είναι κλειδωμένο — Μόνο προβολή.\n\nΓια αλλαγές: Ασφάλεια → Κλείδωμα Έτους → Προσωρινή διόρθωση.\n\nΑιτιολογία: {reason}": "Year {year} is locked — Read only.\n\nFor changes: Security → Year Lock → Temporary correction.\n\nReason: {reason}",
+    "Επεξεργασία έτους: {year} — προσωρινό mode": "Editing year: {year} — temporary mode",
+    "ΠΡΟΣΟΧΗ: Επεξεργάζεσαι το κλειδωμένο έτος {year} — Τρέχον έτος: {active_year}": "WARNING: You are editing locked year {year} — Current year: {active_year}",
+    "Επιστροφή στο ενεργό έτος {active_year}": "Return to active year {active_year}",
+    "ΠΡΟΣΟΧΗ: Επεξεργάζεσαι προσωρινά το κλειδωμένο έτος {year}. Το ενεργό έτος παραμένει {active_year}. Αιτιολογία: {reason}": "WARNING: You are temporarily editing locked year {year}. The active year remains {active_year}. Reason: {reason}",
+    "Θα ανοίξει προσωρινά για διορθώσεις το κλειδωμένο έτος {year}.\n\nΤο ενεργό έτος {active_year} θα παραμείνει αποθηκευμένο και θα επανέλθει μόλις ολοκληρώσεις τις διορθώσεις.\n\nΚάθε ενέργεια αλλαγής θα εμφανίζει προειδοποίηση. Συνέχεια;": "Locked year {year} will temporarily open for corrections.\n\nThe active year {active_year} will remain saved and will be restored when you finish corrections.\n\nEvery change will display a warning. Continue?",
+    "Να ολοκληρωθούν οι διορθώσεις στο {year};\n\nΘα επιστρέψεις στο ενεργό έτος {active_year}. Το {year} παραμένει κλειδωμένο.": "Finish corrections in {year}?\n\nYou will return to active year {active_year}. {year} remains locked.",
+    "Να ολοκληρωθούν οι διορθώσεις στο {year} και να επιστρέψεις στο ενεργό έτος {active_year};\n\nΤο παλιό έτος παραμένει κλειδωμένο.": "Finish corrections in {year} and return to active year {active_year}?\n\nThe old year remains locked.",
+    "Επεξεργάζεσαι το κλειδωμένο έτος {year}.\n\nΕνέργεια: {action}\nΑιτιολογία: {reason}\n\nΝα συνεχιστεί η ενέργεια;": "You are editing locked year {year}.\n\nAction: {action}\nReason: {reason}\n\nContinue with this action?",
+    "Υπάρχει ήδη προσωρινή επεξεργασία για το έτος {year}.": "A correction session is already active for year {year}.",
+    "Δεν ήταν δυνατή η έναρξη της προσωρινής διόρθωσης. Έλεγξε το κλειδωμένο έτος και την αιτιολογία.": "Could not start temporary correction. Check the locked year and correction reason.",
+    "Το έτος {year} είναι κλειδωμένο. Για διορθώσεις χρησιμοποίησε την «Επεξεργασία κλειδωμένου έτους» από το Κλείδωμα Έτους.": "Year {year} is locked. For corrections, use Edit locked year in Year Lock.",
+    "Επεξεργάζεσαι ακόμη το κλειδωμένο έτος {year}.\n\nΑν κλείσεις τώρα, η λειτουργία προσωρινής διόρθωσης θα τερματιστεί και στην επόμενη εκκίνηση θα επιστρέψεις στο ενεργό έτος {active_year}.\n\nΟι αλλαγές που έχουν ήδη αποθηκευτεί παραμένουν. Να κλείσει η εφαρμογή;": "You are still editing locked year {year}.\n\nIf you close now, temporary correction mode will end and the next launch will return to active year {active_year}.\n\nChanges already saved will remain. Close the application?"
+  }
+}

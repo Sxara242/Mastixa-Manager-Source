@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLabel,QListWidget,QListWidgetItem,
     QPushButton,QComboBox,QTableWidget,QTableWidgetItem,QFileDialog,QMessageBox)
+from ..localized_messages import _text
 from .store import GeometryStore
 from . import exports
 
@@ -52,7 +53,7 @@ class CoordinateExportDialog(QDialog):
     def export(self):
         if not self.parcels:QMessageBox.information(self,'Εξαγωγή','Επίλεξε διαθέσιμα αγροτεμάχια');return
         extension=self.format.currentText().lower();mode=self.effective_mode()
-        name,_=QFileDialog.getSaveFileName(self,'Εξαγωγή',exports.filename(self.parcels,mode,extension),f'{extension.upper()} (*.{extension})')
+        name,_=QFileDialog.getSaveFileName(self,_text('Εξαγωγή'),exports.filename(self.parcels,mode,extension),f'{extension.upper()} (*.{extension})')
         if not name:return
         output=Path(name)
         if output.suffix.lower()!='.'+extension:

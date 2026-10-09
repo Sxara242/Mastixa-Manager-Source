@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _language, _text
 from .database import Database
 from .field_activity_timeline import load_field_timeline_rows
 from .ui_helpers import compact_decimal, format_kg, table_widget
@@ -23,8 +24,77 @@ from .ui_helpers import compact_decimal, format_kg, table_widget
 class FieldProfilePage(QWidget):
     """Read-only consolidated profile for one field and one year."""
 
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('timeline', 'cost_table'):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
 
         outer = QVBoxLayout(self)
@@ -426,11 +496,10 @@ class FieldProfilePage(QWidget):
 
         for row_index, values in enumerate(rows):
             for column, value in enumerate(values):
-                self.timeline.setItem(
-                    row_index,
-                    column,
-                    QTableWidgetItem(str(value)),
-                )
+                item = QTableWidgetItem(str(value))
+                if column in (1, 2) or (column == 0 and value == "Άγνωστη ημερομηνία"):
+                    self._set_body(item, str(value))
+                self.timeline.setItem(row_index, column, item)
 
     def _clear(self) -> None:
         for label in (
@@ -440,7 +509,7 @@ class FieldProfilePage(QWidget):
             self.area_value,
             self.trees_value,
         ):
-            label.setText("—")
+            self._composed_text(label, "—")
 
         for _box, value in (
             self.production_card,
@@ -473,15 +542,11 @@ class FieldProfilePage(QWidget):
             self._clear()
             return
 
-        self.name_value.setText(field["name"] or "—")
-        self.kaek_value.setText(field["kaek"] or "—")
-        self.location_value.setText(field["location"] or "—")
-        self.area_value.setText(
-            f"{compact_decimal(field['area_stremma'], 3)} στρ."
-        )
-        self.trees_value.setText(
-            str(int(field["productive_trees"] or 0))
-        )
+        self._composed_text(self.name_value, '{value}', value=field['name'] or '—')
+        self._composed_text(self.kaek_value, '{value}', value=field['kaek'] or '—')
+        self._composed_text(self.location_value, '{value}', value=field['location'] or '—')
+        self._composed_text(self.area_value, '{value0} στρ.', value0=compact_decimal(field['area_stremma'], 3))
+        self._composed_text(self.trees_value, "{value}", value=str(int(field["productive_trees"] or 0)))
 
         production = self._sum(
             table="production",
@@ -621,11 +686,9 @@ class FieldProfilePage(QWidget):
         self.cost_table.setRowCount(len(breakdown))
 
         for row_index, (caption, value) in enumerate(breakdown):
-            self.cost_table.setItem(
-                row_index,
-                0,
-                QTableWidgetItem(caption),
-            )
+            item = QTableWidgetItem(caption)
+            self._set_body(item, caption)
+            self.cost_table.setItem(row_index, 0, item)
             self.cost_table.setItem(
                 row_index,
                 1,

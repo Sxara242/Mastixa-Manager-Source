@@ -78,6 +78,28 @@ class CropProgramStoreTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "does not exist"):
                 store.program("missing-program")
 
+    def test_program_category_migrates_and_round_trips(self):
+        with tempfile.TemporaryDirectory() as folder:
+            db, _field_id = self.make_db(Path(folder))
+            store = CropProgramStore(db)
+            columns = {
+                str(row["name"])
+                for row in db.query("PRAGMA table_info(crop_programs)")
+            }
+            self.assertIn("category", columns)
+
+            store.save_program(
+                "category-program",
+                "Category program",
+                [],
+                crop="mastic",
+                category="pruning",
+            )
+            detail = store.program("category-program")
+            self.assertEqual("pruning", detail["category"])
+            listed = store.programs()
+            self.assertEqual("pruning", listed[0]["category"])
+
     def test_regeneration_preserves_decisions_and_archive_preserves_history(self):
         with tempfile.TemporaryDirectory() as folder:
             db, field_id = self.make_db(Path(folder))
@@ -158,8 +180,8 @@ class CropProgramStoreTest(unittest.TestCase):
             store_a.save_program("leap-program", "Leap", [leap_rule])
             before = store_a.generate_for_field("leap-program", field_a, 2028)
             self.assertEqual(1, len(before))
-            with self.assertRaises(ValueError):
-                store_a.generate_for_field("leap-program", field_a, 2027)
+            skipped = store_a.generate_for_field("leap-program", field_a, 2027)
+            self.assertEqual([], skipped)
             self.assertEqual(
                 before,
                 store_a.tasks(

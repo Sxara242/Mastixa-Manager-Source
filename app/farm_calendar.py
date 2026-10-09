@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -14,19 +16,66 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _language, _text
 from .database import Database
-from .ui_helpers import compact_decimal, format_kg, table_widget
+from .ui_helpers import compact_decimal, format_kg, table_widget, scrollable_entry_layout
 
 
-class FarmCalendarPage(QWidget):
+class FarmCalendarPage(YearFilteredPage):
     """Ενιαία, read-only χρονολογική προβολή των βασικών καλλιεργητικών γεγονότων."""
+
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('count_label',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
 
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self._rows: list[dict] = []
 
-        layout = QVBoxLayout(self)
+        layout = scrollable_entry_layout(self)
         layout.setContentsMargins(16, 18, 16, 18)
         layout.setSpacing(12)
 
@@ -183,43 +232,7 @@ class FarmCalendarPage(QWidget):
         self.field.blockSignals(False)
 
     def _refresh_years(self) -> None:
-        current = self.year.currentData()
-        years: set[str] = set()
-
-        for table_name, date_column in (
-            ("production", "entry_date"),
-            ("farm_activities", "activity_date"),
-            ("plant_protection_records", "application_date"),
-            ("labor_entries", "work_date"),
-            ("planting_batches", "planting_date"),
-        ):
-            if not self._table_exists(table_name):
-                continue
-
-            rows = self.db.query(
-                f"""
-                SELECT DISTINCT SUBSTR({date_column},1,4) AS year
-                FROM {table_name}
-                WHERE
-                    {date_column} IS NOT NULL
-                    AND {date_column} <> ''
-                """
-            )
-
-            for row in rows:
-                value = str(row["year"] or "").strip()
-                if value:
-                    years.add(value)
-
-        self.year.blockSignals(True)
-        self.year.clear()
-        self.year.addItem("Όλα τα έτη", None)
-        for value in sorted(years, reverse=True):
-            self.year.addItem(value, value)
-
-        index = self.year.findData(current)
-        self.year.setCurrentIndex(index if index >= 0 else 0)
-        self.year.blockSignals(False)
+        populate_year_filter(self, self.year, strings=True)
 
     def _append(
         self,
@@ -234,6 +247,8 @@ class FarmCalendarPage(QWidget):
         record_id: int,
         search_text: str,
     ) -> None:
+        if not hasattr(self, "_body_rows"):
+            self._body_rows = {}
         self._rows.append(
             {
                 "date": date,
@@ -279,6 +294,8 @@ class FarmCalendarPage(QWidget):
                 record_id=int(row["id"]),
                 search_text=f"{description} {notes} {row['field_name'] or ''}",
             )
+            if not ("product" in row.keys() and row["product"]):
+                self._body_rows[id(self._rows[-1])] = {3: ("Παραγωγή", {}, {})}
 
     def _load_activities(self) -> None:
         if not self._table_exists("farm_activities"):
@@ -332,6 +349,9 @@ class FarmCalendarPage(QWidget):
                     )
                 ),
             )
+            category = row["category"] or "Καταχώρηση"
+            owned = category in ("Πότισμα", "Λίπανση", "Καταχώρηση")
+            self._body_rows[id(self._rows[-1])] = {3: ("{category}{description}", {"description": (" — " + row["description"]) if row["description"] else "", **({} if owned else {"category": category})}, {"category": category} if owned else {})}
 
     def _load_plant_protection(self) -> None:
         if not self._table_exists("plant_protection_records"):
@@ -382,6 +402,8 @@ class FarmCalendarPage(QWidget):
                     )
                 ),
             )
+            if not row["product_name"]:
+                self._body_rows[id(self._rows[-1])] = {3: ("Επέμβαση{purpose}", {"purpose": (" — " + row["purpose"]) if row["purpose"] else ""}, {})}
 
     def _load_labor(self) -> None:
         if not self._table_exists("labor_entries"):
@@ -428,6 +450,10 @@ class FarmCalendarPage(QWidget):
                     )
                 ),
             )
+            specs = {4: ("{hours} ώρες | {cost} €", {"hours": compact_decimal(row["hours"], 2), "cost": f"{float(row['cost'] or 0):.2f}"}, {})}
+            if not row["field_name"]: specs[2] = ("Γενική", {}, {})
+            if not row["work_type"]: specs[3] = ("Εργασία{worker}", {"worker": (" — " + row["worker_name"]) if row["worker_name"] else ""}, {})
+            self._body_rows[id(self._rows[-1])] = specs
 
     def _load_plantings(self) -> None:
         if not self._table_exists("planting_batches"):
@@ -480,12 +506,16 @@ class FarmCalendarPage(QWidget):
                     )
                 ),
             )
+            specs = {4: ("{planted} φυτεμένα | {alive} ζωντανά | {losses} απώλειες{cost}", {"planted": planted, "alive": alive, "losses": losses, "cost": f" | {float(row['cost']):.2f} €" if float(row["cost"] or 0) > 0 else ""}, {})}
+            if not row["material_type"]: specs[3] = ("Φύτευση{source}", {"source": (" — " + row["source"]) if row["source"] else ""}, {})
+            self._body_rows[id(self._rows[-1])] = specs
 
     def refresh(self, *_args) -> None:
         self._refresh_fields()
         self._refresh_years()
 
         self._rows = []
+        self._body_rows = {}
         self._load_production()
         self._load_activities()
         self._load_plant_protection()
@@ -558,21 +588,25 @@ class FarmCalendarPage(QWidget):
 
             for column, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                if column == 1:
+                    self._set_body(item, row["section"])
+                else:
+                    spec = getattr(self, "_body_rows", {}).get(id(row), {}).get(column)
+                    if spec is not None:
+                        self._set_body(item, spec[0], _labels=spec[2], **spec[1])
                 item.setData(
                     Qt.ItemDataRole.UserRole,
                     row,
                 )
                 if column == 3:
-                    item.setToolTip(str(value))
+                    item.setToolTip(item.text())
                 self.table.setItem(
                     row_index,
                     column,
                     item,
                 )
 
-        self.count_label.setText(
-            f"{len(filtered)} καταχωρήσεις"
-        )
+        self._body_label(self.count_label, "{count} καταχωρήσεις", count=len(filtered))
 
         if filtered:
             dates = [

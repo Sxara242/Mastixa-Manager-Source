@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Ενεργό έτος εργασίας": "Active working year",
+    "Ενεργό έτος εργασίας:": "Active working year:",
+    "Μετάβαση": "Switch",
+    "Επεξεργασία έτους": "Editing year",
+    "προσωρινό mode": "temporary mode",
+    "ΠΡΟΣΟΧΗ: Επεξεργάζεσαι το κλειδωμένο έτος": "WARNING: You are editing locked year",
+    "Τρέχον έτος": "Current year",
+    "Επιστροφή στο ενεργό έτος": "Return to active year",
+    "Προσωρινή διόρθωση κλειδωμένου έτους": "Temporary correction of locked year",
+    "Αιτιολογία διόρθωσης": "Correction reason",
+    "Π.χ. Ξεχασμένο έξοδο ή διόρθωση παραστατικού": "E.g. forgotten expense or document correction",
+    "Επεξεργασία κλειδωμένου έτους": "Edit locked year",
+    "Ολοκλήρωση διορθώσεων & επανακλείδωμα": "Finish corrections & relock",
+    "Ολοκλήρωση διορθώσεων": "Finish corrections",
+    "Μετάβαση στο επόμενο έτος": "Switch to next year",
+    "Προσωρινή επεξεργασία παλιού έτους": "Temporary editing of old year",
+    "Ενεργό Έτος / Διορθώσεις": "Active Year / Corrections",
+    "Προσωρινή διόρθωση": "Temporary correction",
+    "Συμπλήρωσε αιτιολογία διόρθωσης.": "Enter a correction reason.",
+    "Επίλεξε κλειδωμένο έτος.": "Select a locked year.",
+    "Για ξεχασμένη εγγραφή ή διόρθωση, άνοιξε προσωρινά μόνο το κλειδωμένο έτος που χρειάζεσαι. Το κανονικό ενεργό έτος δεν αλλάζει.": "For a forgotten entry or correction, temporarily open only the locked year you need. The normal active year does not change.",
+    "Ολοκλήρωσε πρώτα την προσωρινή διόρθωση πριν κάνεις μόνιμο ξεκλείδωμα.": "Finish the temporary correction before permanently unlocking the year."
+  }
+}

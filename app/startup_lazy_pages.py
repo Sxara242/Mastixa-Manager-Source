@@ -45,7 +45,10 @@ class LazyPage(QWidget):
         if self._loaded_page is not None:
             return self._loaded_page
 
-        page = self._factory(*self._factory_args, **self._factory_kwargs)
+        options = dict(self._factory_kwargs)
+        if options.get("staged"):
+            options["parent"] = self
+        page = self._factory(*self._factory_args, **options)
         if not isinstance(page, QWidget):
             raise TypeError("Lazy page factory must return a QWidget")
 
@@ -106,6 +109,14 @@ class LazyPage(QWidget):
     def focus_search(self, *args: Any, **kwargs: Any):
         return self._call_page_method("focus_search", *args, **kwargs)
 
+    def refresh_year_context_ui(self) -> None:
+        """Synchronize cached controls without constructing unvisited pages."""
+        if self._loaded_page is None:
+            return
+        callback = getattr(self._loaded_page, "refresh_year_context_ui", None)
+        if callable(callback):
+            callback()
+
 
 class LazySettingsPage(LazyPage):
     profile_switch_requested = Signal(str)
@@ -125,6 +136,8 @@ def _lazy_constructor(
     wrapper = LazySettingsPage if settings_page else LazyPage
 
     def construct(*args: Any, **kwargs: Any) -> QWidget:
+        if getattr(factory, "__name__", "") in {"InventoryPage", "AnnualFarmReportPage", "SettingsPage"}:
+            kwargs["staged"] = True
         return wrapper(
             factory,
             *args,
@@ -186,10 +199,12 @@ def install_startup_lazy_pages() -> None:
         "SettingsPage",
     )
 
-    # These two constructors already call refresh() before returning. They are
-    # the first visible pages of the two heaviest nested categories, so an
-    # immediate navigation refresh only duplicates their expensive first load.
-    self_refreshing_first_pages = {"ProductionPage", "ReportsPage"}
+    # These constructors already finish populating their contents via refresh().
+    # Skip only the duplicate refresh on the navigation that constructs them.
+    self_refreshing_first_pages = {
+        "ProductionPage", "ReportsPage", "InventoryPage", "MoneyPage",
+        "AnnualFarmReportPage", "SettingsPage", "YearLockPage",
+    }
 
     def init(self, *args: Any, **kwargs: Any) -> None:
         from . import crop_program_integration

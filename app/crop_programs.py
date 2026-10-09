@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .localized_messages import _text
+
 from datetime import date
 from uuid import uuid4
 
@@ -30,6 +32,7 @@ from PySide6.QtWidgets import (
 from .crop_program import CropProgramRule
 from .crop_program_store import CropProgramStore
 from .database import Database
+from .year_context import effective_working_year
 from .language import tr
 from .ui_helpers import table_widget
 
@@ -62,10 +65,20 @@ def _display_date(value: object) -> str:
 
 
 class RuleDialog(QDialog):
-    def __init__(self, parent: QWidget | None = None, rule: CropProgramRule | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        rule: CropProgramRule | None = None,
+        *,
+        program_name: str = "",
+        default_category: str = "",
+    ):
         super().__init__(parent)
         self._rule_id = rule.id if rule is not None else str(uuid4())
-        self.setWindowTitle("Κανόνας προγράμματος")
+        title = tr("Κανόνας προγράμματος")
+        self.setWindowTitle(
+            f"{title} — {program_name}" if program_name else title
+        )
         self.setMinimumWidth(520)
 
         layout = QVBoxLayout(self)
@@ -81,8 +94,11 @@ class RuleDialog(QDialog):
         self.category_combo.setProperty("mastixaI18nStaticItems", True)
         for label, value in CATEGORY_OPTIONS:
             self.category_combo.addItem(label, value)
-        if rule is not None:
-            index = self.category_combo.findData(rule.category)
+        category_value = (
+            rule.category if rule is not None else str(default_category or "")
+        )
+        if category_value:
+            index = self.category_combo.findData(category_value)
             if index >= 0:
                 self.category_combo.setCurrentIndex(index)
         form.addRow("Κατηγορία", self.category_combo)
@@ -188,6 +204,27 @@ class RuleDialog(QDialog):
 class CropProgramsPage(QWidget):
     """Phase 12D Windows UI for templates, assignment and generated tasks."""
 
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            # The existing language-change refresh already updates this heading.
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
@@ -242,11 +279,17 @@ class CropProgramsPage(QWidget):
         self.name_edit.setPlaceholderText("Όνομα προγράμματος")
         self.crop_edit = QLineEdit()
         self.crop_edit.setPlaceholderText("Καλλιέργεια, π.χ. Μαστίχα")
+        self.program_category_combo = QComboBox()
+        self.program_category_combo.setProperty("mastixaI18nStaticItems", True)
+        self.program_category_combo.addItem("Χωρίς κατηγορία", "")
+        for label, value in CATEGORY_OPTIONS:
+            self.program_category_combo.addItem(label, value)
         self.description_edit = QTextEdit()
         self.description_edit.setFixedHeight(74)
         self.description_edit.setPlaceholderText("Περιγραφή / παρατηρήσεις...")
         editor_form.addRow("Όνομα", self.name_edit)
         editor_form.addRow("Καλλιέργεια", self.crop_edit)
+        editor_form.addRow("Κατηγορία προγράμματος", self.program_category_combo)
         editor_form.addRow("Περιγραφή", self.description_edit)
 
         program_buttons = QHBoxLayout()
@@ -254,7 +297,7 @@ class CropProgramsPage(QWidget):
         self.new_button.clicked.connect(self.new_program)
         self.save_button = QPushButton("Αποθήκευση")
         self.save_button.clicked.connect(self.save_program)
-        self.archive_button = QPushButton("Αρχειοθέτηση")
+        self.archive_button = QPushButton("Απενεργοποίηση")
         self.archive_button.clicked.connect(self.archive_program)
         program_buttons.addWidget(self.new_button)
         program_buttons.addWidget(self.save_button)
@@ -264,8 +307,8 @@ class CropProgramsPage(QWidget):
         program_layout.addWidget(editor, 2)
         layout.addWidget(program_box)
 
-        rules_box = QGroupBox("Κανόνες εργασιών")
-        rules_layout = QVBoxLayout(rules_box)
+        self.rules_box = QGroupBox("Κανόνες του προγράμματος")
+        rules_layout = QVBoxLayout(self.rules_box)
         self.rules_table = table_widget(
             ["Εργασία", "Κατηγορία", "Προγραμματισμός", "Σημειώσεις"]
         )
@@ -284,7 +327,7 @@ class CropProgramsPage(QWidget):
         rule_buttons.addWidget(self.remove_rule_button)
         rule_buttons.addStretch()
         rules_layout.addLayout(rule_buttons)
-        layout.addWidget(rules_box)
+        layout.addWidget(self.rules_box)
 
         assignment_box = QGroupBox("Εφαρμογή προγράμματος")
         assignment = QHBoxLayout(assignment_box)
@@ -294,7 +337,7 @@ class CropProgramsPage(QWidget):
         self.assignment_field.setProperty("mastixaI18nSkipItems", True)
         self.season_year = QSpinBox()
         self.season_year.setRange(1900, 9998)
-        self.season_year.setValue(date.today().year)
+        self.season_year.setValue(effective_working_year(self.db))
         self.generate_button = QPushButton("Δημιουργία / ανανέωση εργασιών")
         self.generate_button.clicked.connect(self.generate_tasks)
         assignment.addWidget(QLabel("Πρόγραμμα"))
@@ -372,26 +415,39 @@ class CropProgramsPage(QWidget):
         if program_id:
             self.load_program(str(program_id))
 
-    def _set_editor_enabled(self, enabled: bool) -> None:
+    def _set_rule_editor_enabled(self, enabled: bool) -> None:
         for widget in (
-            self.name_edit,
-            self.crop_edit,
-            self.description_edit,
-            self.save_button,
             self.add_rule_button,
             self.edit_rule_button,
             self.remove_rule_button,
         ):
             widget.setEnabled(enabled)
 
+    def _set_editor_enabled(self, enabled: bool) -> None:
+        for widget in (
+            self.name_edit,
+            self.crop_edit,
+            self.program_category_combo,
+            self.description_edit,
+            self.save_button,
+        ):
+            widget.setEnabled(enabled)
+        self._set_rule_editor_enabled(enabled)
+
     def new_program(self) -> None:
         self.selected_program_id = None
         self.name_edit.clear()
         self.crop_edit.clear()
+        self.program_category_combo.setCurrentIndex(0)
         self.description_edit.clear()
         self.rules = []
         self._set_editor_enabled(True)
+        # Rules must belong to a durable program. Save the program metadata first,
+        # then rule Save/Edit/Remove can persist immediately without a hidden
+        # second program-level save step.
+        self._set_rule_editor_enabled(False)
         self.archive_button.setEnabled(False)
+        self._update_rules_heading()
         self._render_rules()
         self.name_edit.setFocus()
 
@@ -404,11 +460,18 @@ class CropProgramsPage(QWidget):
         self.selected_program_id = str(program["id"])
         self.name_edit.setText(str(program["name"]))
         self.crop_edit.setText(str(program["crop"] or ""))
+        category_index = self.program_category_combo.findData(
+            str(program.get("category") or "")
+        )
+        self.program_category_combo.setCurrentIndex(
+            category_index if category_index >= 0 else 0
+        )
         self.description_edit.setPlainText(str(program["description"] or ""))
         self.rules = list(program["rules"])
         active = bool(program["active"])
         self._set_editor_enabled(active)
         self.archive_button.setEnabled(active)
+        self._update_rules_heading()
         self._render_rules()
 
     def save_program(self) -> None:
@@ -423,6 +486,7 @@ class CropProgramsPage(QWidget):
                 name,
                 self.rules,
                 crop=self.crop_edit.text().strip(),
+                category=str(self.program_category_combo.currentData() or ""),
                 description=self.description_edit.toPlainText().strip(),
             )
         except (ValueError, OverflowError) as exc:
@@ -437,9 +501,10 @@ class CropProgramsPage(QWidget):
             return
         answer = QMessageBox.question(
             self,
-            "Αρχειοθέτηση προγράμματος",
-            "Η αρχειοθέτηση αφαιρεί τις εκκρεμείς εργασίες και κρατά "
-            "το ιστορικό όσων ολοκληρώθηκαν ή παραλείφθηκαν. Συνέχεια;",
+            "Απενεργοποίηση προγράμματος",
+            "Η απενεργοποίηση αφαιρεί τις εκκρεμείς προγραμματισμένες εργασίες. "
+            "Οι ολοκληρωμένες ή παραλειφθείσες εργασίες παραμένουν στο ιστορικό. "
+            "Το πρόγραμμα θα γίνει ανενεργό. Συνέχεια;",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
@@ -454,28 +519,110 @@ class CropProgramsPage(QWidget):
         self.refresh()
         self._select_program(archived)
 
+    def _update_program_rule_count(self, program_id: str) -> None:
+        program = next(
+            (
+                item
+                for item in self.store.programs()
+                if str(item["id"]) == str(program_id)
+            ),
+            None,
+        )
+        if program is None:
+            return
+
+        marker = "" if program["active"] else " ⏸"
+        for index in range(self.program_list.count()):
+            item = self.program_list.item(index)
+            if str(item.data(Qt.ItemDataRole.UserRole)) != str(program_id):
+                continue
+            item.setText(
+                f'{program["name"]} ({program["rule_count"]}){marker}'
+            )
+            return
+
+    def _persist_rules(
+        self,
+        rules: list[CropProgramRule],
+        *,
+        selected_row: int | None = None,
+    ) -> bool:
+        if not self.selected_program_id:
+            QMessageBox.information(
+                self,
+                "Πρόγραμμα Καλλιέργειας",
+                "Αποθήκευσε πρώτα το πρόγραμμα πριν προσθέσεις κανόνες.",
+            )
+            return False
+
+        program_id = self.selected_program_id
+        try:
+            self.store.save_rules(program_id, rules)
+        except (ValueError, OverflowError) as exc:
+            QMessageBox.warning(self, "Πρόγραμμα Καλλιέργειας", str(exc))
+            return False
+
+        self.rules = list(rules)
+        self._render_rules()
+        self._update_program_rule_count(program_id)
+        if (
+            selected_row is not None
+            and 0 <= selected_row < self.rules_table.rowCount()
+        ):
+            self.rules_table.selectRow(selected_row)
+        return True
+
     def add_rule(self) -> None:
-        dialog = RuleDialog(self)
+        if not self.selected_program_id:
+            QMessageBox.information(
+                self,
+                "Πρόγραμμα Καλλιέργειας",
+                "Αποθήκευσε πρώτα το πρόγραμμα πριν προσθέσεις κανόνες.",
+            )
+            return
+
+        dialog = RuleDialog(
+            self,
+            program_name=self.name_edit.text().strip(),
+            default_category=str(self.program_category_combo.currentData() or ""),
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.rules.append(dialog.rule())
-            self._render_rules()
+            self._persist_rules([*self.rules, dialog.rule()])
 
     def edit_rule(self, *_args) -> None:
+        if not self.selected_program_id:
+            return
         row = self.rules_table.currentRow()
         if row < 0 or row >= len(self.rules):
             return
-        dialog = RuleDialog(self, self.rules[row])
+        dialog = RuleDialog(
+            self,
+            self.rules[row],
+            program_name=self.name_edit.text().strip(),
+        )
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.rules[row] = dialog.rule()
-            self._render_rules()
-            self.rules_table.selectRow(row)
+            rules = list(self.rules)
+            rules[row] = dialog.rule()
+            self._persist_rules(rules, selected_row=row)
 
     def remove_rule(self) -> None:
+        if not self.selected_program_id:
+            return
         row = self.rules_table.currentRow()
         if row < 0 or row >= len(self.rules):
             return
-        del self.rules[row]
-        self._render_rules()
+        rules = list(self.rules)
+        del rules[row]
+        self._persist_rules(rules)
+
+    def _update_rules_heading(self) -> None:
+        if not hasattr(self, "rules_box"):
+            return
+        name = self.name_edit.text().strip()
+        if self.selected_program_id and name:
+            self._composed_text(self.rules_box, 'Κανόνες του προγράμματος: {name}', name=name)
+        else:
+            self._composed_text(self.rules_box, 'Κανόνες του προγράμματος')
 
     def _render_rules(self) -> None:
         self.rules_table.setRowCount(len(self.rules))
@@ -516,7 +663,11 @@ class CropProgramsPage(QWidget):
         task_field = self.task_field_filter.currentData()
 
         programs = self.store.programs()
-        active_programs = [item for item in programs if item["active"]]
+        active_programs = [
+            item
+            for item in programs
+            if item["active"] and int(item["rule_count"]) > 0
+        ]
         fields = self._fields()
 
         self._loading = True
@@ -538,11 +689,14 @@ class CropProgramsPage(QWidget):
                 self.assignment_field.addItem(str(field["name"]), str(field["id"]))
 
             self.task_program_filter.clear()
-            self.task_program_filter.addItem("Όλα τα προγράμματα", None)
+            # These combos intentionally skip automatic item translation because
+            # program/field names are user data. Translate only the system rows
+            # when rebuilding them so live language changes cannot reinsert Greek.
+            self.task_program_filter.addItem(tr("Όλα τα προγράμματα"), None)
             for program in programs:
                 self.task_program_filter.addItem(str(program["name"]), program["id"])
             self.task_field_filter.clear()
-            self.task_field_filter.addItem("Όλα τα αγροτεμάχια", None)
+            self.task_field_filter.addItem(tr("Όλα τα αγροτεμάχια"), None)
             for field in fields:
                 self.task_field_filter.addItem(str(field["name"]), str(field["id"]))
 
@@ -555,6 +709,11 @@ class CropProgramsPage(QWidget):
 
         if selected:
             self._select_program(selected)
+        self._update_rules_heading()
+        self.generate_button.setEnabled(
+            self.assignment_program.count() > 0
+            and self.assignment_field.count() > 0
+        )
         self._render_rules()
         self.refresh_tasks()
 
@@ -587,6 +746,10 @@ class CropProgramsPage(QWidget):
             "Πρόγραμμα Καλλιέργειας",
             f"Οι εργασίες ενημερώθηκαν. Σύνολο για την ανάθεση: {len(generated)}.",
         )
+
+    def refresh_year_context_ui(self) -> None:
+        # This selects an application year, not a stored program/rule date.
+        self.season_year.setValue(effective_working_year(self.db))
 
     def refresh_tasks(self) -> None:
         if self._loading:

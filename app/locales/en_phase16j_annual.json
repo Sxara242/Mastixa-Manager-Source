@@ -1,0 +1,10 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "Προβολή προϊόντος «{product_name}»: Παραγωγή, Πωλήσεις, Stock και Έσοδα πωλήσεων αφορούν μόνο το προϊόν. Τα Λοιπά έσοδα και Έξοδα εμφανίζονται ως γενικά / μη κατανεμημένα και ΔΕΝ επιμερίζονται αυθαίρετα στο προϊόν. Για αυτό δεν υπολογίζεται ψευδές «καθαρό αποτέλεσμα προϊόντος».": "Product view «{product_name}»: Production, Sales, Stock and Sales revenue refer only to this product. Other income and Expenses are shown as general / unallocated and are NOT arbitrarily allocated to the product. Therefore, no misleading «product net result» is calculated.",
+    "Περιλαμβάνονται στο προϊόν": "Included in product",
+    "Περιλαμβάνονται στο αποτέλεσμα": "Included in result",
+    "Μη κατανεμημένα — δεν αποδίδονται στο προϊόν": "Unallocated — not attributed to the product",
+    "Μη κατανεμημένα — δεν αφαιρούνται από προϊόν": "Unallocated — not deducted from the product"
+  }
+}

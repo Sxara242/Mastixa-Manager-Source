@@ -20,11 +20,15 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
+from .localized_messages import _text, _language, _message
 from .crud import CrudPage
+from .widgets import date_input
 from .database import BASE_DIR, Database
 from .language import combo_source_text
+from .invoice_storage import owned_root, owned_file, resolve_file
 from .ui_helpers import table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 from .partner_links import (
     PartnerComboBox,
     canonical_partner_name,
@@ -34,7 +38,7 @@ from .partner_links import (
 
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp", ".pdf"}
-INVOICE_FILES_DIR = BASE_DIR / "data" / "invoice_documents"
+INVOICE_FILES_DIR = BASE_DIR / "data" / "invoice_documents"  # Legacy read/copy source only.
 APP_TESSDATA_DIR = BASE_DIR / "data" / "tessdata"
 DATE_PATTERNS = (
     re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](20\d{2})(?!\d)"),
@@ -56,16 +60,88 @@ COMPANY_FORM_PATTERN = re.compile(
 )
 
 
+_OCR_BODY_LABELS = {"unavailable": "μη διαθέσιμο — χειροκίνητη καταχώριση", "failed": "αποτυχία — χειροκίνητη καταχώριση", "no_metadata": "δεν βρέθηκαν ασφαλή μεταδεδομένα", "metadata_found": "προτάθηκαν ασφαλή μεταδεδομένα"}
+
+
 class InvoiceDocumentsPage(CrudPage):
     """Managed invoice images with date filtering, OCR hints and ZIP export."""
 
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('financial_status',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_id: int | None = None
         self._ensure_schema()
         ensure_partner_link_schema(self.db)
-        INVOICE_FILES_DIR.mkdir(parents=True, exist_ok=True)
+        owned_root(self.db.path).mkdir(parents=True, exist_ok=True)
 
         outer = QVBoxLayout(self); outer.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea(); scroll.setWidgetResizable(True); scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -90,7 +166,7 @@ class InvoiceDocumentsPage(CrudPage):
         self.supplier = PartnerComboBox(self.db); self.supplier.setPlaceholderText("Προμηθευτής / εκδότης")
         self.invoice_number = QLineEdit(); self.invoice_number.setPlaceholderText("Αριθμός τιμολογίου")
         self.date_enabled = QCheckBox("Καταχώριση ημερομηνίας τιμολογίου")
-        self.invoice_date = QDateEdit(QDate.currentDate()); self.invoice_date.setCalendarPopup(True); self.invoice_date.setDisplayFormat("dd/MM/yyyy"); self.invoice_date.setEnabled(False)
+        self.invoice_date = date_input(self.db); self.invoice_date.setCalendarPopup(True); self.invoice_date.setDisplayFormat("dd/MM/yyyy"); self.invoice_date.setEnabled(False)
         self.date_enabled.toggled.connect(self.invoice_date.setEnabled)
         date_row = QHBoxLayout(); date_row.addWidget(self.date_enabled); date_row.addWidget(self.invoice_date)
         self.amount = QLineEdit(); self.amount.setPlaceholderText("Προαιρετικό ποσό")
@@ -259,14 +335,14 @@ class InvoiceDocumentsPage(CrudPage):
         return ("metadata_found" if found else "no_metadata", text, metadata)
 
     def choose_files(self) -> None:
-        paths, _filter = QFileDialog.getOpenFileNames(self, "Εισαγωγή τιμολογίων", "", "Τιμολόγια (*.jpg *.jpeg *.png *.bmp *.tif *.tiff *.webp *.pdf);;Όλα (*.*)")
+        paths, _filter = QFileDialog.getOpenFileNames(self, _text("Εισαγωγή τιμολογίων"), "", _text("Τιμολόγια") + " (*.jpg *.jpeg *.png *.bmp *.tif *.tiff *.webp *.pdf);;" + _text("Όλα") + " (*.*)")
         if paths: self.import_files([Path(path) for path in paths])
 
     def import_files(self, paths: list[Path]) -> list[int]:
         inserted: list[int] = []; rejected: list[str] = []
         for source in paths:
             if not source.is_file() or source.suffix.lower() not in SUPPORTED_EXTENSIONS: rejected.append(source.name); continue
-            safe_name = self._safe_original_name(source); stored_name = f"{uuid.uuid4().hex}{source.suffix.lower()}"; target = INVOICE_FILES_DIR / stored_name
+            safe_name = self._safe_original_name(source); stored_name = f"{uuid.uuid4().hex}{source.suffix.lower()}"; target = owned_file(self.db.path, stored_name)
             try: shutil.copy2(source, target)
             except OSError: rejected.append(source.name); continue
             status, text, metadata = self._run_ocr(target)
@@ -309,33 +385,41 @@ class InvoiceDocumentsPage(CrudPage):
             inserted.append(document_id)
         self.refresh()
         if inserted: self._load_by_id(inserted[-1])
-        if rejected: QMessageBox.warning(self, "Μερική εισαγωγή", "Δεν εισήχθησαν:\n" + "\n".join(rejected))
+        if rejected: _message(self, "warning", "Μερική εισαγωγή", "Δεν εισήχθησαν:\n{filenames}", filenames="\n".join(rejected))
         return inserted
 
-    def _stored_path(self, record) -> Path: return INVOICE_FILES_DIR / str(record["stored_filename"])
+    def _stored_path(self, record) -> Path:
+        return resolve_file(self.db.path, str(record["stored_filename"]), INVOICE_FILES_DIR)
 
     def _load_by_id(self, document_id: int) -> None:
         record = self.db.query_one("SELECT * FROM invoice_documents WHERE id=?", (document_id,))
         if record is None: return
         self.selected_id = int(record["id"]); self.original_name.setText(record["original_filename"]); self.supplier.setText(record["supplier"] or "", record["partner_id"] if "partner_id" in record.keys() else None); self.invoice_number.setText(record["invoice_number"] or ""); self.amount.setText(record["amount_text"] or ""); self.category.setEditText(record["category"] or ""); self.notes.setText(record["notes"] or "")
         type_index = self.document_type.findData(record["document_type"] or "unknown"); self.document_type.setCurrentIndex(max(0, type_index))
-        date = QDate.fromString(record["invoice_date"] or "", "yyyy-MM-dd"); self.date_enabled.setChecked(date.isValid()); self.invoice_date.setDate(date if date.isValid() else QDate.currentDate())
+        date = QDate.fromString(record["invoice_date"] or "", "yyyy-MM-dd"); self.date_enabled.setChecked(date.isValid()); self.invoice_date.setDate(date if date.isValid() else working_context_date(self.db))
         labels = {"unavailable":"μη διαθέσιμο — χειροκίνητη καταχώριση","failed":"αποτυχία — χειροκίνητη καταχώριση","no_metadata":"δεν βρέθηκαν ασφαλή μεταδεδομένα","metadata_found":"προτάθηκαν ασφαλή μεταδεδομένα"}
-        suggestions = []
-        if record["ocr_suggested_date"]: suggestions.append(f"ημερομηνία {record['ocr_suggested_date']}")
-        if record["ocr_suggested_supplier"]: suggestions.append(f"προμηθευτής «{record['ocr_suggested_supplier']}»")
-        if record["ocr_suggested_amount"]: suggestions.append(f"σύνολο {record['ocr_suggested_amount']}")
-        detail = "; ".join(suggestions)
-        self.ocr_status.setText("OCR: " + labels.get(record["ocr_status"], record["ocr_status"]) + (f" — {detail}. Έλεγξε/διόρθωσε πριν αποθήκευση." if detail else ""))
+        def ocr_detail():
+            suggestions = []
+            if record["ocr_suggested_date"]:
+                suggestions.append(_text("ημερομηνία {date}", date=record["ocr_suggested_date"]))
+            if record["ocr_suggested_supplier"]:
+                suggestions.append(_text("προμηθευτής «{supplier}»", supplier=record["ocr_suggested_supplier"]))
+            if record["ocr_suggested_amount"]:
+                suggestions.append(_text("σύνολο {amount}", amount=record["ocr_suggested_amount"]))
+            status = _text(labels[record["ocr_status"]]) if record["ocr_status"] in labels else record["ocr_status"]
+            if suggestions:
+                return _text("OCR: {status} — {detail}. Έλεγξε/διόρθωσε πριν αποθήκευση.", status=status, detail="; ".join(suggestions))
+            return _text("OCR: {status}", status=status)
+        self._composed_text(self.ocr_status, "{value}", value=ocr_detail)
         path = self._stored_path(record); pixmap = QPixmap(str(path))
         if not pixmap.isNull(): self.preview.setPixmap(pixmap.scaled(520, 260, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         else: self.preview.setText("PDF ή αρχείο χωρίς ενσωματωμένη προεπισκόπηση")
         linked_type, linked_id = record["financial_entry_type"], record["financial_entry_id"]
         if linked_type and linked_id:
             label = "Έσοδο" if linked_type == "income" else "Έξοδο"
-            self.financial_status.setText(f"Συνδεδεμένο με {label} #{linked_id}. Δεν θα δημιουργηθεί δεύτερη εγγραφή.")
-        else: self.financial_status.setText("Δεν έχει δημιουργηθεί οικονομική εγγραφή.")
-        year = date.year() if date.isValid() else None; locked = bool(year and is_year_locked(self.db, year)); self.form_box.setTitle(f"Προβολή τιμολογίου — ΚΛΕΙΔΩΜΕΝΟ {year}" if locked else "Επεξεργασία τιμολογίου"); self.save_button.setEnabled(not locked); self.delete_button.setEnabled(not locked and not bool(linked_type and linked_id)); self.post_button.setEnabled(not locked and not bool(linked_type and linked_id)); self.open_button.setEnabled(path.is_file())
+            self._body_label(self.financial_status, "Συνδεδεμένο με Έσοδο #{id}. Δεν θα δημιουργηθεί δεύτερη εγγραφή." if linked_type == "income" else "Συνδεδεμένο με Έξοδο #{id}. Δεν θα δημιουργηθεί δεύτερη εγγραφή.", id=linked_id)
+        else: self._body_label(self.financial_status, "Δεν έχει δημιουργηθεί οικονομική εγγραφή.")
+        year = date.year() if date.isValid() else None; locked = bool(year and is_year_locked(self.db, year)); self._composed_text(self.form_box, "Προβολή τιμολογίου — ΚΛΕΙΔΩΜΕΝΟ {year}" if locked else "Επεξεργασία τιμολογίου", year=year); self.save_button.setEnabled(not locked); self.delete_button.setEnabled(not locked and not bool(linked_type and linked_id)); self.post_button.setEnabled(not locked and not bool(linked_type and linked_id)); self.open_button.setEnabled(path.is_file())
 
     def load_document(self, row: int, column: int) -> None:
         if column == 0: return
@@ -414,62 +498,63 @@ class InvoiceDocumentsPage(CrudPage):
         reference = f"Έγγραφο τιμολογίου #{self.selected_id}: {filename}"
         description = f"Τιμολόγιο {invoice_number}" if invoice_number else f"Τιμολόγιο — {filename}"
         notes = " · ".join(value for value in (reference, self.notes.text().strip()) if value)
-        if document_type == "purchase":
-            entry_id = self.db.execute(
-                """INSERT INTO expenses(
-                    entry_date,category,description,supplier,partner_id,
-                    payment_method,amount,notes
-                ) VALUES(?,?,?,?,?,?,?,?)""",
+        with self.db.transaction() as tx:
+            if document_type == "purchase":
+                entry_id = tx.execute(
+                    """INSERT INTO expenses(
+                        entry_date,category,description,supplier,partner_id,
+                        payment_method,amount,notes
+                    ) VALUES(?,?,?,?,?,?,?,?)""",
+                    (
+                        date.toString("yyyy-MM-dd"),
+                        combo_source_text(self.category).strip() or "Τιμολόγιο αγοράς",
+                        description,
+                        partner,
+                        partner_id,
+                        "",
+                        float(amount),
+                        notes,
+                    ),
+                )
+                entry_type = "expense"
+            else:
+                entry_id = tx.execute(
+                    """INSERT INTO income(
+                        entry_date,description,partner,partner_id,
+                        payment_method,amount,notes
+                    ) VALUES(?,?,?,?,?,?,?)""",
+                    (
+                        date.toString("yyyy-MM-dd"),
+                        description,
+                        partner,
+                        partner_id,
+                        "",
+                        float(amount),
+                        notes,
+                    ),
+                )
+                entry_type = "income"
+            tx.execute(
+                """UPDATE invoice_documents
+                SET invoice_date=?,supplier=?,partner_id=?,invoice_number=?,
+                    amount_text=?,document_type=?,category=?,notes=?,
+                    financial_entry_type=?,financial_entry_id=?,
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE id=? AND financial_entry_id IS NULL""",
                 (
                     date.toString("yyyy-MM-dd"),
-                    combo_source_text(self.category).strip() or "Τιμολόγιο αγοράς",
-                    description,
                     partner,
                     partner_id,
-                    "",
-                    float(amount),
-                    notes,
+                    invoice_number,
+                    amount,
+                    document_type,
+                    combo_source_text(self.category).strip(),
+                    self.notes.text().strip(),
+                    entry_type,
+                    entry_id,
+                    self.selected_id,
                 ),
             )
-            entry_type = "expense"
-        else:
-            entry_id = self.db.execute(
-                """INSERT INTO income(
-                    entry_date,description,partner,partner_id,
-                    payment_method,amount,notes
-                ) VALUES(?,?,?,?,?,?,?)""",
-                (
-                    date.toString("yyyy-MM-dd"),
-                    description,
-                    partner,
-                    partner_id,
-                    "",
-                    float(amount),
-                    notes,
-                ),
-            )
-            entry_type = "income"
-        self.db.execute(
-            """UPDATE invoice_documents
-            SET invoice_date=?,supplier=?,partner_id=?,invoice_number=?,
-                amount_text=?,document_type=?,category=?,notes=?,
-                financial_entry_type=?,financial_entry_id=?,
-                updated_at=CURRENT_TIMESTAMP
-            WHERE id=? AND financial_entry_id IS NULL""",
-            (
-                date.toString("yyyy-MM-dd"),
-                partner,
-                partner_id,
-                invoice_number,
-                amount,
-                document_type,
-                combo_source_text(self.category).strip(),
-                self.notes.text().strip(),
-                entry_type,
-                entry_id,
-                self.selected_id,
-            ),
-        )
         self._load_by_id(self.selected_id)
         return entry_id
 
@@ -478,7 +563,7 @@ class InvoiceDocumentsPage(CrudPage):
         if entry_id: QMessageBox.information(self, "Ολοκληρώθηκε", "Η οικονομική εγγραφή δημιουργήθηκε και συνδέθηκε με το τιμολόγιο.")
 
     def clear_form(self) -> None:
-        self.selected_id = None; self.original_name.clear(); self.supplier.clear(); self.invoice_number.clear(); self.date_enabled.setChecked(False); self.invoice_date.setDate(QDate.currentDate()); self.amount.clear(); self.document_type.setCurrentIndex(0); self.category.setCurrentIndex(0); self.notes.clear(); self.ocr_status.setText("OCR: δεν εκτελέστηκε"); self.financial_status.setText("Δεν έχει δημιουργηθεί οικονομική εγγραφή."); self.preview.clear(); self.preview.setText("Χωρίς προεπισκόπηση"); self.form_box.setTitle("Στοιχεία τιμολογίου"); self.save_button.setEnabled(False); self.open_button.setEnabled(False); self.post_button.setEnabled(False); self.delete_button.setEnabled(False); self.table.clearSelection()
+        self.selected_id = None; self.original_name.clear(); self.supplier.clear(); self.invoice_number.clear(); self.date_enabled.setChecked(False); self.invoice_date.setDate(working_context_date(self.db)); self.amount.clear(); self.document_type.setCurrentIndex(0); self.category.setCurrentIndex(0); self.notes.clear(); self._composed_text(self.ocr_status, "OCR: δεν εκτελέστηκε"); self._body_label(self.financial_status, "Δεν έχει δημιουργηθεί οικονομική εγγραφή."); self.preview.clear(); self.preview.setText("Χωρίς προεπισκόπηση"); self._composed_text(self.form_box, 'Στοιχεία τιμολογίου'); self.save_button.setEnabled(False); self.open_button.setEnabled(False); self.post_button.setEnabled(False); self.delete_button.setEnabled(False); self.table.clearSelection()
 
     def open_file(self) -> None:
         record = self.db.query_one("SELECT stored_filename FROM invoice_documents WHERE id=?", (self.selected_id,)) if self.selected_id else None
@@ -493,7 +578,14 @@ class InvoiceDocumentsPage(CrudPage):
             QMessageBox.warning(self, "Συνδεδεμένο τιμολόγιο", "Το έγγραφο διατηρείται επειδή παραπέμπεται από οικονομική εγγραφή."); return
         if date.isValid() and is_year_locked(self.db, date.year()): warn_locked_year(self, self.db, date.year()); return
         if not self.confirm_delete(self, "Διαγραφή τιμολογίου", "Να διαγραφεί η καταχώριση και το διαχειριζόμενο αντίγραφο αρχείου;"): return
-        path = self._stored_path(record); self.db.execute("DELETE FROM invoice_documents WHERE id=?", (self.selected_id,)); path.unlink(missing_ok=True); self.clear_form(); self.refresh()
+        if record is None: return
+        # Never unlink the legacy fallback. Multiple rows may share a filename.
+        path = owned_file(self.db.path, record["stored_filename"])
+        self.db.execute("DELETE FROM invoice_documents WHERE id=?", (self.selected_id,))
+        remaining = self.db.query("SELECT stored_filename FROM invoice_documents")
+        if not any(str(row["stored_filename"]).casefold() == path.name.casefold() for row in remaining):
+            path.unlink(missing_ok=True)
+        self.clear_form(); self.refresh()
 
     def _selected_ids(self) -> list[int]:
         selected = []
@@ -530,12 +622,12 @@ class InvoiceDocumentsPage(CrudPage):
     def export_selected(self) -> None:
         ids = self._selected_ids()
         if not ids: return
-        default = f"mastixa_invoices_{datetime.now():%Y%m%d_%H%M%S}.zip"; filename, _filter = QFileDialog.getSaveFileName(self, "Εξαγωγή επιλεγμένων τιμολογίων", default, "ZIP (*.zip)")
+        default = f"mastixa_invoices_{datetime.now():%Y%m%d_%H%M%S}.zip"; filename, _filter = QFileDialog.getSaveFileName(self, _text("Εξαγωγή επιλεγμένων τιμολογίων"), default, "ZIP (*.zip)")
         if not filename: return
         target = Path(filename); target = target if target.suffix.lower() == ".zip" else target.with_suffix(".zip")
         try: self.build_export_zip(target, ids)
-        except (OSError, ValueError, zipfile.BadZipFile) as exc: QMessageBox.critical(self, "Αποτυχία εξαγωγής", str(exc)); return
-        QMessageBox.information(self, "Εξαγωγή", f"Το πακέτο δημιουργήθηκε:\n{target}")
+        except (OSError, ValueError, zipfile.BadZipFile) as exc: _message(self, 'critical', 'Αποτυχία εξαγωγής', '{error}', error=str(exc)); return
+        _message(self, 'information', 'Εξαγωγή', 'Το πακέτο δημιουργήθηκε:\n{target}', target=target)
 
     def _refresh_years(self) -> None:
         current = self.year_filter.currentData(); years = [row["year"] for row in self.db.query("SELECT DISTINCT SUBSTR(invoice_date,1,4) year FROM invoice_documents WHERE invoice_date IS NOT NULL ORDER BY year DESC")]
@@ -556,5 +648,7 @@ class InvoiceDocumentsPage(CrudPage):
                 item = QTableWidgetItem(str(value or ""))
                 if column == 0: item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable); item.setData(Qt.ItemDataRole.UserRole, int(row["id"])); item.setCheckState(Qt.CheckState.Checked if int(row["id"]) in selected_before else Qt.CheckState.Unchecked)
                 if column == 1: item.setData(Qt.ItemDataRole.UserRole, int(row["id"]))
+                if column == 7 and row["ocr_status"] in _OCR_BODY_LABELS:
+                    self._set_body(item, _OCR_BODY_LABELS[row["ocr_status"]])
                 self.table.setItem(row_index, column, item)
         self.table.blockSignals(False); total = self.db.query_one("SELECT COUNT(*) total,SUM(CASE WHEN invoice_date IS NULL THEN 1 ELSE 0 END) missing FROM invoice_documents"); self.total_metric[1].setText(str(int(total["total"] or 0) if total else 0)); self.missing_date_metric[1].setText(str(int(total["missing"] or 0) if total else 0)); self._selection_changed()

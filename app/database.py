@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -11,6 +12,7 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "mastixa_manager.db"
 
 DEFAULT_APP_SETTINGS = {
+    "default_sale_source": "pooled",
     "farm_name": "",
     "auto_backup_enabled": "1",
     "auto_backup_keep": "30",
@@ -29,6 +31,22 @@ class _ClosingConnection(sqlite3.Connection):
             self.close()
 
 
+class _Transaction:
+    """Explicit connection-bound queries/writes; no commit or nested transaction API."""
+
+    def __init__(self, connection: sqlite3.Connection):
+        self._connection = connection
+
+    def execute(self, sql: str, params: Iterable[Any] = ()) -> int:
+        return int(self._connection.execute(sql, tuple(params)).lastrowid)
+
+    def query(self, sql: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
+        return list(self._connection.execute(sql, tuple(params)).fetchall())
+
+    def query_one(self, sql: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:
+        return self._connection.execute(sql, tuple(params)).fetchone()
+
+
 class Database:
     def __init__(self, path: Path = DB_PATH) -> None:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -36,13 +54,41 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.initialize()
 
-    def connect(self) -> sqlite3.Connection:
+    def connect(self, *, _read_only_query: bool = False) -> sqlite3.Connection:
         connection = sqlite3.connect(self.path, factory=_ClosingConnection)
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            if _read_only_query:
+                connection.execute('PRAGMA query_only = ON')
+            if not _read_only_query and not getattr(self, '_initializing', False):
+                from .year_write_policy import install_write_policy
+                install_write_policy(connection, self.path)
+        except BaseException:
+            connection.close()
+            raise
         return connection
 
+    @contextmanager
+    def transaction(self):
+        """One deferred transaction; normal exit commits, any exception rolls back.
+
+        Pass the yielded helper explicitly to subordinate writers. It deliberately
+        has no connect/commit/transaction methods; independent Database.execute
+        calls keep their existing semantics. _ClosingConnection closes on all exits.
+        """
+        with self.connect() as connection:
+            connection.execute("BEGIN")
+            yield _Transaction(connection)
+
     def initialize(self) -> None:
+        self._initializing = True
+        try:
+            self._initialize_schema()
+        finally:
+            self._initializing = False
+
+    def _initialize_schema(self) -> None:
         schema = """
         CREATE TABLE IF NOT EXISTS producer (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -150,6 +196,8 @@ class Database:
             self._remove_connection_and_queue_schema(con)
             self._import_legacy_products(con)
             self._seed_app_settings(con)
+            from .sale_source_schema import migrate_sale_sources
+            migrate_sale_sources(con)
             con.execute(
                 "INSERT OR IGNORE INTO migration_flags(name) VALUES(?)",
                 ("app_settings_v1",),
@@ -337,9 +385,9 @@ class Database:
             return int(cursor.lastrowid)
 
     def query(self, sql: str, params: Iterable[Any] = ()) -> list[sqlite3.Row]:
-        with self.connect() as con:
+        with self.connect(_read_only_query=True) as con:
             return list(con.execute(sql, tuple(params)).fetchall())
 
     def query_one(self, sql: str, params: Iterable[Any] = ()) -> sqlite3.Row | None:
-        with self.connect() as con:
+        with self.connect(_read_only_query=True) as con:
             return con.execute(sql, tuple(params)).fetchone()

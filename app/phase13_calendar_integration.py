@@ -51,6 +51,7 @@ class Phase13FarmCalendarPage(_BaseFarmCalendarPage):
         super().__init__(db)
 
         current_month = self.month.currentData()
+        self.month.setProperty("mastixaI18nStaticItems", True)
         self.month.blockSignals(True)
         self.month.clear()
         self.month.addItem("Όλοι οι μήνες", None)
@@ -141,6 +142,10 @@ class Phase13FarmCalendarPage(_BaseFarmCalendarPage):
                     f"{row['field_name'] or ''}"
                 ),
             )
+            specs = {3: ("{title} — {state}", {"title": title} if row["title"] else {}, {"state": state_label, **({"title": "Προγραμματισμένη εργασία"} if not row["title"] else {})})}
+            if str(row["category"]) in _CATEGORY_LABELS: specs[4] = (category_label, {}, {})
+            if not row["field_name"]: specs[2] = ("Διαγραμμένο αγροτεμάχιο", {}, {})
+            self._body_rows[id(self._rows[-1])] = specs
 
     def open_selected(self) -> None:
         row = self._selected_row()

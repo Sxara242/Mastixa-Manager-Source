@@ -11,6 +11,7 @@ from app.backup_manager import BackupManager
 from app.database import Database
 from app.inventory import InventoryPage
 from app.inventory_sync import current_stock, sync_consumption
+from tests.language_fixture import scoped_language
 
 
 class InventoryQualityGateTests(unittest.TestCase):
@@ -30,6 +31,8 @@ class InventoryQualityGateTests(unittest.TestCase):
         return page
 
     def test_inventory_page_low_stock_metrics_statuses_and_filter(self):
+        # This contract asserts Greek presentation, regardless of prior tests.
+        self.enterContext(scoped_language(self.qt, "el"))
         _tempdir, db = self._database("inventory-ui.db")
         page = self._page(db)
 

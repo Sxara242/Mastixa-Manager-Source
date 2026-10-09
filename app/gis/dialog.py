@@ -5,6 +5,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLabel,QPushButton,
     QCheckBox,QComboBox,QFileDialog,QInputDialog,QMessageBox,QPlainTextEdit,QApplication)
 from PySide6.QtWidgets import QTableWidget,QTableWidgetItem,QFormLayout,QLineEdit,QDoubleSpinBox,QDialogButtonBox
+from ..localized_messages import _text
 from .geometry import normalize,manual_coordinates
 from .importers import import_geometry,MAX_BYTES
 from .store import GeometryStore
@@ -91,8 +92,8 @@ class ParcelMapDialog(QDialog):
         return text.strip() if ok else None
 
     def import_file(self):
-        filename,_=QFileDialog.getOpenFileName(self,'Εισαγωγή ορίων','',
-            'Γεωμετρία (*.geojson *.json *.kml *.gml *.xml *.zip *.dxf)')
+        filename,_=QFileDialog.getOpenFileName(self,_text('Εισαγωγή ορίων'),'',
+            _text("Γεωμετρία") + " (*.geojson *.json *.kml *.gml *.xml *.zip *.dxf)")
         if not filename:return
         crs=self.source_crs()
         if crs is None:return

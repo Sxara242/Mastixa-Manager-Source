@@ -20,10 +20,10 @@ class RuntimePathTests(unittest.TestCase):
 
     def test_packaged_build_uses_local_app_data(self) -> None:
         self.assertEqual(
-            Path("C:/Users/test/AppData/Local/MastixaManager").resolve(),
+            Path("C:/SyntheticProfiles/test/AppData/Local/MastixaManager").resolve(),
             resolve_base_dir(
                 frozen=True,
-                environ={"LOCALAPPDATA": "C:/Users/test/AppData/Local"},
+                environ={"LOCALAPPDATA": "C:/SyntheticProfiles/test/AppData/Local"},
             ),
         )
 
@@ -33,7 +33,7 @@ class RuntimePathTests(unittest.TestCase):
             resolve_base_dir(
                 frozen=True,
                 environ={
-                    "LOCALAPPDATA": "C:/Users/test/AppData/Local",
+                    "LOCALAPPDATA": "C:/SyntheticProfiles/test/AppData/Local",
                     "MASTIXA_DATA_HOME": "D:/MastixaData",
                 },
             ),

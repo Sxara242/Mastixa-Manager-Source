@@ -1,5 +1,32 @@
 # Offline OCR
 
+## Source snapshot scope — 2026-10-09
+
+Android remains in development. This file identifies retained source inputs;
+it does not approve an Android APK for public release. The root AGPL license
+covers owner-controlled first-party code, not the materials listed here.
+
+Gradle 8.13 wrapper JAR and generated start scripts retain their original
+Apache-2.0 notices; the full upstream license is in
+`../licenses/Gradle-8.13/LICENSE`. The JAR was checked against Gradle's official
+wrapper checksum; the distribution SHA-256 is pinned in wrapper properties.
+
+The source-bundled `crs-2d.txt` is a filtered dimensional/axis eligibility catalog
+derived from PROJ 9.8.1 / EPSG v12.029, as identified in its header. It is not the
+official EPSG Dataset. EPSG ownership belongs to IOGP; retain the complete terms
+and disclaimers in `../licenses/EPSG/TERMS-OF-USE-2016.html`, PROJ notices in
+`../licenses/proj-9.8.1/COPYING`, and the existing catalog attribution below.
+Do not treat filtered metadata as an owner-created AGPL dataset.
+
+Source test ZIPs under `app/src/androidTest/assets/` contain synthetic test
+exports with deliberately fictitious producer/partner/worker names, contact
+values and farm records. Reviewed SHA-256s are in `../docs/public-binary-inputs.json`.
+They are instrumentation inputs, never production profiles.
+
+Before any Android release, reconcile the actual APK's Java/native dependency
+closure, inherited licenses, notices, matching covered source and EPSG/PROJ
+attribution. Repository notices alone do not close Android APK delivery duties.
+
 Tesseract4Android 4.9.0, Copyright 2019 Adaptech s.r.o., Robert Pösel. Apache License 2.0. Dependency pinned in app/build.gradle; JitPack restricted to its group.
 Source and license: https://github.com/adaptech-cz/Tesseract4Android
 Upstream wrapper credits: tess-two and Tesseract Tools for Android.

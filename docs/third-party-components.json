@@ -1,0 +1,1851 @@
+{
+  "status": "Historical retained membership preserved; current planned distribution in windows-distribution-manifest.json",
+  "python_components": [
+    {
+      "component": "certifi",
+      "version": "2026.7.22",
+      "license": "MPL-2.0",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/certifi/licenses/LICENSE"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "defusedxml",
+      "version": "0.7.1",
+      "license": "PSFL",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/defusedxml/LICENSE"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "et_xmlfile",
+      "version": "2.0.0",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/et_xmlfile/LICENCE.rst"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "ezdxf",
+      "version": "1.4.4",
+      "license": "see upstream text",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/ezdxf/licenses/LICENSE"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "fonttools",
+      "version": "4.65.0",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/fonttools/licenses/LICENSE",
+        "licenses/fonttools/licenses/LICENSE.external"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "numpy",
+      "version": "2.5.3",
+      "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/numpy/licenses/LICENSE.txt",
+        "licenses/numpy/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+        "licenses/numpy/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
+        "licenses/numpy/licenses/numpy/_core/src/highway/LICENSE",
+        "licenses/numpy/licenses/numpy/_core/src/multiarray/dragon4_LICENSE.txt",
+        "licenses/numpy/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+        "licenses/numpy/licenses/numpy/_core/src/umath/svml/LICENSE",
+        "licenses/numpy/licenses/numpy/fft/pocketfft/LICENSE.md",
+        "licenses/numpy/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
+        "licenses/numpy/licenses/numpy/ma/LICENSE",
+        "licenses/numpy/licenses/numpy/random/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/distributions/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/mt19937/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/pcg64/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/philox/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/sfc64/LICENSE.md",
+        "licenses/numpy/licenses/numpy/random/src/splitmix64/LICENSE.md",
+        "licenses/numpy/numpy/_core/include/numpy/random/LICENSE.txt",
+        "licenses/numpy/numpy/ma/LICENSE",
+        "licenses/numpy/numpy/random/LICENSE.md"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "openpyxl",
+      "version": "3.1.5",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/openpyxl/LICENCE.rst"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "pyparsing",
+      "version": "3.3.3",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/pyparsing/licenses/LICENSE"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "pyproj",
+      "version": "3.8.0",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/pyproj/licenses/LICENSE",
+        "licenses/pyproj/licenses/LICENSE_proj"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "pyshp",
+      "version": "2.4.2",
+      "license": "MIT",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/pyshp/licenses/LICENSE.TXT"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "PySide6_Addons",
+      "version": "6.11.2",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [],
+      "source_access": "Qt/GEOS/copyleft native source duties require exact native manifest",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "PySide6_Essentials",
+      "version": "6.11.2",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [],
+      "source_access": "Qt/GEOS/copyleft native source duties require exact native manifest",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "shapely",
+      "version": "2.1.2",
+      "license": "BSD 3-Clause",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/shapely/licenses/LICENSE.txt",
+        "licenses/shapely/licenses/LICENSE_GEOS",
+        "licenses/shapely/licenses/LICENSE_win32"
+      ],
+      "source_access": "Qt/GEOS/copyleft native source duties require exact native manifest",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "shiboken6",
+      "version": "6.11.2",
+      "license": "LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [],
+      "source_access": "Qt/GEOS/copyleft native source duties require exact native manifest",
+      "action": "map exact final binary/source/notice membership before public release"
+    },
+    {
+      "component": "typing_extensions",
+      "version": "4.16.0",
+      "license": "PSF-2.0",
+      "distributed": "old bundle/PYZ membership; final build pending",
+      "texts": [
+        "licenses/typing_extensions/licenses/LICENSE"
+      ],
+      "source_access": "see component license",
+      "action": "map exact final binary/source/notice membership before public release"
+    }
+  ],
+  "historical_native_files": [
+    {
+      "path": "MastixaManager.exe",
+      "file_version": "0.40.0-alpha.2",
+      "product_version": "0.40.0-alpha.2",
+      "sha256": "2fccc520ba3d76ba1b921f3ef09f6325f8ba6574f64f73c0cf5b8817869628f8",
+      "family": "Mastixa / PyInstaller bootloader",
+      "classification": "TEST/EVIDENCE ONLY β€” DOES NOT SHIP",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "historical alpha binary; not current RC"
+    },
+    {
+      "path": "_internal/_asyncio.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "dc6db118862ab3298e55e0f7c44c2c0dae4af9e810d2578271280202d6aa098a",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_bz2.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "d28c3dd1c22bfb8a6e8a6a9c2359842b797d08e878ecb7805f60e86a45589d11",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_ctypes.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "25d9b0be550d428fecc697ca20450343a7c3ce77c9f5283e9aecfd188d609250",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_decimal.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "8d41a84db20a9b985e98c802ad6833cf9625c744ad35478dd346f54f81488706",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_elementtree.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "16f4d30a50fc25950762a8bbef9dd6c5750729345539c224d489be33e6d6f340",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_hashlib.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "36ce760b9fac53fe51755f30a68d86f5fde89bf1b66c65c19e04aa3afa404ac2",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_lzma.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "5f7003f9f0256e36351ca2810b3485db28579b08e4d1d65f6f211fcd1136f395",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_multiprocessing.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "9e87ce081fbcf0b6596fcba98e121379ad72a33d68e6b2af7a8bcc5b900229ba",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_overlapped.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "ac877f3da413c1523c07b6a0dd1f7e0d7ceb3e8590a5e9e20a78eb1bcb700793",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_queue.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "bb53357b4e91ac23ed4061f15ff3e5e91a5b3be1cbb0c6cf294521ae5b4efa1c",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_socket.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "25ac83cac32ed0d67b2cc9672ce64cb53f0a29a75b14c276e901023ff43da5f9",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_sqlite3.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "b0c4edff6d60f300373ec929ab915f95ee601bf167e04d28e4e9e28a8e536fe0",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_ssl.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "5c07572df2913618cfb851b608cb5f74d740fcce5c3f2e63dc0a2ba39ab35dad",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_uuid.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "a09308efd309732e3745e70b4456235579c450cac32bed616dfb3913b56f6637",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_wmi.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "0ab1fbcf18c95d70343012feb1aad61e1ba95aaed5b4a08e57fc5990e8a9a452",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/_zstd.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "262aea62a994920daf152a10bdc0ca83a8b1c0874e71db23734862431de182c6",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-console-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "88ace577a9c51061cb7d1a36babbbefa48212fadc838ffde98fdfff60de18386",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-datetime-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "1bd81dfd19204b44662510d9054852fb77c9f25c1088d647881c9b976cc16818",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-debug-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "591358eb4d1531e9563ee0813e4301c552ce364c912ce684d16576eabf195dc3",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-errorhandling-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "d56ce7b1cd76108ad6c137326ec694a14c99d48c3d7b0ace8c3ff4d9bcee3ce8",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-fibers-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "91d249d7bc0e38ef6bcb17158b1fdc6dd8888dc086615c9b8b750b87e52a5fb3",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-fibers-l1-1-1.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "fc9d86cec621383eab636ebc87ddd3f5c19a3cb2a33d97be112c051d0b275429",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "1ca895aba4e7435563a6b43e85eba67a0f8c74aa6a6a94d0fc48fa35535e2585",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l1-2-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "4cadbc0c39da7c6722206fdcebd670abe5b8d261e7b041dd94f9397a89d1990d",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-file-l2-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "93c624b366ba16c643fc8933070a26f03b073ad0cf7f80173266d67536c61989",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-handle-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "39095f59c41d76ec81bb2723d646fde4c148e7cc3402f4980d2ade95cb9c84f9",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-heap-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "8f105771b236dbcb859de271f0a6822ce1cb79c36988dd42c9e3f6f55c5f7eb9",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-interlocked-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "53b25e753ca785bf8b695d89dde5818a318890211dc992a89146f16658f0b606",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-kernel32-legacy-l1-1-1.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "a9b13a1cd1b8c19b0c6b4afcd5bb0dd29c0e2288231ac9e6db8510094ce68ba6",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-libraryloader-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "7f39ba298b41e4963047341288cab36b6a241835ee11ba4ad70f44dacd40906c",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-localization-l1-2-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "6ee44dd0d8510dc024c9f7c79b1b9fa88c987b26b6beb6653ddd11751c34e5dc",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-memory-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "0512a35316ec9180437f86696a84c5c06a7e4e82e050055a656e5bf9fca206f9",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-namedpipe-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "c05f1fffe3b5a2738ea54ce9485cca026fb9635f982626fba1e1dcc531897273",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-processenvironment-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "c4eca98c3c67b6395d5b005b00ac1eb0318b86b23aa71035a44c2b1602befba9",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-processthreads-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "5ccb89e93d67bc3288d4e84649c5346e66e15e3d7cd65d989daf3f4cb584be9a",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-processthreads-l1-1-1.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "4ad565a8ba3ef0ea8ab87221ad11f83ee0bc844ce236607958406663b407333e",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-profile-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "7809160932f44e59b021699f5bc68799eb7293ee1fa926d6fcca3c3445302e61",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-rtlsupport-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "9dc1e91e71c7c054854bd1487cb4e6946d82c9f463430f1c4e8d1471005172b1",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-string-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "60fc31d2a0c634412f529dba76af3b9bf991352877c6dae528186d3935704cfd",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-synch-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "3a72b4f29f39a265d32ad12f0ce15dbf60129c840e10d84d427829ede45e78ad",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-synch-l1-2-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "efc1e4460984a73cf47a3def033af1c8f3b1dbc1a56cd27781d3aacf3e3330cb",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-sysinfo-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "b203d862ddef1dd62bf623fc866c7f7a9c317c1c2ae30d1f52cb41f955b5698e",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-sysinfo-l1-2-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "2703635d835396afd0f138d7c73751afe7e33a24f4225d08c1690b0a371932c0",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-timezone-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "33f4fddc181066fce06b2227bded813f95e94ed1f3d785e982c6b6b56c510c57",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-core-util-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "6eda016742a6171205a387a14b3c0b331841567740376f56768f8c151724207d",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-conio-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "b762061b688aae679afe788904d2c9970f74a7dac98f3b42463d08f25e483d3f",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-convert-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "ebb2ae5535a64f65daeab8235585114fc9dd2cf1a49f5852d446250b998b6ae4",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-environment-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "17d63275d00bdd8670422b95bd264c532998e0a1b041079e54fce4b6b7a55819",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-filesystem-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "9a9e2a65a281644e368d0f272b95ba5f6b445d1c35910d06056c5ebeb77402db",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-heap-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "bab9ac3ec83e380ae51e4295ef3bf2c738627812d3a49d1e713661abbc8dc57a",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-locale-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "bd14c67ea28e21d6257ad780a37122c9b5773f69e693f5db6bffaee4d839526e",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-math-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "606d66d82db562ea7979179d06486a0f94d079941d26b80a1e2c49d29959df6f",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-private-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "1bc82bed6143d2bf1b6b08a7809f4a5e29317d6fddd338a7da3c0223522e4bbf",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-process-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "f6156b1020380ec4f0e48577ebedaaef5fb1ab1f337d8b4e72e6a33a7567a9cc",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-runtime-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "c5902934d026d7e15fbe9917d474f3322846a41a25e66f4b2b1f758801879f4b",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-stdio-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "a9c5a153d8c0286f9b41a2b1c65854ad9e6471b8755b7de87bae4470e60bcab6",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-string-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "25b8f83a7767211b11132775a0e27a45aa4ec8ab4e6572599f9c172ae3606b40",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-time-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "7c7f6393f06de11750adb09cc5698ae55cd9fb27b2e51e207286feb1b5b2b156",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/api-ms-win-crt-utility-l1-1-0.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "d8ba5f17b9ffcbf3aeaf3fa1da226832d2fa90f81acce0cd669464e76ce434ac",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/libcrypto-3.dll",
+      "file_version": "3.5.7",
+      "product_version": "3.5.7",
+      "sha256": "53c529145339fb042a3dcd3a09c2d7753204f8b4fc79d99e0d31e69a33985958",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/libffi-8.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "eff52743773eb550fcc6ce3efc37c85724502233b6b002a35496d828bd7b280a",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/libssl-3.dll",
+      "file_version": "3.5.7",
+      "product_version": "3.5.7",
+      "sha256": "b17a87979862d19241edc4318f967e24c3ec356ed6c2368f561179fab2311001",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyexpat.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "133942bde91fe43289076a0b50a01b265df4ead078617cca6f6604a4166e1260",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/python3.dll",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "22c6e46d8bd563cdb072650901461ef68be2ea6cb1e80af859559d9395a27e39",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/python314.dll",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "fde89cdb5c2d08ae65de7ef4abca1876c93ba3796002f5ac0bf7e4d4f5a94da0",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/select.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "fab1b4cee101359d82d72061b83cff1855337b3677b9fe01cd69f7548f4c496e",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/sqlite3.dll",
+      "file_version": "3.50.4.0",
+      "product_version": "3.50.4.0",
+      "sha256": "3557565665e608cd24726730e52690a131efcb0e2d5090337b2e05fb89d49c76",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/ucrtbase.dll",
+      "file_version": "10.0.26100.1742 (WinBuild.160101.0800)",
+      "product_version": "10.0.26100.1742",
+      "sha256": "2e5fb14b7bf8540278f3614a12f0226e56a7cc9e64b81cbd976c6fcf2f71cbfb",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/unicodedata.pyd",
+      "file_version": "3.14.6",
+      "product_version": "3.14.6",
+      "sha256": "0d4f124b2d6622d276d777f7106972219f9b310edb5df8149c253da7c013d6d8",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/VCRUNTIME140_1.dll",
+      "file_version": "14.42.34438.0",
+      "product_version": "14.42.34438.0",
+      "sha256": "6a99bc0128e0c7d6cbbf615fcc26909565e17d4ca3451b97f8987f9c6acbc6c8",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/VCRUNTIME140.dll",
+      "file_version": "14.42.34438.0",
+      "product_version": "14.42.34438.0",
+      "sha256": "052ad6a20d375957e82aa6a3c441ea548d89be0981516ca7eb306e063d5027f4",
+      "family": "CPython / native standard-library / Microsoft runtime",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/license/redist mapping pending"
+    },
+    {
+      "path": "_internal/fontTools/misc/bezierTools.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "b831dd0d15f3ec32e5f003c5919f085ebaac5005324a885bb331ae43e5ab28b5",
+      "family": "fontTools extensions",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "MIT texts collected; validate final binary membership"
+    },
+    {
+      "path": "_internal/fontTools/varLib/iup.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "56cf2a9f2edf73cc0f72156c4e44e04ffec393c08eb62a35e2ddcdbb8531252e",
+      "family": "fontTools extensions",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "MIT texts collected; validate final binary membership"
+    },
+    {
+      "path": "_internal/numpy/fft/_pocketfft_umath.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "33e546545a830506c9fde2ea7c389fecbf1c1bb32609a6ff9967661557c923d9",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/linalg/_umath_linalg.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "a0f03e13ab5b92fa267cb488b56f4c90f4f984f116bf314e46e1c2e8c9bdc575",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_bounded_integers.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "9103a22b641f7f080aa9e2706d0e5a5ddb20dc66af8ee503ab2ba6dd6326acb5",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_common.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "6c29b94d81dc63f4280b5c2556d9f77cd01d4e8297f035cc873b0d76ea62acfa",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_generator.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "970bf3d6a441c735a57a46d2a352fd2286484b9ffa52f8ef7594339a1227e83c",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_mt19937.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "93a622cb6f39fd1faa37eac19db85caca440cb07bcaafe5bf47847c34c40a73c",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_pcg64.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "926275a0cdda89d65c4610476eb3871571027e926c896dc1962dedb5865e5883",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_philox.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "20ac777aa8f50f643c39289ca311095606aa6872e74349edbbda46ca7eb8a7a9",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/_sfc64.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "db2cbc372e4444fd3825cc5f5bb49bf67488e473d27ebf84157a71fb0eaa66b9",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/bit_generator.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "e5c82033c988c47aa022e8bb3b913d368b93d77e79e4a40f673b31b03ae9c10d",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/random/mtrand.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "f9b9aa2470342bd334920ac7f940192363ffa172cdbe0c17dd99c1a78a4d773e",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/_core/_multiarray_tests.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "951b0d669409ce3fb6067be4c72858aad079c9e7dfcd1b3cc64d8aaf7c7b32bc",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy/_core/_multiarray_umath.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "b95589a363451f9695640b8f177dc07b71c845be81f2df6d1ee1c680797912af",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy.libs/libscipy_openblas64_-ed4f167a5330424524f45258e7ca2c8d.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "ed4f167a5330424524f45258e7ca2c8d7f03c0cba1f30ee4985553ac1f88ecf8",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "file_version": "14.40.33810.0",
+      "product_version": "14.40.33810.0",
+      "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde",
+      "family": "NumPy / OpenBLAS and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "match supplied license tree to exact native DLLs"
+    },
+    {
+      "path": "_internal/pyproj/_compat.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "826edc06a8b9ab3d2f17211fbd3bcf3b0b49479bfe5c10d12f6a830d07271297",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_context.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "23af9984019dd9a016452c82b7e732f0882aa8c042c784a88edb5d0394c5668e",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_crs.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "fe9832ada1e6156922987eec3d51ddb18ddac8ed4d5563c5e510a16d7018bd61",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_geod.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "264efef63ea48fbbe98317759ac888a5a9805a064af344a1fffff2683cd4205c",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_network.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "42ea6cbf37040111d2d99d743d5c930425705510a890ff61cf7c4b2c379dd4db",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_sync.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "ffa45df052bb76b4fe5d2e2609ebe67cbe35e0050e24034c81e2b8cd4d7d3eec",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_transformer.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "13b900e07fb743b39eef59391744712d479dc5a0111d268e9a1835ab6ca1c889",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/_version.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "a60bf72689c9ac8ce50644ad317c16c8715fb81b2c58fc66155aa8787c9c1f41",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/database.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "5d8a08807d8e84b630d720eea75cf0154068c5237a533f7202324bef3ee0db7d",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj/list.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "1acf9d9142f010f1a027810a5441b2621009fc427d6053ef4141c4d583629d71",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/jpeg62-971fedc88cb0e86c3ad978ae1b7646db.dll",
+      "file_version": "62,4,0,0",
+      "product_version": "3.1.4.1",
+      "sha256": "971fedc88cb0e86c3ad978ae1b7646db16efcc79ad69ebf6bf98e6bed1d248f8",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/libcurl-f49442d4be7d953952a0509cdd4501fa.dll",
+      "file_version": "8.19.0",
+      "product_version": "8.19.0",
+      "sha256": "f220ceab38fa39a61b4ac2ad28dfc8624219c6c293dc32eecaea8a755dc655c8",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/liblzma-3c4c8780fcad6ce56344d2b5594bda5b.dll",
+      "file_version": "5.8.3",
+      "product_version": "5.8.3",
+      "sha256": "3c4c8780fcad6ce56344d2b5594bda5b9a8af9da0af75a9e7d72c3d0c5480ff2",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/msvcp140-7c26614e1d733892c2deac7e245ce115.dll",
+      "file_version": "14.51.36247.0",
+      "product_version": "14.51.36247.0",
+      "sha256": "7c26614e1d733892c2deac7e245ce115504b1d80592dd0a01b08e3e5a55f89ca",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/proj_9-7e5618bddacc5af688a84f477cf114c3.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "a2bbe765d31e257b018c1792f10e009427841b3383f83c5c8b781845461d9343",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/sqlite3-9415ebc42378ab15b741623972c45846.dll",
+      "file_version": "3.53.0",
+      "product_version": "3.53.0",
+      "sha256": "9415ebc42378ab15b741623972c458464ccd8ad141310e5f92c9d2b2ba9defa0",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/tiff-69dcdf91c822b00d23e8dbf49655fe78.dll",
+      "file_version": "4.7.1",
+      "product_version": "4.7.1",
+      "sha256": "ad27d079a0ca8d75fb72093ec4e01b21f9105cc71a16b2277c6511f87dc94aaa",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/pyproj.libs/zlib1-985e9fefa27bf900be8e4df7dcc97287.dll",
+      "file_version": "1.3.1",
+      "product_version": "1.3.1",
+      "sha256": "985e9fefa27bf900be8e4df7dcc972877cf3314b279ecf8d58643baa8f559a88",
+      "family": "pyproj / PROJ and vendored native libraries",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "native codec/curl/CRS/redist mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/MSVCP140_1.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "d419d24b0a76366f5c9d908b0e45fe70e9e9154bb8ad5f3de42070f2337f857b",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/MSVCP140_2.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "89917964abb6ca16a260cab258e180c3abc239b5af00eed659d0edf0efdd339c",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/MSVCP140.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "4c667b706893593812cd111b369ba6a77f54d1f1b1ae87cf3bf37692663cfba2",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/opengl32sw.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "34b444c016289b560662ff896deceb7f4b2c0723aed3d319ae167c9186ce42b3",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/pyside6.abi3.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "d0b5c701fb3a8ea839e72b602058f3960935156ebeca084893c54c99e54dd707",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Core.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "d6a3c37c5263c5d418fc0e80b722bc9fca7c0859e6f635f9624a2fde00bdc653",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Gui.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "ae29b005f51b6850bf57fa06fced0dc8c7039fd6fafc3bfbcfe76e38adc7abf1",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Network.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "dd3512d1c5ed062d30c98426cd0a850f13e0cf31437afb5b0b474132b9c52922",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6OpenGL.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "d51088f16db8c96dba7ef3c1474e611adb3ebdb211fea35b8e755d2a7407f7ad",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Pdf.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "6fc87c84a723b05a0a3d7dce87083d25d23b1558e8806ff1cc7952bb9c5c9779",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6PrintSupport.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "fccd235e7ceabb9ff7bb8c185b238bcb5cb553b2ef3894308adbab0fb4862b2f",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Qml.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "514fc8d9ff0754d2bcb446bbe0f6cc421213d92c8c1870e4cf787e4e176d51f6",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6QmlMeta.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "c6e8b02ad52e01e0e865a085b629b08629fbe5c68146425d4cefdcaaef7a8462",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6QmlModels.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "066e72ad668ff02dcf530805d071313f9e89d9f1fb49a522aa4ed52712741bf2",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6QmlWorkerScript.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "c037ab72fb9c1c1ebbe47f70b8a35d440537765ef6207424aae0c16fea26eda1",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Quick.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "900a493625af1f7d9fe6071b9aaee15e560cc7afc122702656723539ed81975f",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Svg.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "1eac8f7415b311a88cb3cb4e25c3098d0e059c24c831fbbb13f43a80f0df06b7",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/Qt6VirtualKeyboard.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "a14fac89759569965dbeb45b2a13e592c0bce0cc559adaa32145fcb92de016f9",
+      "family": "Qt VirtualKeyboard",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "excluded from candidate"
+    },
+    {
+      "path": "_internal/PySide6/Qt6Widgets.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "ff0df9e2e6827e035f0731a4cedfc6333f4602bca00775e56346f27032406b74",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/QtCore.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "74f96322c5e9cea73aefd2ed5870e5275336b31f552fcd32f12fc81d23f1bc6f",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/QtGui.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "7bef20046045199c037b7cbfedaa1c5464730fa948b2c9ec8afbf718e63774d4",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/QtNetwork.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "c5038bb71fc9d57330fa2d8eeec65aab69fcf02687cc8f54dbfb5995cfec6a71",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/QtPrintSupport.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "5c4671afb67b53533848ad43d2f58e128b1603309cd89cb8eb11329d234b8e70",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/QtWidgets.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "f12f4ca641998e5706d5f7b0023147d573f0f2d2361e26dadf31bdbf05fbfd1d",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/VCRUNTIME140_1.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "48aa2783793ea18ab3c2c71d420d4fff9814e662a1ff810053c6e5250061a716",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/VCRUNTIME140.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "f893ae75a1a24eea174d982f94bc80ce2448201eaa919a73c0653a5657685de4",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/generic/qtuiotouchplugin.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "aa9080fa8b1c3cf4d3790c1eecf4a1f5c796ce58f31f80910357578f20fd80ac",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/iconengines/qsvgicon.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "5bb97b6f114682ae0b5f42b23b6818aece6499bad88dac80a138efa8a88c12bc",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qgif.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "d301d7e9a68327692e4c76faa6b125517730b22c68f4de7f09fda9d4ac0ddee1",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qicns.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "49db148fea9f01e9953fd0a771d16cfaf364599f07aab3634d4f5c7c25abd78a",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qico.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "1684fd56f1758167f7b3ac011264ae5859b3cf6113e381626ec3dc1d3122fe52",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qjpeg.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "6517345ac19f5c489daeadc029d0018bbdc09d8e1031c60d714557972f22c6d4",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qpdf.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "541350d584d990b8dcccb6726a4cb2169b901b90b6221273f813a13256570705",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qsvg.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "4b7d65ba39be58cb469b54b5fdee2987871d67e5050cd70724016e09966e54f6",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qtga.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "6b0381150070fcd4224597fe73c68b47055b30b418aa14794c94c5007d14ca5d",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qtiff.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "3d6ea04da215ee2a9459399fb9f6d73cad8787944b9d450399025bcd39d020b5",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qwbmp.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "1a4596509987e9557edda69ed13cdd0d33f4ebda72e464ddc00a566bec05f151",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/imageformats/qwebp.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "6b2c53cc4423140c29a6a1eb6dd908016e09d794b5739a05a3a39c8c49a0df8a",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/networkinformation/qnetworklistmanager.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "e571a4b4e582738cd1bc4889cb2896635c2543baff408442701b6706a1b4a86e",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/platforminputcontexts/qtvirtualkeyboardplugin.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "e10c64dd2ae4f9b756ec1ebe3950a05e345ba40834b7be2900af426623d85475",
+      "family": "Qt VirtualKeyboard",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "excluded from candidate"
+    },
+    {
+      "path": "_internal/PySide6/plugins/platforms/qdirect2d.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "56f41ad523d016fe2cf2c90fae158e21766d1fcd021bced1a3704c6da0f00c98",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/platforms/qminimal.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "768a9c6dbb1c86abbefa2ff9d7e98cdfb4fdc9292eb8d64195bb6d23939a5344",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/platforms/qoffscreen.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "e776251668440169ed18a2fe1b236762d514ef5244639cbb559b5a77ddd38954",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/platforms/qwindows.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "bf6dbc3009f386fa22f0ced560bea6bbf3e0e0b4442d2fb855db67cffce49dbf",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/styles/qmodernwindowsstyle.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "a7a6424c23bf371bd28a404a196b210971726f6f2a87b63aac185a5e6e40da71",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/tls/qcertonlybackend.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "67be4d333a0f489d02714169a6ec54eaa80efa649d733fcbeb81881ecb02b4f3",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/tls/qopensslbackend.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "7a0727417b8e21e64d9a7cf0f390bc85b3e337b4eef5ac977f49659d97e6b552",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/PySide6/plugins/tls/qschannelbackend.dll",
+      "file_version": "6.11.2.0",
+      "product_version": "6.11.2.0",
+      "sha256": "14abc5b245c0f2e03f7bc0b474a8db2ecb441c7300a8a8b16fb865eaf2674619",
+      "family": "Qt / PySide6 native libraries and plugins",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/SBOM mapping pending"
+    },
+    {
+      "path": "_internal/shapely/_geometry_helpers.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "9f6e17177cc400b04f1e915bc54d64f306c888558d8a0a0a27a678b77b6f0e28",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/shapely/_geos.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "8dc6f9b9698fcbbcc48baa9e72b76d57dcef09c9105c2427e2c3bb40822b566a",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/shapely/lib.cp314-win_amd64.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "2293ffb693c16a27d7a4fb74fe34377b5f6bac8de94cbe85183e6f1c30e1ba7e",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/Shapely.libs/geos_c-072b7a9224d16d3e4ab2395bb855b2d3.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "7e4d87ccb640eda92f150b7cee178ef13abe282acd36af08f6dca5eddaf931a4",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/Shapely.libs/geos-ae6efa0782962b98e358f10ea539ae5f.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "094508747b6bb6eb785b2aa67d7899724ce78ee6cc375e7a66e11be3bcf5a08e",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/Shapely.libs/msvcp140-90bc62d4947a5878f1dc1057312f3be2.dll",
+      "file_version": "14.44.35215.0",
+      "product_version": "14.44.35215.0",
+      "sha256": "90bc62d4947a5878f1dc1057312f3be2137eb376039f4afda2f64c06353f2198",
+      "family": "Shapely / GEOS / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "exact native source/replacement/redist mapping pending"
+    },
+    {
+      "path": "_internal/shiboken6/MSVCP140.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "fd4a8c046fa3fea9ca6132f50cf8a56cf1e783b2d3093ba5c85fa063bc6b3845",
+      "family": "shiboken6 / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/redist mapping pending"
+    },
+    {
+      "path": "_internal/shiboken6/Shiboken.pyd",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "2f6f3a694f675b1dafdae26903191613c02866ab48e02591ae34ca1a3b1284f1",
+      "family": "shiboken6 / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/redist mapping pending"
+    },
+    {
+      "path": "_internal/shiboken6/shiboken6.abi3.dll",
+      "file_version": null,
+      "product_version": null,
+      "sha256": "de3c6b2ed5f75c9ac0de4a6844b653b3b9d09263ce68c2b5fc25a96c5c3e8469",
+      "family": "shiboken6 / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/redist mapping pending"
+    },
+    {
+      "path": "_internal/shiboken6/VCRUNTIME140_1.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "fa577d54bd10a91e52472da784a619da6cf241af45f0a0c48b27e91fa0fe6104",
+      "family": "shiboken6 / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/redist mapping pending"
+    },
+    {
+      "path": "_internal/shiboken6/VCRUNTIME140.dll",
+      "file_version": "14.44.35211.0",
+      "product_version": "14.44.35211.0",
+      "sha256": "de617641d82eac15595d2e39394163ac33e49bb032cf2c2ea0044ed39d3675e9",
+      "family": "shiboken6 / vendored MSVC",
+      "classification": "QT/DEPENDENCY-PROVIDED",
+      "distributed": "historical Windows bundle; candidate not built",
+      "action": "license/source/redist mapping pending"
+    }
+  ],
+  "current_audit": "WINDOWS_DISTRIBUTION_COMPLIANCE_MATRIX.md",
+  "current_manifest": "windows-distribution-manifest.json"
+}

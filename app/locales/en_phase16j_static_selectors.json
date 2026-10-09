@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Επερχόμενες": "Upcoming",
+    "Εκπρόθεσμες": "Overdue",
+    "Με απόθεμα": "In stock",
+    "Χαμηλό / εξαντλημένο": "Low / out of stock",
+    "Αδιευκρίνιστο — επίλεξε πριν την καταχώριση": "Unspecified — select before posting",
+    "Αγορά — καταχώριση στα Έξοδα": "Purchase — post to Expenses",
+    "Πώληση — καταχώριση στα Έσοδα": "Sale — post to Income",
+    "Ενεργά": "Active",
+    "Ανενεργά": "Inactive",
+    "Κύλιση καρτελών προς τα αριστερά": "Scroll tabs left",
+    "Ιανουάριος": "January",
+    "Φεβρουάριος": "February",
+    "Μάρτιος": "March",
+    "Απρίλιος": "April",
+    "Μάιος": "May",
+    "Ιούνιος": "June",
+    "Ιούλιος": "July",
+    "Αύγουστος": "August",
+    "Σεπτέμβριος": "September",
+    "Οκτώβριος": "October",
+    "Νοέμβριος": "November",
+    "Δεκέμβριος": "December"
+  }
+}

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _language, _text
 from .database import Database
 from .ui_helpers import compact_decimal, format_kg, table_widget
 
@@ -21,8 +22,54 @@ from .ui_helpers import compact_decimal, format_kg, table_widget
 class GlobalSearchPage(QWidget):
     """Ενιαία αναζήτηση σε βασικά δεδομένα του Mastixa Manager."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('result_label',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self._results: list[dict] = []
 
@@ -174,6 +221,8 @@ class GlobalSearchPage(QWidget):
         page_index: int,
         record_id: int | None = None,
     ) -> None:
+        if not hasattr(self, "_result_specs"):
+            self._result_specs = {}
         self._results.append(
             {
                 "section": section,
@@ -191,6 +240,7 @@ class GlobalSearchPage(QWidget):
         return tuple(token for _ in range(count))
 
     def run_search(self) -> None:
+        self._result_specs = {}
         query = self.search.text().strip()
 
         if not query:
@@ -260,6 +310,9 @@ class GlobalSearchPage(QWidget):
                 page_index=2,
                 record_id=int(row["id"]),
             )
+            self._result_specs[id(self._results[-1])] = {2: ("{kaek}{location}{area} {unit}", {"kaek": ("ΚΑΕΚ: " + row["kaek"] + " | ") if row["kaek"] else "", "location": (row["location"] + " | ") if row["location"] else "", "area": compact_decimal(row["area_stremma"], 3)}, {"unit": "στρ."})}
+            if row["kaek"]:
+                self._result_specs[id(self._results[-1])][2] = ("ΚΑΕΚ: {kaek} | {location}{area} {unit}", {"kaek": row["kaek"], "location": (row["location"] + " | ") if row["location"] else "", "area": compact_decimal(row["area_stremma"], 3)}, {"unit": "στρ."})
 
     def _search_production(self, query: str) -> None:
         if not self._table_exists("production"):
@@ -307,6 +360,7 @@ class GlobalSearchPage(QWidget):
                 page_index=3,
                 record_id=int(row["id"]),
             )
+            if not row["field_name"]: self._result_specs[id(self._results[-1])] = {1: ("Χωρίς αγροτεμάχιο", {}, {})}
 
     def _search_money(self, query: str) -> None:
         for table, section, page_index in (
@@ -413,6 +467,10 @@ class GlobalSearchPage(QWidget):
                 page_index=12,
                 record_id=int(row["id"]),
             )
+            specs = {}
+            if (row["category"] or "Καταχώρηση") in ("Πότισμα", "Λίπανση", "Καταχώρηση"): specs[1] = (row["category"] or "Καταχώρηση", {}, {})
+            if not row["field_name"]: specs[2] = ("Γενική{description}", {"description": (" | " + row["description"]) if row["description"] else ""}, {})
+            self._result_specs[id(self._results[-1])] = specs
 
     def _search_plant_protection(self, query: str) -> None:
         if not self._table_exists("plant_protection_records"):
@@ -458,6 +516,7 @@ class GlobalSearchPage(QWidget):
                 page_index=19,
                 record_id=int(row["id"]),
             )
+            if not row["product_name"]: self._result_specs[id(self._results[-1])] = {1: ("Επέμβαση", {}, {})}
 
     def _search_inventory(self, query: str) -> None:
         if not self._table_exists("inventory_items"):
@@ -493,6 +552,7 @@ class GlobalSearchPage(QWidget):
                 page_index=13,
                 record_id=int(row["id"]),
             )
+            if row["unit"]: self._result_specs[id(self._results[-1])] = {2: ("{category} | μονάδα: {unit}", {"category": row["category"] or "", "unit": row["unit"]}, {})}
 
     def _search_equipment(self, query: str) -> None:
         if not self._table_exists("equipment"):
@@ -672,6 +732,7 @@ class GlobalSearchPage(QWidget):
                 page_index=18,
                 record_id=int(row["id"]),
             )
+            if not title: self._result_specs[id(self._results[-1])] = {1: ("Έγγραφο #{id}", {"id": row["id"]}, {})}
 
     def _search_labor(self, query: str) -> None:
         if self._table_exists("workers"):
@@ -746,6 +807,9 @@ class GlobalSearchPage(QWidget):
                 page_index=21,
                 record_id=int(row["id"]),
             )
+            specs = {2: ("{prefix}{hours} ώρες", {"prefix": "".join(str(v) + " | " for v in (row["worker_name"], row["field_name"]) if v), "hours": f"{float(row['hours'] or 0):.2f}"}, {})}
+            if not row["work_type"]: specs[1] = ("Εργασία", {}, {})
+            self._result_specs[id(self._results[-1])] = specs
 
     def _search_plantings(self, query: str) -> None:
         if not self._table_exists("planting_batches"):
@@ -800,6 +864,9 @@ class GlobalSearchPage(QWidget):
                 page_index=23,
                 record_id=int(row["id"]),
             )
+            specs = {2: ("{planted} φυτεμένα | {alive} ζωντανά | {losses} απώλειες{material}{source}", {"planted": int(row["trees_planted"] or 0), "alive": int(row["trees_alive"] or 0), "losses": losses, "material": (" | " + row["material_type"]) if row["material_type"] else "", "source": (" | " + row["source"]) if row["source"] else ""}, {})}
+            if not row["field_name"]: specs[1] = ("Φύτευση", {}, {})
+            self._result_specs[id(self._results[-1])] = specs
 
 
     def _search_sales(self, query: str) -> None:
@@ -833,6 +900,7 @@ class GlobalSearchPage(QWidget):
                 page_index=26,
                 record_id=int(row["id"]),
             )
+            if not row["buyer_name"]: self._result_specs[id(self._results[-1])] = {1: ("Πώληση #{id}", {"id": row["id"]}, {})}
 
 
     def _render_results(self) -> None:
@@ -848,13 +916,19 @@ class GlobalSearchPage(QWidget):
 
             for column_index, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                if column_index == 0:
+                    self._set_body(item, result["section"])
+                else:
+                    spec = getattr(self, "_result_specs", {}).get(id(result), {}).get(column_index)
+                    if spec is not None:
+                        self._set_body(item, spec[0], _labels=spec[2], **spec[1])
                 item.setData(
                     Qt.ItemDataRole.UserRole,
                     result,
                 )
 
                 if column_index == 2:
-                    item.setToolTip(str(value))
+                    item.setToolTip(item.text())
 
                 self.table.setItem(
                     row_index,
@@ -862,9 +936,7 @@ class GlobalSearchPage(QWidget):
                     item,
                 )
 
-        self.result_label.setText(
-            f"{len(self._results)} αποτελέσματα"
-        )
+        self._body_label(self.result_label, "{count} αποτελέσματα", count=len(self._results))
         self._selection_changed()
 
     def _selected_result(self) -> dict | None:

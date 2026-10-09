@@ -1,0 +1,289 @@
+[
+  {
+    "path": "app/assets/checkmark.svg",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "f87d78b6820454ce06654fc431ddbaa1c549746c97f355f78250cad51bb500fb"
+  },
+  {
+    "path": "app/assets/chevron_down.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "13349a3714f0da2054b47be8fc50b6f4cfc01da9c10b3fe70cd0b9906109b0cc"
+  },
+  {
+    "path": "app/assets/crop_spin_down.svg",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "003baba941c41ec665dba98edb1909cceda95124c085c5beb5d70b884783875d"
+  },
+  {
+    "path": "app/assets/crop_spin_up.svg",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "0bd054221ed1c469b0bb6a0d7ebb0f22e62582c4c5dd1c51e4b15fddd98c3cd4"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/alerts.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "baaff9402af8ae8e71190d1a186d63334a498be33948ae02d6b847b3cf76e17c"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/annual_report.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "7a253801ca1e49f2e6938a1166da10b72d492c5fba543dd705dd50e4df63fc7b"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/calendar.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "0b48696c8d11243af656e6cbd2dd0466abce39479880e8c495c1680ba1fc743a"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/cultivation.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "9a5f708560dcd7905c23260b32a1a94325145a74fb5af3f3335b1552e885c32e"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/dark_mode.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "095d7b980d9994332b20c027e6b549706a92d8293b4837a8265b3a278c0479a7"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/dashboard.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "b60ccf383bbe2040a7f8c28283dd89d6e6a04df8a789cf2208a81e5d7f830866"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/data_quality.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "ecdc4e745d41836feff2547a7661016720b4bb67d29ae312a8d4b826cb8d6ee4"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/declaration.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "07bba918ce36f672fdf0ed007af3b38c77ef952df21aec4cd24826d77ce4b9ac"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/expenses.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "7675670abb13a1b010964492905ac6c35996d39ac862c769fb6671c0462cca6f"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/field_costs.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "015c66bd32aebe450cc2293865d920b0a5ffb2f589ab2aa4e129579c3ec499fe"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/field_profile.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "76d25ae81a414157a51f3353f4579590011c32321a8aab391dd198652494387e"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/fields.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "a9da70ac2d884c2d89bd05fdcc4950d206e510e641fb04b08c8d82df607c74cc"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/finance.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "4e8b91feb5858d709a90f075876498ffacbcd7ab9b5fd1653d5442b496f0d99e"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/income.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "1cc81503331e659df93bc60a04c646c1c85ba8c2c04726b33575b22246aa1194"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/invoice_documents.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "8eb084bf43fa00f995c8d8f5e0aade1cd3b8ac19267e87f4f3c272ddbd00f4e9"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/irrigation_fertilization.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "d7fd365f919b417254b5467a3c612a8e164e851862201a085f2e09a5d96465a4"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/labor.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "79888a966f1c6d25b4536015af74ff9e800cbd920d1d071c5b35ff20aec9c07b"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/light_mode.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "124de838736539c94578ab14c2865d806b8fba9acc51901dac30b8077e88bf45"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/machinery_maintenance.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "0006bc2967defc527b8802cb72f87883c6c22c75a32db82ea5624b264af51032"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/package_preview.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "78508e8aa7237038729e178d7d5e1a76fe25664aaa9731b1c926f5f3b87c56fa"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/partners.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "43793eeda59ab5d0c1f021aaa67d4ffe7f036d5492f186e2212f7004d17580bc"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/plant_protection.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "12250e3cdd3e4ad6654cdc7e6c6952e71a7cfb67f853229ce3350e5c9c53f829"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/producer.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "d2106d33dc78db6ca31a479bb17a5241b7f8cf7a8a3af3232b55b5bab0c8f19c"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/production.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "e98a28ed47f281fbd60494306b85a4729ad3e28bc4cf1969c1d0908beda0ec85"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/products.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "c4bff4c1242183ac5e6999c67be185cf07040df8cd3bb92da321fe7514afc56b"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/reports.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "5fcfe0bf2edb60ea32c5daad8206ecfc1484638270527710c0868011d7d1c60c"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/sales.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "a48e14f56f7600658efeb06655db4f84938cf98c7e62c5f23488dccd53595994"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/search.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "3620338473f28b2f0e375b4b132210682c350d73d69c09d767f14dc43cde3255"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/settings.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "7068b3c047a06bc9eb1e908e416f7c955c796c1a5b13dbf7e77d9786a6d10da7"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/suppliers_buyers.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "79b34ed80aa6338ebe6d7f168fdd70d9fa323de9e8fb170c8ecd0d56e60b6e70"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/tree_planting.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "9ad2f9090600be84b8ecb1779cdad75318f0ec98eed0dd93e5e3d7d5bb9c52dd"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/warehouse.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "681a696f1c81dd1f7e7564aef2eb5f2c8b0543782a27b00df53af2f30154a624"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/warehouse_supplies.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "e8306896e05ec5a86103a043d6d5b985179c498e1ddf823424642c5a9147fc11"
+  },
+  {
+    "path": "app/assets/icons/mastixa_menu/year_lock.png",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "f7055b703ef6ecadf2543e17b914268f49871962f16261246190969288c3977b"
+  },
+  {
+    "path": "app/assets/spin_down.svg",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "374ffbb96bf86e684bc78b25794a3c0067a150663328afc740daaffee677d1c1"
+  },
+  {
+    "path": "app/assets/spin_up.svg",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "f8c52517ba079fd917bdcecfd160e3cc086eeb988558537b4c700db082506f8c"
+  },
+  {
+    "path": "packaging/mastixa_manager.ico",
+    "category": "PROJECT-CREATED / AI-ASSISTED",
+    "ships_windows": true,
+    "evidence": "2026-10-07 owner statement for project logo/icons/artwork; SVG contains simple inline paths, no external references",
+    "sha256": "d8679f78dcfb207709f3ab599ca0032ddaa845aa8c8cecd5ef30c222c1e3429d"
+  }
+]

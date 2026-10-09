@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .date_preferences import format_iso_date, refresh_date_inputs
+
 from PySide6.QtCore import QDate, QEvent, QTimer, Qt
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
@@ -22,10 +26,16 @@ from PySide6.QtWidgets import (
 )
 
 from .crud import CrudPage
+from .widgets import date_input
+from .numeric_inputs import NumericLineEdit, DecimalValidator
+from .report_quantities import quantities, stock_quantities, product_rows
+from .localized_messages import _language, _text
 from .database import Database
 from .language import combo_source_text
 from .ui_helpers import table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context_ui import working_year_mutation
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 from .inventory_sync import ensure_inventory_source_schema
 from .expense_sync import delete_expense, ensure_expense_source_schema, sync_expense
 from .partner_links import PartnerComboBox, canonical_partner_name, ensure_partner_link_schema
@@ -141,8 +151,79 @@ class ClickOpenDateEdit(QDateEdit):
 class InventoryPage(CrudPage):
     """Αποθήκη εφοδίων και κινήσεις αποθέματος."""
 
-    def __init__(self, db: Database) -> None:
-        super().__init__()
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('stock_table', 'movement_table'):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
+    def __init__(self, db: Database, *, staged=False, parent=None) -> None:
+        super().__init__(parent)
+        self._movement_ready = False
+        self._movement_form_ready = False
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_item_id: int | None = None
         self.selected_movement_id: int | None = None
@@ -181,7 +262,7 @@ class InventoryPage(CrudPage):
         layout.setSpacing(10)
         scroll.setWidget(content)
 
-        title = QLabel("Αποθήκη & Εφόδια")
+        title = QLabel("Αποθήκη — Εφόδια / εισροές")
         title.setObjectName("pageTitle")
         layout.addWidget(title)
 
@@ -191,6 +272,16 @@ class InventoryPage(CrudPage):
         subtitle.setObjectName("pageSubtitle")
         subtitle.setWordWrap(True)
         layout.addWidget(subtitle)
+
+        produced_box = QGroupBox("Παραγόμενα προϊόντα / διαθέσιμο απόθεμα")
+        produced_layout = QVBoxLayout(produced_box)
+        note = QLabel("Από Παραγωγή και Πωλήσεις, για όλα τα έτη. Περιλαμβάνει το αδιάθετο υπόλοιπο προηγούμενων ετών.")
+        note.setWordWrap(True)
+        produced_layout.addWidget(note)
+        self.produced_stock_table = table_widget(["Προϊόν", "Μονάδα", "Συνολική παραγωγή", "Πωλημένα", "Διαθέσιμο απόθεμα"])
+        self.produced_stock_table.setMinimumHeight(150)
+        produced_layout.addWidget(self.produced_stock_table)
+        layout.addWidget(produced_box)
 
         summary = QHBoxLayout()
         self.items_metric = self._metric_card("Είδη", "0")
@@ -223,15 +314,15 @@ class InventoryPage(CrudPage):
         self.item_unit.setProperty("mastixaI18nStaticItems", True)
         self.item_unit.addItems(UNITS)
 
-        self.minimum_stock = QLineEdit("0")
+        self.minimum_stock = NumericLineEdit()
         self.minimum_stock.setValidator(
-            QDoubleValidator(0.0, 999999999.0, 3, self.minimum_stock)
+            DecimalValidator(0.0, 999999999.0, 3, self.minimum_stock)
         )
         self.minimum_stock.setPlaceholderText("0")
 
-        self.initial_stock = QLineEdit("0")
+        self.initial_stock = NumericLineEdit()
         self.initial_stock.setValidator(
-            QDoubleValidator(0.0, 999999999.0, 3, self.initial_stock)
+            DecimalValidator(0.0, 999999999.0, 3, self.initial_stock)
         )
         self.initial_stock.setPlaceholderText("0")
         self.initial_stock_label = QLabel("Αρχικό απόθεμα")
@@ -347,13 +438,52 @@ class InventoryPage(CrudPage):
         stock_layout.addWidget(self.stock_table)
         layout.addWidget(stock_box)
 
+        self._movement_section = QWidget(content)
+        self._movement_section.setMinimumHeight(900)
+        self._movement_layout = QVBoxLayout(self._movement_section)
+        self._movement_layout.setContentsMargins(0, 0, 0, 0)
+        self._movement_layout.setSpacing(10)
+        self._inventory_button_style = inventory_button_style
+        layout.addWidget(self._movement_section)
+        if staged and parent is not None and parent.isVisible() and parent.window().height() < 1000:
+            from .staged_construction import AfterFirstPaint
+            self._secondary_construction = AfterFirstPaint(
+                self, (self._finish_movement_form, self._finish_movement_history), viewport_limit=850)
+            scroll.verticalScrollBar().valueChanged.connect(self._secondary_construction.finish_all)
+        else:
+            self._build_movement_form()
+            self._build_movement_history()
+            self._movement_history_box.show()
+        layout.addStretch()
+
+        self.refresh()
+
+    def _finish_movement_form(self):
+        self._movement_section.hide()
+        self._build_movement_form()
+        self.refresh()
+        from .staged_construction import prepare_subtree
+        prepare_subtree(self, self.movement_box)
+        self._movement_section.show()
+
+    def _finish_movement_history(self):
+        self._build_movement_history()
+        # Re-read both sections together after a write between phases.
+        self.refresh()
+        from .staged_construction import prepare_subtree
+        prepare_subtree(self, self._movement_history_box)
+        self._movement_history_box.show()
+
+    def _build_movement_form(self):
+        layout = self._movement_layout
+        inventory_button_style = self._inventory_button_style
         # ---------------------------------------------------------
         # Movement form
         # ---------------------------------------------------------
         self.movement_box = QGroupBox("Νέα κίνηση αποθήκης")
         movement_form = QFormLayout(self.movement_box)
 
-        self.movement_date = QDateEdit(QDate.currentDate())
+        self.movement_date = date_input(self.db, selection="selected_movement_id")
         self.movement_date.setCalendarPopup(True)
         self.movement_date.setDisplayFormat("dd/MM/yyyy")
 
@@ -361,9 +491,9 @@ class InventoryPage(CrudPage):
         self.movement_type = ClickOpenComboBox()
         self.movement_type.addItems(MOVEMENT_TYPES)
 
-        self.movement_quantity = QLineEdit()
+        self.movement_quantity = NumericLineEdit()
         self.movement_quantity.setValidator(
-            QDoubleValidator(0.001, 999999999.0, 3, self.movement_quantity)
+            DecimalValidator(0.001, 999999999.0, 3, self.movement_quantity)
         )
         self.movement_quantity.setPlaceholderText("Ποσότητα")
 
@@ -377,9 +507,9 @@ class InventoryPage(CrudPage):
             "Προαιρετικός προμηθευτής"
         )
 
-        self.movement_unit_price = QLineEdit()
+        self.movement_unit_price = NumericLineEdit()
         self.movement_unit_price.setValidator(
-            QDoubleValidator(
+            DecimalValidator(
                 0.0,
                 999999999.0,
                 2,
@@ -444,7 +574,13 @@ class InventoryPage(CrudPage):
 
         layout.addWidget(self.movement_box)
 
-        movement_list_box = QGroupBox()
+        self._movement_form_ready = True
+
+    def _build_movement_history(self):
+        layout = self._movement_layout
+        movement_list_box = QGroupBox(self._movement_section)
+        movement_list_box.hide()
+        self._movement_history_box = movement_list_box
         movement_list_layout = QVBoxLayout(movement_list_box)
         movement_title = QLabel("Ιστορικό κινήσεων")
         movement_title.setStyleSheet(
@@ -508,9 +644,8 @@ class InventoryPage(CrudPage):
         movement_list_layout.addWidget(self.movement_table)
 
         layout.addWidget(movement_list_box)
-        layout.addStretch()
-
-        self.refresh()
+        self._movement_ready = True
+        self._movement_section.setMinimumHeight(0)
 
     def _metric_card(self, caption: str, value: str):
         box = QGroupBox()
@@ -540,7 +675,14 @@ class InventoryPage(CrudPage):
         return text or "0"
 
     def _ensure_schema_and_audit_triggers(self) -> None:
-        self.db.execute(
+        # All schema/trigger checks still run on every refresh. A single
+        # transaction avoids opening a SQLite connection per statement.
+        with self.db.transaction() as tx:
+            self._ensure_inventory_schema(tx)
+
+    @staticmethod
+    def _ensure_inventory_schema(db) -> None:
+        db.execute(
             """
             CREATE TABLE IF NOT EXISTS inventory_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -554,7 +696,7 @@ class InventoryPage(CrudPage):
             )
             """
         )
-        self.db.execute(
+        db.execute(
             """
             CREATE TABLE IF NOT EXISTS inventory_movements (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -569,25 +711,25 @@ class InventoryPage(CrudPage):
             )
             """
         )
-        self.db.execute(
+        db.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_inventory_movements_date
             ON inventory_movements(movement_date)
             """
         )
-        self.db.execute(
+        db.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_inventory_movements_item
             ON inventory_movements(item_id)
             """
         )
-        ensure_inventory_source_schema(self.db)
-        ensure_expense_source_schema(self.db)
-        ensure_partner_link_schema(self.db)
+        ensure_inventory_source_schema(db)
+        ensure_expense_source_schema(db)
+        ensure_partner_link_schema(db)
 
         movement_columns = {
             row["name"]
-            for row in self.db.query(
+            for row in db.query(
                 "PRAGMA table_info(inventory_movements)"
             )
         }
@@ -602,18 +744,18 @@ class InventoryPage(CrudPage):
 
         for name, definition in additions.items():
             if name not in movement_columns:
-                self.db.execute(
+                db.execute(
                     f"ALTER TABLE inventory_movements ADD COLUMN {name} {definition}"
                 )
 
-        self.db.execute(
+        db.execute(
             '''
             CREATE INDEX IF NOT EXISTS idx_inventory_movements_partner
             ON inventory_movements(partner_id)
             '''
         )
 
-        audit_exists = self.db.query_one(
+        audit_exists = db.query_one(
             """
             SELECT name FROM sqlite_master
             WHERE type='table' AND name='audit_events'
@@ -713,7 +855,7 @@ class InventoryPage(CrudPage):
             """,
         ]
         for sql in triggers:
-            self.db.execute(sql)
+            db.execute(sql)
 
     def _stock_rows(self):
         return self.db.query(
@@ -765,7 +907,7 @@ class InventoryPage(CrudPage):
         fields = self.db.query("SELECT id, name FROM fields ORDER BY name, id")
 
         current_item = self.movement_item.currentData()
-        current_filter = self.item_filter.currentData()
+        current_filter = self.item_filter.currentData() if self._movement_ready else None
 
         self.movement_item.blockSignals(True)
         self.movement_item.clear()
@@ -780,14 +922,15 @@ class InventoryPage(CrudPage):
         self.movement_item.setCurrentIndex(idx if idx >= 0 else 0)
         self.movement_item.blockSignals(False)
 
-        self.item_filter.blockSignals(True)
-        self.item_filter.clear()
-        self.item_filter.addItem("Όλα", None)
-        for row in items:
-            self.item_filter.addItem(row["name"] or f"ID {row['id']}", row["id"])
-        idx = self.item_filter.findData(current_filter)
-        self.item_filter.setCurrentIndex(idx if idx >= 0 else 0)
-        self.item_filter.blockSignals(False)
+        if self._movement_ready:
+            self.item_filter.blockSignals(True)
+            self.item_filter.clear()
+            self.item_filter.addItem("Όλα", None)
+            for row in items:
+                self.item_filter.addItem(row["name"] or f"ID {row['id']}", row["id"])
+            idx = self.item_filter.findData(current_filter)
+            self.item_filter.setCurrentIndex(idx if idx >= 0 else 0)
+            self.item_filter.blockSignals(False)
 
         current_field = self.movement_field.currentData()
         self.movement_field.blockSignals(True)
@@ -800,37 +943,15 @@ class InventoryPage(CrudPage):
         self.movement_field.blockSignals(False)
 
     def _refresh_years(self) -> None:
-        current = self.year_filter.currentData()
-        rows = self.db.query(
-            """
-            SELECT DISTINCT SUBSTR(movement_date,1,4) AS year
-            FROM inventory_movements
-            WHERE movement_date IS NOT NULL AND movement_date<>''
-            ORDER BY year DESC
-            """
-        )
-        years = {QDate.currentDate().year()}
-        for row in rows:
-            try:
-                years.add(int(row["year"]))
-            except (TypeError, ValueError):
-                pass
+        populate_year_filter(self, self.year_filter, strings=False)
 
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-        self.year_filter.addItem("Όλα", None)
-        for year in sorted(years, reverse=True):
-            self.year_filter.addItem(str(year), year)
-        idx = self.year_filter.findData(current)
-        self.year_filter.setCurrentIndex(idx if idx >= 0 else 0)
-        self.year_filter.blockSignals(False)
-
+    @working_year_mutation(selection="selected_item_id", reset="clear_item_form")
     def save_item(self) -> None:
         name = self.item_name.text().strip()
         category = combo_source_text(self.item_category).strip()
         unit = combo_source_text(self.item_unit).strip()
-        minimum = self._to_float(self.minimum_stock.text())
-        initial_stock = self._to_float(self.initial_stock.text())
+        minimum = self._to_float(self.minimum_stock.text() or '0')
+        initial_stock = self._to_float(self.initial_stock.text() or '0')
 
         if not name:
             QMessageBox.warning(self, "Ελλιπή στοιχεία", "Συμπλήρωσε το είδος.")
@@ -859,12 +980,12 @@ class InventoryPage(CrudPage):
         if (
             self.selected_item_id is None
             and initial_stock > 0
-            and is_year_locked(self.db, QDate.currentDate().year())
+            and is_year_locked(self.db, working_context_date(self.db).year())
         ):
             warn_locked_year(
                 self,
                 self.db,
-                QDate.currentDate().year(),
+                working_context_date(self.db).year(),
             )
             return
 
@@ -917,7 +1038,7 @@ class InventoryPage(CrudPage):
                     VALUES(?, ?, 'Διόρθωση +', ?, NULL, ?)
                     """,
                     (
-                        QDate.currentDate().toString("yyyy-MM-dd"),
+                        working_context_date(self.db).toString("yyyy-MM-dd"),
                         int(inserted["id"]),
                         initial_stock,
                         "Αρχικό απόθεμα κατά τη δημιουργία είδους",
@@ -986,6 +1107,7 @@ class InventoryPage(CrudPage):
         self.item_delete_button.setEnabled(False)
         self.stock_table.clearSelection()
 
+    @working_year_mutation()
     def delete_item(self) -> None:
         if self.selected_item_id is None:
             return
@@ -1091,6 +1213,8 @@ class InventoryPage(CrudPage):
 
     def save_movement(self) -> None:
         if self._movement_locked_for_save():
+            if self.selected_movement_id is None:
+                self.clear_movement_form()
             return
 
         item_id = self.movement_item.currentData()
@@ -1157,90 +1281,91 @@ class InventoryPage(CrudPage):
             total_cost,
         )
 
-        if self.selected_movement_id is None:
-            movement_id = int(
-                self.db.execute(
-                    """
-                    INSERT INTO inventory_movements(
-                        movement_date,
-                        item_id,
-                        movement_type,
-                        quantity,
-                        field_id,
-                        notes,
-                        partner_id,
-                        supplier_name,
-                        unit_price,
-                        total_cost
+        with self.db.transaction() as tx:
+            if self.selected_movement_id is None:
+                movement_id = int(
+                    tx.execute(
+                        """
+                        INSERT INTO inventory_movements(
+                            movement_date,
+                            item_id,
+                            movement_type,
+                            quantity,
+                            field_id,
+                            notes,
+                            partner_id,
+                            supplier_name,
+                            unit_price,
+                            total_cost
+                        )
+                        VALUES(?,?,?,?,?,?,?,?,?,?)
+                        """,
+                        values,
                     )
-                    VALUES(?,?,?,?,?,?,?,?,?,?)
-                    """,
-                    values,
                 )
+            else:
+                movement_id = self.selected_movement_id
+                tx.execute(
+                    """
+                    UPDATE inventory_movements
+                    SET
+                        movement_date=?,
+                        item_id=?,
+                        movement_type=?,
+                        quantity=?,
+                        field_id=?,
+                        notes=?,
+                        partner_id=?,
+                        supplier_name=?,
+                        unit_price=?,
+                        total_cost=?,
+                        updated_at=CURRENT_TIMESTAMP
+                    WHERE id=?
+                    """,
+                    (*values, movement_id),
+                )
+
+            item_row = tx.query_one(
+                "SELECT name FROM inventory_items WHERE id=?",
+                (int(item_id),),
             )
-        else:
-            movement_id = self.selected_movement_id
-            self.db.execute(
+            item_name = (
+                item_row["name"]
+                if item_row
+                else f"Είδος #{item_id}"
+            )
+
+            expense_id = sync_expense(
+                tx,
+                source_type="inventory_receipt",
+                source_id=int(movement_id),
+                entry_date=self.movement_date.date().toString(
+                    "yyyy-MM-dd"
+                ),
+                category="Αποθήκη & Εφόδια",
+                description=f"Παραλαβή αποθήκης — {item_name}",
+                supplier=supplier_name,
+                payment_method="",
+                amount=total_cost,
+                notes=(
+                    f"Αυτόματο έξοδο από παραλαβή αποθήκης #{movement_id}"
+                    + (
+                        f" | {self.movement_notes.text().strip()}"
+                        if self.movement_notes.text().strip()
+                        else ""
+                    )
+                ),
+                partner_id=partner_id,
+            )
+
+            tx.execute(
                 """
                 UPDATE inventory_movements
-                SET
-                    movement_date=?,
-                    item_id=?,
-                    movement_type=?,
-                    quantity=?,
-                    field_id=?,
-                    notes=?,
-                    partner_id=?,
-                    supplier_name=?,
-                    unit_price=?,
-                    total_cost=?,
-                    updated_at=CURRENT_TIMESTAMP
+                SET expense_id=?
                 WHERE id=?
                 """,
-                (*values, movement_id),
+                (expense_id, movement_id),
             )
-
-        item_row = self.db.query_one(
-            "SELECT name FROM inventory_items WHERE id=?",
-            (int(item_id),),
-        )
-        item_name = (
-            item_row["name"]
-            if item_row
-            else f"Είδος #{item_id}"
-        )
-
-        expense_id = sync_expense(
-            self.db,
-            source_type="inventory_receipt",
-            source_id=int(movement_id),
-            entry_date=self.movement_date.date().toString(
-                "yyyy-MM-dd"
-            ),
-            category="Αποθήκη & Εφόδια",
-            description=f"Παραλαβή αποθήκης — {item_name}",
-            supplier=supplier_name,
-            payment_method="",
-            amount=total_cost,
-            notes=(
-                f"Αυτόματο έξοδο από παραλαβή αποθήκης #{movement_id}"
-                + (
-                    f" | {self.movement_notes.text().strip()}"
-                    if self.movement_notes.text().strip()
-                    else ""
-                )
-            ),
-            partner_id=partner_id,
-        )
-
-        self.db.execute(
-            """
-            UPDATE inventory_movements
-            SET expense_id=?
-            WHERE id=?
-            """,
-            (expense_id, movement_id),
-        )
 
         self.clear_movement_form()
         self.refresh()
@@ -1300,21 +1425,17 @@ class InventoryPage(CrudPage):
                 record["source_type"],
                 "άλλη ενότητα",
             )
-            self.movement_box.setTitle(
-                f"Αυτόματη κίνηση — διαχειρίζεται από {source_label}"
-            )
+            self._composed_text(self.movement_box, 'Αυτόματη κίνηση — διαχειρίζεται από {source_label}', source_label=lambda: _text(source_label))
             self.movement_save_button.setText("Αυτόματη")
             self.movement_save_button.setEnabled(False)
             self.movement_delete_button.setEnabled(False)
         elif locked:
-            self.movement_box.setTitle(
-                f"Προβολή κίνησης — ΚΛΕΙΔΩΜΕΝΟ {record_year}"
-            )
+            self._composed_text(self.movement_box, 'Προβολή κίνησης — ΚΛΕΙΔΩΜΕΝΟ {record_year}', record_year=record_year)
             self.movement_save_button.setText("Κλειδωμένο")
             self.movement_save_button.setEnabled(False)
             self.movement_delete_button.setEnabled(False)
         else:
-            self.movement_box.setTitle("Επεξεργασία κίνησης")
+            self._composed_text(self.movement_box, 'Επεξεργασία κίνησης')
             self.movement_save_button.setText("Αποθήκευση")
             self.movement_save_button.setEnabled(True)
             self.movement_delete_button.setEnabled(True)
@@ -1322,7 +1443,7 @@ class InventoryPage(CrudPage):
 
     def clear_movement_form(self) -> None:
         self.selected_movement_id = None
-        self.movement_date.setDate(QDate.currentDate())
+        self.movement_date.setDate(working_context_date(self.db))
         self.movement_item.setCurrentIndex(0)
         self.movement_type.setCurrentIndex(0)
         self.movement_quantity.clear()
@@ -1332,7 +1453,7 @@ class InventoryPage(CrudPage):
         self.movement_total_cost.setText("0 €")
         self.movement_notes.clear()
         self._update_receipt_fields_visibility()
-        self.movement_box.setTitle("Νέα κίνηση αποθήκης")
+        self._composed_text(self.movement_box, 'Νέα κίνηση αποθήκης')
         self.movement_save_button.setText("Προσθήκη κίνησης")
         self.movement_save_button.setEnabled(True)
         self.movement_cancel_button.setEnabled(False)
@@ -1374,24 +1495,44 @@ class InventoryPage(CrudPage):
             self, "Διαγραφή κίνησης", "Να διαγραφεί η επιλεγμένη κίνηση αποθήκης;"
         ):
             return
-        delete_expense(
-            self.db,
-            source_type="inventory_receipt",
-            source_id=self.selected_movement_id,
-        )
-        self.db.execute(
-            "DELETE FROM inventory_movements WHERE id=?",
-            (self.selected_movement_id,),
-        )
+        with self.db.transaction() as tx:
+            delete_expense(
+                tx,
+                source_type="inventory_receipt",
+                source_id=self.selected_movement_id,
+            )
+            tx.execute(
+                "DELETE FROM inventory_movements WHERE id=?",
+                (self.selected_movement_id,),
+            )
         self.clear_movement_form()
         self.refresh()
 
-    def refresh(self, *_args) -> None:
-        self._ensure_schema_and_audit_triggers()
-        self._refresh_combos()
-        self.movement_supplier.refresh_options()
-        self._refresh_years()
+    def _refresh_produced_stock(self):
+        production = quantities(self.db)
+        sales = quantities(self.db, 'production_sales')
+        available = stock_quantities(production, sales)
+        groups = {g['key']: g for g in production + sales + available}
+        for product in product_rows(self.db):
+            groups.setdefault(('id', product['id']), dict(key=('id', product['id']),
+                product=product['name'], unit=product['unit']))
+        produced_map = {g['key']: g['quantity'] for g in production}
+        sold_map = {g['key']: g['quantity'] for g in sales}
+        available_map = {g['key']: g['quantity'] for g in available}
+        rows = sorted(groups.values(), key=lambda g: (g['product'], str(g['key'])))
+        self.produced_stock_table.setRowCount(len(rows))
+        for index, group in enumerate(rows):
+            key = group['key']
+            values = [group['product'], group['unit'] or '[?]',
+                      self._fmt(produced_map.get(key, 0)), self._fmt(sold_map.get(key, 0)),
+                      self._fmt(available_map.get(key, 0))]
+            for column, value in enumerate(values):
+                self.produced_stock_table.setItem(index, column, QTableWidgetItem(str(value)))
 
+    def refresh(self, *_args) -> None:
+        self._refresh_produced_stock()
+        refresh_date_inputs(self, self.db)
+        self._ensure_schema_and_audit_triggers()
         # Stock table and alert metrics.
         rows = self._stock_rows()
         search = self.stock_search.text().strip().casefold()
@@ -1438,8 +1579,22 @@ class InventoryPage(CrudPage):
                 table_item = QTableWidgetItem(str(value))
                 if column_index == 0:
                     table_item.setData(Qt.ItemDataRole.UserRole, row["id"])
+                if column_index == 5:
+                    self._set_body(table_item, status)
                 self.stock_table.setItem(row_index, column_index, table_item)
 
+        if self._movement_form_ready:
+            self._refresh_movement()
+            from .year_context_ui import refresh_transaction_controls
+            refresh_transaction_controls(self)
+
+    def _refresh_movement(self):
+        refresh_date_inputs(self, self.db)
+        self._refresh_combos()
+        self.movement_supplier.refresh_options()
+        if not self._movement_ready:
+            return
+        self._refresh_years()
         # Movement history.
         where = ["1=1"]
         params: list[object] = []
@@ -1487,7 +1642,7 @@ class InventoryPage(CrudPage):
         for row_index, row in enumerate(movements):
             field_name = row["field_name"] or "Γενική"
             values = [
-                row["movement_date"] or "",
+                format_iso_date(row["movement_date"], self.db),
                 row["item_name"] or f"ID {row['item_id']}",
                 row["movement_type"] or "",
                 self._fmt(float(row["quantity"] or 0)),
@@ -1499,4 +1654,10 @@ class InventoryPage(CrudPage):
                 table_item = QTableWidgetItem(str(value))
                 if column_index == 0:
                     table_item.setData(Qt.ItemDataRole.UserRole, row["id"])
+                if column_index == 2 and value in MOVEMENT_TYPES:
+                    self._set_body(table_item, value)
+                elif column_index == 5 and not row["field_name"]:
+                    self._set_body(table_item, "Γενική")
+                elif column_index == 6 and "source_type" in row.keys() and row["source_type"]:
+                    self._set_body(table_item, "[Αυτόματη] {notes}", notes=row["notes"] or "")
                 self.movement_table.setItem(row_index, column_index, table_item)

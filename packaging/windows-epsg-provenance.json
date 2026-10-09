@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "input_sha256": "528b9763b57e85ee78f6f30478ef0494902320f1d71d1564bf0d7ec4f30cc002",
+  "output_sha256": "590adc683437a59896e8841255129b572b082008eebf1c0d5225e6c5e207c064",
+  "operation_notes": {
+    "1312": "PROJ-modified accuracy: the 2.0 m OPERATIONACCURACY/accuracy value is PROJ operation-ranking metadata, NOT an official EPSG Dataset value. The EPSG v12.029 imported accuracy is 1.0 m. EPSG:1312 identifies the original operation definition, not the PROJ accuracy override. Mastixa adds this provenance marking only. Consult epsg.org for official current data; IOGP owns the EPSG Dataset and its supplied Terms of Use apply.",
+    "1462": "PROJ-modified accuracy: the 2.0 m OPERATIONACCURACY/accuracy value is PROJ operation-ranking metadata, NOT an official EPSG Dataset value. The EPSG v12.029 imported accuracy is 1.0 m. EPSG:1462 identifies the original operation definition, not the PROJ accuracy override. Mastixa adds this provenance marking only. Consult epsg.org for official current data; IOGP owns the EPSG Dataset and its supplied Terms of Use apply.",
+    "7001": "PROJ-supplemented interpolation CRS: the interpolation_crs/INTERPOLATIONCRS association with Amersfoort (EPSG:4289) was added by PROJ, NOT supplied by the EPSG v12.029 imported operation. EPSG:7001 identifies the original operation and EPSG:4289 the genuine CRS; neither attributes this added association to the EPSG Dataset. Accuracy 0.01 m and the operation parameters are unchanged. Mastixa adds this provenance marking only. Consult epsg.org for official current data; IOGP owns the EPSG Dataset and its supplied Terms of Use apply."
+  },
+  "alias_name": "PROJ unofficial legacy Google Maps Global Mercator alias 900913 of EPSG:3857",
+  "alias_note": "900913 is a PROJ/Google compatibility alias, not an official EPSG-issued code. PROJ marks it deprecated. Mastixa identifies this alias as PROJ:900913; legacy Mastixa EPSG:900913 input is canonicalized to official EPSG:3857. EPSG:3857 and all genuine referenced EPSG definitions retain their attribution."
+}

@@ -207,11 +207,13 @@ class PlantTrackingUiTest(unittest.TestCase):
         # Lightweight page stubs keep the same integration assertions deterministic
         # while the real CropProgramsPage/PlantTrackingPage behavior is covered by
         # their dedicated UI tests above and in test_crop_program_ui.py.
-        from app import crop_program_integration, main_window, plant_tracking_integration
+        from app import crop_program_integration, crop_programs, main_window, plant_tracking_integration
 
         original_window = main_window.MainWindow
         original_crop_page = crop_program_integration.CropProgramsPage
         original_plant_page = plant_tracking_integration.PlantTrackingPage
+        original_module_crop_page = crop_programs.CropProgramsPage
+        original_rule_dialog = crop_programs.RuleDialog
 
         class BaseWindow:
             def __init__(self, *args, **kwargs) -> None:
@@ -254,6 +256,8 @@ class PlantTrackingUiTest(unittest.TestCase):
             main_window.MainWindow = original_window
             crop_program_integration.CropProgramsPage = original_crop_page
             plant_tracking_integration.PlantTrackingPage = original_plant_page
+            crop_programs.CropProgramsPage = original_module_crop_page
+            crop_programs.RuleDialog = original_rule_dialog
 
 
 if __name__ == "__main__":

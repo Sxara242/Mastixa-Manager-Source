@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Συχνότητα στην περίοδο": "Frequency within period",
+    "Έτος βάσης": "Base year",
+    "έτος βάσης": "base year",
+    "Επανάληψη ανά (έτη)": "Repeat every (years)",
+    "Μία φορά στην περίοδο": "Once in the period",
+    "μία φορά στην περίοδο": "once in the period",
+    "Ημέρες": "Days",
+    "ημέρες": "days",
+    "Μήνες": "Months",
+    "μήνες": "months",
+    "έτη": "years",
+    "κάθε χρόνο": "every year",
+    "Μία φορά": "Once",
+    "Εβδομάδες": "Weeks",
+    "ημέρα": "day",
+    "εβδομάδα": "week",
+    "εβδομάδες": "weeks",
+    "μήνας": "month",
+    "έτος": "year"
+  }
+}

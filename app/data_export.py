@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from .database import Database
 from .language import tr
+from .localized_messages import _language, _message, _text
 from .ui_helpers import table_widget
 from .product_registry import ensure_product_links, product_row
 
@@ -58,6 +59,19 @@ EXPORT_SECTIONS = [
 ]
 
 
+class _VerificationMessage(str):
+    """Keep the canonical diagnostic string; localize owned wording only in UI."""
+
+    def __new__(cls, template: str, **values):
+        result = super().__new__(cls, template.format(**values))
+        result.template = template
+        result.values = values
+        return result
+
+    def localized(self) -> str:
+        return _text(self.template, **self.values)
+
+
 class DataExportPage(QWidget):
     """
     Portable, read-only export of Mastixa Manager data.
@@ -66,8 +80,54 @@ class DataExportPage(QWidget):
     It is NOT a replacement for the SQLite backup/restore workflow.
     """
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('summary_table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ('total_label',):
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.section_checks: dict[str, QCheckBox] = {}
 
@@ -216,6 +276,8 @@ class DataExportPage(QWidget):
         self.last_export_label = QLabel(
             "Δεν έχει δημιουργηθεί ZIP σε αυτή τη συνεδρία."
         )
+        self.last_export_label.setProperty("mastixaI18nSkipText", True)
+        self.last_export_label.setTextFormat(Qt.TextFormat.PlainText)
         self.last_export_label.setWordWrap(True)
         self.last_export_label.setStyleSheet("color: #67746d;")
         actions_layout.addWidget(self.last_export_label)
@@ -225,7 +287,18 @@ class DataExportPage(QWidget):
         layout.addStretch()
 
         self.last_export_path: Path | None = None
+        controller = _language()
+        if controller:
+            controller.language_changed.connect(self._refresh_last_export_label)
+        self._refresh_last_export_label()
         self.refresh()
+
+    def _refresh_last_export_label(self) -> None:
+        self.last_export_label.setText(
+            _text("Τελευταίο ZIP: {path}", path=self.last_export_path)
+            if self.last_export_path is not None
+            else _text("Δεν έχει δημιουργηθεί ZIP σε αυτή τη συνεδρία.")
+        )
 
     def _table_exists(self, table_name: str) -> bool:
         row = self.db.query_one(
@@ -385,18 +458,14 @@ class DataExportPage(QWidget):
             ]
 
             for column_index, value in enumerate(values):
-                self.summary_table.setItem(
-                    row_index,
-                    column_index,
-                    QTableWidgetItem(value),
-                )
+                item = QTableWidgetItem(value)
+                if column_index in (0, 3):
+                    self._set_body(item, value)
+                self.summary_table.setItem(row_index, column_index, item)
 
         selected_count = len(self._selected_sections())
 
-        self.total_label.setText(
-            f"Επιλεγμένες ενότητες: {selected_count}  |  "
-            f"Συνολικές εγγραφές: {total_records}"
-        )
+        self._body_label(self.total_label, "Επιλεγμένες ενότητες: {selected_count}  |  Συνολικές εγγραφές: {total_records}", selected_count=selected_count, total_records=total_records)
 
         self.export_button.setEnabled(selected_count > 0)
 
@@ -494,7 +563,7 @@ class DataExportPage(QWidget):
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Δημιουργία φορητού ZIP",
+            _text("Δημιουργία φορητού ZIP"),
             default_name,
             "ZIP (*.zip)",
         )
@@ -542,13 +611,17 @@ class DataExportPage(QWidget):
 
                         archive.writestr(csv_name, data)
                         if table_name == "invoice_documents":
-                            from .invoice_documents import INVOICE_FILES_DIR
-                            root = INVOICE_FILES_DIR.resolve()
+                            from .invoice_storage import resolve_file
+                            exported_names = set()
                             for document in self.db.query("SELECT stored_filename FROM invoice_documents"):
                                 name = str(document["stored_filename"] or "")
-                                source = (root / name).resolve()
-                                if name and source.parent == root and source.is_file():
+                                try:
+                                    source = resolve_file(self.db.path, name)
+                                except ValueError:
+                                    continue  # Preserve this export's unsafe-path exclusion.
+                                if name.casefold() not in exported_names and source.is_file():
                                     archive.write(source, "invoice_files/" + source.name)
+                                    exported_names.add(name.casefold())
 
 
                         exported_tables.append(
@@ -627,34 +700,30 @@ class DataExportPage(QWidget):
                 )
 
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Εξαγωγή Δεδομένων",
-                f"Η δημιουργία ZIP απέτυχε.\n\n{exc}",
+            _message(
+                self, "critical", "Εξαγωγή Δεδομένων",
+                "Η δημιουργία ZIP απέτυχε.\n\n{error}",
+                error=str(exc),
             )
             return
 
         self.last_export_path = export_path
         self.verify_button.setEnabled(True)
-        self.last_export_label.setText(
-            f"Τελευταίο ZIP: {export_path}"
-        )
+        self._refresh_last_export_label()
 
         ok, message = self._verify_archive(export_path)
 
         if ok:
-            QMessageBox.information(
-                self,
-                "Εξαγωγή Δεδομένων",
-                "Το ZIP δημιουργήθηκε και ελέγχθηκε επιτυχώς.\n\n"
-                f"{export_path}",
+            _message(
+                self, "information", "Εξαγωγή Δεδομένων",
+                "Το ZIP δημιουργήθηκε και ελέγχθηκε επιτυχώς.\n\n{path}",
+                path=export_path,
             )
         else:
-            QMessageBox.warning(
-                self,
-                "Εξαγωγή Δεδομένων",
-                "Το ZIP δημιουργήθηκε, αλλά ο έλεγχος βρήκε πρόβλημα.\n\n"
-                f"{message}",
+            _message(
+                self, "warning", "Εξαγωγή Δεδομένων",
+                "Το ZIP δημιουργήθηκε, αλλά ο έλεγχος βρήκε πρόβλημα.\n\n{detail}",
+                detail=message.localized if isinstance(message, _VerificationMessage) else message,
             )
 
     def _verify_archive(self, path: Path) -> tuple[bool, str]:
@@ -663,15 +732,15 @@ class DataExportPage(QWidget):
                 bad_file = archive.testzip()
 
                 if bad_file is not None:
-                    return False, f"CRC πρόβλημα στο αρχείο: {bad_file}"
+                    return False, _VerificationMessage("CRC πρόβλημα στο αρχείο: {file}", file=bad_file)
 
                 names = set(archive.namelist())
 
                 if "manifest.json" not in names:
-                    return False, "Λείπει το manifest.json."
+                    return False, _VerificationMessage("Λείπει το manifest.json.")
 
                 if "README.txt" not in names:
-                    return False, "Λείπει το README.txt."
+                    return False, _VerificationMessage("Λείπει το README.txt.")
 
                 manifest = json.loads(
                     archive.read("manifest.json").decode("utf-8")
@@ -681,7 +750,7 @@ class DataExportPage(QWidget):
                     manifest.get("schema")
                     != "mastixa-manager-portable-export-v1"
                 ):
-                    return False, "Μη αναμενόμενο schema στο manifest."
+                    return False, _VerificationMessage("Μη αναμενόμενο schema στο manifest.")
 
                 for table_info in manifest.get("tables", []):
                     file_name = table_info.get("file")
@@ -690,7 +759,7 @@ class DataExportPage(QWidget):
                     if status == "exported" and file_name not in names:
                         return (
                             False,
-                            f"Λείπει το αναμενόμενο αρχείο: {file_name}",
+                            _VerificationMessage("Λείπει το αναμενόμενο αρχείο: {file}", file=file_name),
                         )
 
         except (
@@ -712,14 +781,13 @@ class DataExportPage(QWidget):
         )
 
         if ok:
-            QMessageBox.information(
-                self,
-                "Έλεγχος ZIP",
+            _message(
+                self, "information", "Έλεγχος ZIP",
                 "Το τελευταίο ZIP είναι ακέραιο και έχει σωστή δομή.",
             )
         else:
-            QMessageBox.critical(
-                self,
-                "Έλεγχος ZIP",
-                f"Ο έλεγχος απέτυχε.\n\n{message}",
+            _message(
+                self, "critical", "Έλεγχος ZIP",
+                "Ο έλεγχος απέτυχε.\n\n{detail}",
+                detail=message.localized if isinstance(message, _VerificationMessage) else message,
             )

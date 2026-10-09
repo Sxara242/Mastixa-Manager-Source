@@ -19,18 +19,30 @@ MAX_VERTICES = 20_000
 GEOD = Geod(ellps="WGS84")
 
 
+def canonical_crs_input(value: str) -> str:
+    """Accept the historical Google alias without representing it as an EPSG code."""
+    if value.strip().casefold() in {
+        "900913", "epsg:900913", "proj:900913",
+        "urn:ogc:def:crs:epsg::900913",
+        "http://www.opengis.net/def/crs/epsg/0/900913",
+        "https://www.opengis.net/def/crs/epsg/0/900913",
+    }:
+        return "EPSG:3857"
+    return value
+
+
 @lru_cache(maxsize=32)
 def transformer(source: str, target: str) -> Transformer:
     # Local CRS operations must never silently download grids, even via environment settings.
     network.set_network_enabled(False)
-    return Transformer.from_crs(CRS(source), CRS(target), always_xy=True,
+    return Transformer.from_crs(CRS(canonical_crs_input(source)), CRS(canonical_crs_input(target)), always_xy=True,
                                 allow_ballpark=False)
 
 
 def crs_name(value: str) -> str:
     if not value or len(value) > 10_000:
         raise ValueError("Δήλωσε το πραγματικό σύστημα συντεταγμένων / Source CRS required")
-    crs = CRS.from_user_input(value)
+    crs = CRS.from_user_input(canonical_crs_input(value))
     code = crs.to_epsg()
     if code is None or not (crs.is_geographic or crs.is_projected) or len(crs.axis_info) != 2:
         raise ValueError("Απαιτείται δισδιάστατο EPSG CRS / A 2D EPSG CRS is required")

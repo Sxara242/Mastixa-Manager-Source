@@ -1,3 +1,8 @@
+> Retained historical engineering record, sanitized for public review.
+> Current status: [RELEASE_STATUS.md](RELEASE_STATUS.md). This record does not
+> establish approval of the current source or a new binary release. Local-only
+> receipt paths refer to privately retained evidence, absent from this snapshot.
+
 # Phase 2 checkpoint evidence — 2026-09-09
 
 Desktop source remains in its original layout. Android source was copied from

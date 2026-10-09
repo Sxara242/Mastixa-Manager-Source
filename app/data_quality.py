@@ -24,7 +24,9 @@ from PySide6.QtWidgets import (
 
 from .database import Database
 from .language import tr
+from .localized_messages import _language, _text, _message
 from .ui_helpers import table_widget
+from .report_export_io import export_issue_xlsx
 
 
 SEVERITY_ORDER = {
@@ -52,6 +54,33 @@ CATEGORY_LABELS = {
     "declaration": "Δήλωση Καλλιέργειας",
     "snapshots": "Snapshots",
 }
+
+
+class _IssueText(str):
+    """Canonical Greek text with explicit owned-template metadata.
+
+    String equality, search and existing consumers retain the source text.
+    Only the presentation boundary translates the template, never its values.
+    """
+
+    def __new__(cls, template: str, **values):
+        instance = super().__new__(cls, template.format(**values))
+        instance.template = template
+        instance.values = values
+        return instance
+
+    def __getnewargs_ex__(self):
+        return (self.template,), self.values
+
+
+def _display(value: str) -> str:
+    if isinstance(value, _IssueText):
+        return _text(value.template, **{
+            key: _display(part) if isinstance(part, _IssueText) else part
+            for key, part in value.values.items()
+        })
+    controller = _language()
+    return controller.translate_exact(value) if controller else value
 
 
 class DataQualityPage(QWidget):
@@ -86,6 +115,7 @@ class DataQualityPage(QWidget):
         self.warning_card = self._metric_card("Προειδοποιήσεις", "0")
         self.total_card = self._metric_card("Σύνολο θεμάτων", "0")
         self.status_card = self._metric_card("Κατάσταση", "Καθαρά")
+        self.status_card[1].setProperty("mastixaI18nSkipText", True)
 
         for card, _value_label in (
             self.error_card,
@@ -138,6 +168,7 @@ class DataQualityPage(QWidget):
         actions = QHBoxLayout()
 
         self.result_label = QLabel("0 θέματα")
+        self.result_label.setProperty("mastixaI18nSkipText", True)
         self.result_label.setStyleSheet(
             "font-weight: 700; color: #26382f;"
         )
@@ -152,6 +183,9 @@ class DataQualityPage(QWidget):
         export_button = QPushButton("Εξαγωγή CSV")
         export_button.clicked.connect(self.export_csv)
         actions.addWidget(export_button)
+        self.xlsx_button = QPushButton("Εξαγωγή XLSX")
+        self.xlsx_button.clicked.connect(self.export_xlsx)
+        actions.addWidget(self.xlsx_button)
 
         layout.addLayout(actions)
 
@@ -203,6 +237,9 @@ class DataQualityPage(QWidget):
         note.setStyleSheet("color: #67746d;")
         layout.addWidget(note)
 
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_presentation)
         self.refresh()
 
     def _metric_card(self, caption: str, value: str):
@@ -282,6 +319,10 @@ class DataQualityPage(QWidget):
             )
         )
 
+        self._refresh_presentation()
+
+    def _refresh_presentation(self, *_args) -> None:
+        self.xlsx_button.setText(_text("Εξαγωγή XLSX"))
         errors = sum(
             1
             for issue in self.all_issues
@@ -298,11 +339,11 @@ class DataQualityPage(QWidget):
         self.total_card[1].setText(str(len(self.all_issues)))
 
         if errors:
-            self.status_card[1].setText("Χρειάζεται διόρθωση")
+            self.status_card[1].setText(_display("Χρειάζεται διόρθωση"))
         elif warnings:
-            self.status_card[1].setText("Με προειδοποιήσεις")
+            self.status_card[1].setText(_display("Με προειδοποιήσεις"))
         else:
-            self.status_card[1].setText("Καθαρά")
+            self.status_card[1].setText(_display("Καθαρά"))
 
         self._apply_filters()
 
@@ -461,8 +502,7 @@ class DataQualityPage(QWidget):
                 "fields",
                 f"ΚΑΕΚ {kaek}",
                 "Το ίδιο ΚΑΕΚ χρησιμοποιείται σε περισσότερα από ένα αγροτεμάχια.",
-                "Έλεγξε τα αγροτεμάχια με ID: "
-                + ", ".join(str(value) for value in ids),
+                _IssueText('Έλεγξε τα αγροτεμάχια με ID: {v0}', v0=', '.join((str(value) for value in ids))),
             )
 
     def _check_production(self) -> None:
@@ -500,7 +540,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "production",
                     record,
-                    f"Μη έγκυρη ημερομηνία: {entry_date or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=entry_date or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία της καταχώρησης παραγωγής.",
                 )
             elif parsed > today:
@@ -508,7 +548,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "production",
                     record,
-                    f"Η ημερομηνία {entry_date} είναι στο μέλλον.",
+                    _IssueText('Η ημερομηνία {v0} είναι στο μέλλον.', v0=entry_date),
                     "Έλεγξε αν η ημερομηνία καταχωρήθηκε σωστά.",
                 )
 
@@ -517,7 +557,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "production",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Διόρθωσε ή διέγραψε την καταχώρηση παραγωγής.",
                 )
 
@@ -542,7 +582,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "production",
                     record,
-                    f"Υπάρχει παραγωγή στο «{field_name}», αλλά έχει 0 παραγωγικά δέντρα.",
+                    _IssueText('Υπάρχει παραγωγή στο «{v0}», αλλά έχει 0 παραγωγικά δέντρα.', v0=field_name),
                     "Έλεγξε τα παραγωγικά δέντρα του αγροτεμαχίου.",
                 )
 
@@ -580,7 +620,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "activities",
                     record,
-                    f"Μη έγκυρη ημερομηνία: {activity_date or '(κενή)' }.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=activity_date or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία στην ενότητα Εργασίες Αγρού.",
                 )
 
@@ -599,7 +639,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "activities",
                     record,
-                    f"Μη αναμενόμενη κατάσταση: {status or '(κενή)' }.",
+                    _IssueText('Μη αναμενόμενη κατάσταση: {v0}.', v0=status or _IssueText('(κενή)')),
                     "Επίλεξε Προγραμματισμένη, Ολοκληρώθηκε ή Ακυρώθηκε.",
                 )
 
@@ -608,7 +648,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "activities",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Διόρθωσε ή διέγραψε την εργασία.",
                 )
 
@@ -647,7 +687,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "plant_protection",
                     record,
-                    f"Μη έγκυρη ημερομηνία εφαρμογής: {application_date or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία εφαρμογής: {v0}.', v0=application_date or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία στο Ημερολόγιο Φυτοπροστασίας.",
                 )
             elif parsed > today:
@@ -655,7 +695,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "plant_protection",
                     record,
-                    f"Η ημερομηνία εφαρμογής {application_date} είναι στο μέλλον.",
+                    _IssueText('Η ημερομηνία εφαρμογής {v0} είναι στο μέλλον.', v0=application_date),
                     "Έλεγξε ότι η ημερομηνία έχει καταχωρηθεί σωστά.",
                 )
 
@@ -664,7 +704,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "plant_protection",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Διόρθωσε ή διέγραψε την καταγραφή φυτοπροστασίας.",
                 )
 
@@ -712,7 +752,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "plant_protection",
                     record,
-                    f"Το συνδεδεμένο είδος αποθήκης ID {row['inventory_item_id']} δεν υπάρχει πλέον.",
+                    _IssueText('Το συνδεδεμένο είδος αποθήκης ID {v0} δεν υπάρχει πλέον.', v0=row['inventory_item_id']),
                     "Επίλεξε ξανά το σωστό προϊόν ή άφησε το προϊόν ως ελεύθερο κείμενο.",
                 )
 
@@ -751,7 +791,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "labor",
                     record,
-                    f"Μη έγκυρη ημερομηνία: {row['work_date'] or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=row['work_date'] or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία της καταχώρησης εργατικών.",
                 )
             elif parsed > today:
@@ -759,7 +799,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "labor",
                     record,
-                    f"Η ημερομηνία {row['work_date']} είναι στο μέλλον.",
+                    _IssueText('Η ημερομηνία {v0} είναι στο μέλλον.', v0=row['work_date']),
                     "Έλεγξε αν η ημερομηνία καταχωρήθηκε σωστά.",
                 )
 
@@ -768,7 +808,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "labor",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο εργαζόμενο ID {row['worker_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο εργαζόμενο ID {v0}.', v0=row['worker_id']),
                     "Διόρθωσε την καταχώρηση εργατικών.",
                 )
 
@@ -780,7 +820,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "labor",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Επίλεξε ξανά αγροτεμάχιο ή άφησέ το ως γενική εργασία.",
                 )
 
@@ -839,7 +879,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "plantings",
                     record,
-                    f"Μη έγκυρη ημερομηνία φύτευσης: {row['planting_date'] or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία φύτευσης: {v0}.', v0=row['planting_date'] or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία της παρτίδας.",
                 )
             elif parsed > today:
@@ -847,7 +887,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "plantings",
                     record,
-                    f"Η ημερομηνία φύτευσης {row['planting_date']} είναι στο μέλλον.",
+                    _IssueText('Η ημερομηνία φύτευσης {v0} είναι στο μέλλον.', v0=row['planting_date']),
                     "Έλεγξε την ημερομηνία.",
                 )
 
@@ -856,7 +896,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "plantings",
                     record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Διόρθωσε ή διέγραψε την παρτίδα φύτευσης.",
                 )
 
@@ -927,8 +967,7 @@ class DataQualityPage(QWidget):
                 "sales",
                 "ΣΥΝΟΛΟ",
                 (
-                    f"Οι πωλήσεις ({sold:.3f} kg) είναι μεγαλύτερες από "
-                    f"την καταγεγραμμένη παραγωγή ({produced:.3f} kg)."
+                    _IssueText('Οι πωλήσεις ({v0:.3f} kg) είναι μεγαλύτερες από την καταγεγραμμένη παραγωγή ({v1:.3f} kg).', v0=sold, v1=produced)
                 ),
                 "Έλεγξε τις πωλήσεις ή τις καταχωρήσεις παραγωγής.",
             )
@@ -1056,7 +1095,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "sales",
                     record,
-                    f"Το προϊόν «{product}» δεν υπάρχει πλέον στις καταχωρήσεις Παραγωγής.",
+                    _IssueText('Το προϊόν «{v0}» δεν υπάρχει πλέον στις καταχωρήσεις Παραγωγής.', v0=product),
                     "Έλεγξε την πώληση και το προϊόν.",
                 )
 
@@ -1109,8 +1148,7 @@ class DataQualityPage(QWidget):
                     "equipment",
                     record,
                     (
-                        f"Η συντήρηση του {row['equipment_name'] or 'μηχανήματος'} "
-                        "έχει κόστος αλλά δεν βρέθηκε το συνδεδεμένο αυτόματο έξοδο."
+                        _IssueText('Η συντήρηση του {v0} έχει κόστος αλλά δεν βρέθηκε το συνδεδεμένο αυτόματο έξοδο.', v0=row['equipment_name'] or _IssueText('μηχανήματος'))
                     ),
                     "Άνοιξε και αποθήκευσε ξανά τη συντήρηση.",
                 )
@@ -1174,8 +1212,7 @@ class DataQualityPage(QWidget):
                         section,
                         record,
                         (
-                            f"Η εγγραφή αναφέρεται σε ανύπαρκτο συνεργάτη "
-                            f"ID {row['partner_id']}."
+                            _IssueText('Η εγγραφή αναφέρεται σε ανύπαρκτο συνεργάτη ID {v0}.', v0=row['partner_id'])
                         ),
                         "Άνοιξε την εγγραφή και επίλεξε ξανά συνεργάτη.",
                     )
@@ -1190,8 +1227,7 @@ class DataQualityPage(QWidget):
                         section,
                         record,
                         (
-                            f"Το αποθηκευμένο όνομα συνεργάτη «{text_value}» "
-                            f"δεν συμφωνεί με το μητρώο «{canonical}»."
+                            _IssueText('Το αποθηκευμένο όνομα συνεργάτη «{v0}» δεν συμφωνεί με το μητρώο «{v1}».', v0=text_value, v1=canonical)
                         ),
                         "Άνοιξε και αποθήκευσε ξανά την εγγραφή.",
                     )
@@ -1268,8 +1304,7 @@ class DataQualityPage(QWidget):
                     "inventory",
                     record,
                     (
-                        f"Η παραλαβή {row['item_name'] or ''} έχει κόστος "
-                        "αλλά δεν βρέθηκε το συνδεδεμένο αυτόματο έξοδο."
+                        _IssueText('Η παραλαβή {v0} έχει κόστος αλλά δεν βρέθηκε το συνδεδεμένο αυτόματο έξοδο.', v0=row['item_name'] or '')
                     ),
                     "Άνοιξε και αποθήκευσε ξανά την παραλαβή.",
                 )
@@ -1324,7 +1359,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "income",
                     record,
-                    f"Το έσοδο αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Το έσοδο αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Άνοιξε την καταχώρηση εσόδου και επίλεξε ξανά αγροτεμάχιο ή Γενικό.",
                 )
 
@@ -1354,7 +1389,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "income",
                     record,
-                    f"Μη έγκυρη ημερομηνία: {entry_date or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=entry_date or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία του εσόδου.",
                 )
 
@@ -1385,7 +1420,7 @@ class DataQualityPage(QWidget):
                     "WARNING",
                     "expenses",
                     record,
-                    f"Το έξοδο αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Το έξοδο αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Άνοιξε την καταχώρηση εξόδου και επίλεξε ξανά αγροτεμάχιο ή Γενικό.",
                 )
 
@@ -1424,7 +1459,7 @@ class DataQualityPage(QWidget):
                     "ERROR",
                     "expenses",
                     record,
-                    f"Μη έγκυρη ημερομηνία: {entry_date or '(κενή)'}.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=entry_date or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία του εξόδου.",
                 )
 
@@ -1488,7 +1523,7 @@ class DataQualityPage(QWidget):
             if stock < -0.000001:
                 self._add_issue(
                     "ERROR", "inventory", record,
-                    f"Το υπολογισμένο απόθεμα είναι αρνητικό ({stock:.3f}).",
+                    _IssueText('Το υπολογισμένο απόθεμα είναι αρνητικό ({v0:.3f}).', v0=stock),
                     "Έλεγξε τις κινήσεις Παραλαβής / Κατανάλωσης.",
                 )
             elif stock <= 0:
@@ -1500,7 +1535,7 @@ class DataQualityPage(QWidget):
             elif minimum > 0 and stock <= minimum:
                 self._add_issue(
                     "WARNING", "inventory", record,
-                    f"Χαμηλό απόθεμα ({stock:.3f}, όριο {minimum:.3f}).",
+                    _IssueText('Χαμηλό απόθεμα ({v0:.3f}, όριο {v1:.3f}).', v0=stock, v1=minimum),
                     "Έλεγξε αν χρειάζεται αναπλήρωση.",
                 )
 
@@ -1542,21 +1577,21 @@ class DataQualityPage(QWidget):
             if not parsed.isValid():
                 self._add_issue(
                     "ERROR", "inventory", record,
-                    f"Μη έγκυρη ημερομηνία: {date_text or '(κενή)' }.",
+                    _IssueText('Μη έγκυρη ημερομηνία: {v0}.', v0=date_text or _IssueText('(κενή)')),
                     "Διόρθωσε την ημερομηνία της κίνησης.",
                 )
 
             if row["existing_item_id"] is None:
                 self._add_issue(
                     "ERROR", "inventory", record,
-                    f"Αναφέρεται σε ανύπαρκτο είδος ID {row['item_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο είδος ID {v0}.', v0=row['item_id']),
                     "Διόρθωσε ή διέγραψε την κίνηση.",
                 )
 
             if row["field_id"] is not None and row["existing_field_id"] is None:
                 self._add_issue(
                     "WARNING", "inventory", record,
-                    f"Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {row['field_id']}.",
+                    _IssueText('Αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=row['field_id']),
                     "Διόρθωσε το αγροτεμάχιο της κίνησης.",
                 )
 
@@ -1654,7 +1689,7 @@ class DataQualityPage(QWidget):
                         "ERROR",
                         "declaration",
                         record,
-                        f"Η δήλωση αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {orphan['field_id']}.",
+                        _IssueText('Η δήλωση αναφέρεται σε ανύπαρκτο αγροτεμάχιο ID {v0}.', v0=orphan['field_id']),
                         "Άνοιξε και αποθήκευσε ξανά τη δήλωση με τα σωστά αγροτεμάχια.",
                     )
 
@@ -1789,19 +1824,7 @@ class DataQualityPage(QWidget):
         self.table.setRowCount(len(issues))
 
         for row_index, issue in enumerate(issues):
-            values = [
-                SEVERITY_LABELS.get(
-                    issue["severity"],
-                    issue["severity"],
-                ),
-                CATEGORY_LABELS.get(
-                    issue["category"],
-                    issue["category"],
-                ),
-                issue["record"],
-                issue["problem"],
-                issue["fix"],
-            ]
+            values = self._issue_values(issue)
 
             for column_index, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
@@ -1816,8 +1839,19 @@ class DataQualityPage(QWidget):
                 )
 
         self.result_label.setText(
-            f"{len(issues)} θέματα"
+            _text("{count} θέματα", count=len(issues))
         )
+
+    @staticmethod
+    def _issue_values(issue: dict) -> list[str]:
+        """Shared table/CSV boundary; records and canonical search stay raw."""
+        return [
+            _display(SEVERITY_LABELS.get(issue["severity"], issue["severity"])),
+            _display(CATEGORY_LABELS.get(issue["category"], issue["category"])),
+            issue["record"],
+            _display(issue["problem"]),
+            _display(issue["fix"]),
+        ]
 
     def export_csv(self) -> None:
         issues = self._filtered_issues()
@@ -1832,7 +1866,7 @@ class DataQualityPage(QWidget):
 
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή ελέγχου δεδομένων",
+            _text("Εξαγωγή ελέγχου δεδομένων"),
             "mastixa_data_quality.csv",
             "CSV (*.csv)",
         )
@@ -1865,31 +1899,40 @@ class DataQualityPage(QWidget):
                 )
 
                 for issue in issues:
-                    writer.writerow(
-                        [
-                            SEVERITY_LABELS.get(
-                                issue["severity"],
-                                issue["severity"],
-                            ),
-                            CATEGORY_LABELS.get(
-                                issue["category"],
-                                issue["category"],
-                            ),
-                            issue["record"],
-                            issue["problem"],
-                            issue["fix"],
-                        ]
-                    )
+                    writer.writerow(self._issue_values(issue))
         except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Έλεγχος Δεδομένων",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
+            _message(
+                self, "critical", "Έλεγχος Δεδομένων",
+                "Η εξαγωγή απέτυχε.\n\n{error}", error=str(exc),
             )
             return
 
-        QMessageBox.information(
-            self,
-            "Έλεγχος Δεδομένων",
-            f"Το CSV δημιουργήθηκε επιτυχώς:\n{path}",
+        _message(
+            self, "information", "Έλεγχος Δεδομένων",
+            "Το CSV δημιουργήθηκε επιτυχώς:\n{path}", path=path,
         )
+
+    def export_xlsx(self) -> None:
+        issues = self._filtered_issues()
+        if not issues:
+            _message(self, "information", "Έλεγχος Δεδομένων",
+                     "Δεν υπάρχουν θέματα για εξαγωγή με τα τρέχοντα φίλτρα.")
+            return
+        rows = [self._issue_values(issue) for issue in issues]
+        filename, _ = QFileDialog.getSaveFileName(
+            self, _text("Εξαγωγή ελέγχου δεδομένων"), "mastixa_data_quality.xlsx", "XLSX (*.xlsx)")
+        if not filename:
+            return
+        path = Path(filename)
+        if path.suffix.lower() != ".xlsx":
+            path = path.with_suffix(".xlsx")
+        try:
+            export_issue_xlsx(path, [tr(value) for value in (
+                "Σοβαρότητα", "Ενότητα", "Εγγραφή", "Πρόβλημα", "Προτεινόμενη διόρθωση")],
+                rows, tr("Έλεγχος Δεδομένων"))
+        except Exception as exc:
+            _message(self, "critical", "Έλεγχος Δεδομένων",
+                     "Η εξαγωγή απέτυχε.\n\n{error}", error=str(exc))
+            return
+        _message(self, "information", "Έλεγχος Δεδομένων",
+                 "Το XLSX δημιουργήθηκε επιτυχώς:\n{path}", path=path)

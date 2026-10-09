@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import closing
+
 import sqlite3
 import tempfile
 import unittest
@@ -108,7 +110,7 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
             self.manager.restore_backup(corrupt)
 
         unrelated = self.root / "unrelated.db"
-        with sqlite3.connect(unrelated) as con:
+        with closing(sqlite3.connect(unrelated)) as con, con:
             con.execute("CREATE TABLE other(id INTEGER PRIMARY KEY, value TEXT)")
             con.execute("INSERT INTO other(value) VALUES('foreign data')")
         with self.assertRaises(BackupError):
@@ -132,7 +134,7 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
             nonlocal calls
             calls += 1
             if calls == 1:
-                with sqlite3.connect(destination_path) as con:
+                with closing(sqlite3.connect(destination_path)) as con, con:
                     con.execute("UPDATE producer SET name='BROKEN' WHERE id=1")
                     con.commit()
                 raise RuntimeError("forced phase16d restore failure")
@@ -149,7 +151,7 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
         )
         safety = self.manager._matching_backups(self.manager.PRE_RESTORE_PREFIX)
         self.assertEqual(1, len(safety))
-        with sqlite3.connect(safety[0]) as con:
+        with closing(sqlite3.connect(safety[0])) as con, con:
             restored_name = con.execute("SELECT name FROM producer WHERE id=1").fetchone()[0]
         self.assertEqual("Τρέχουσα ασφαλής τιμή", restored_name)
 
@@ -161,9 +163,9 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
             self.db.execute("UPDATE producer SET name='newer' WHERE id=1")
             second = self.manager.create_backup(prefix="manual")
         self.assertNotEqual(first, second)
-        with sqlite3.connect(first) as con:
+        with closing(sqlite3.connect(first)) as con, con:
             self.assertEqual("Παραγωγός Χίου", con.execute("SELECT name FROM producer WHERE id=1").fetchone()[0])
-        with sqlite3.connect(second) as con:
+        with closing(sqlite3.connect(second)) as con, con:
             self.assertEqual("newer", con.execute("SELECT name FROM producer WHERE id=1").fetchone()[0])
 
     def test_restore_retention_cannot_delete_selected_source_or_rollback_snapshot(self) -> None:
@@ -176,7 +178,7 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
         def interrupted(*, source_path, destination_path):
             if source_path == backup:
                 self.assertTrue(backup.is_file())
-                with sqlite3.connect(destination_path) as con:
+                with closing(sqlite3.connect(destination_path)) as con, con:
                     con.execute("UPDATE producer SET name='broken' WHERE id=1")
                 raise RuntimeError("interrupted restore")
             original_copy(source_path=source_path, destination_path=destination_path)
@@ -197,7 +199,7 @@ class Phase16DBackupRestoreTests(unittest.TestCase):
         self.assertTrue(source.is_file())
         self.assertTrue(safety.is_file())
         self.assertEqual("Παραγωγός Χίου", self.db.query_one("SELECT name FROM producer WHERE id=1")["name"])
-        with sqlite3.connect(safety) as con:
+        with closing(sqlite3.connect(safety)) as con, con:
             self.assertEqual("current", con.execute("SELECT name FROM producer WHERE id=1").fetchone()[0])
 
     def test_backup_restore_paths_with_uri_characters_are_literal(self) -> None:

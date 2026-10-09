@@ -327,7 +327,7 @@ COMPLETED inspection:
   mappings; record values remain canonical. Shared Windows translator unchanged.
 
 CI #157 (`34755926415`) on `cec644c`: **Desktop PASS; Android PASS**.
-https://github.com/Sxara242/Mastixa-Manager/actions/runs/34755926415
+PRIVATE_ARCHIVE_REFERENCE_RETAINED_LOCALLY
 No successful CI or Windows help/map/catalog gate was manually rerun.
 
 Runtime #34 (`34755926412`) failed due to a **test-only notification publication
@@ -339,7 +339,7 @@ and channel `crop_task_reminders_v1` agree; system counters showed one enqueue,
 one post, zero updates and zero blocks. Earlier channel localization and dedup
 assertions had passed. The same test diff against green `52f1ed2` retained the
 immediate active-notification assertion that caused the race.
-https://github.com/Sxara242/Mastixa-Manager/actions/runs/34755926412
+PRIVATE_ARCHIVE_REFERENCE_RETAINED_LOCALLY
 
 TEST FIX COMMIT: `b12b8b505740a5888e4384f4b6b3495c4810534d`.
 Only `android/app/src/androidTest/java/gr/mastixa/manager/CropTaskNotificationTest.java`
@@ -404,3 +404,945 @@ final read-only Android wording audit. Declare localization complete only if no
 real translatable UI gaps remain; only then start 16J-B scaling and 16J-C
 accessibility. Phase16J remains PARTIAL; Phase16K has not started.
 No telemetry, analytics, tracking, advertising or automatic diagnostic uploads.
+
+## Android calendar activity display labels — 2026-09-26
+
+Classification: ANDROID. Baseline `88c22ff49a0c96f93151aabd9306859621d7552f`,
+worktree `Mastixa-Icon-Diagnosis`, branch `icon-runtime-qa-final`.
+
+Scoped gap CLOSED locally: UnifiedCalendarStore copied canonical Greek activity
+category/status values directly into calendar titles/details in English profiles.
+Extracted the existing MainActivity mapping into ActivityDisplayLabels and reused
+it in both callers: Irrigation, Fertilization, Planned, Completed, Cancelled.
+Greek output and unknown/legacy values remain verbatim. Only presentation changes;
+no schema, stored values, identity, dates, activity/task or notification logic changes.
+
+Focused reproduction before the fix: CalendarActivityLocalizationTest **1 PASS,
+2 FAIL** (English projection and actual calendar cards). After the fix:
+**7/7 PASS, 0 failures, 0 skipped**, Gradle successful in 47s:
+
+```powershell
+.\gradlew.bat :app:connectedChecksAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=gr.mastixa.manager.CalendarActivityLocalizationTest,gr.mastixa.manager.UnifiedCalendarStoreTest,gr.mastixa.manager.ActivityUiTest' --console=plain
+```
+
+Run from `android`, using installed Temurin 21 and SDK, `ANDROID_SERIAL=emulator-5558`.
+Existing Medium_Phone AVD launched headlessly with `-read-only -no-snapshot`;
+fixtures are confined to the `.checks` application and cleaned after each test.
+Three new tests cover all six canonical category/status combinations, EL/EN/EL/EN
+projection switching, EL/EN/EL actual calendar cards, and unknown/blank/whitespace
+legacy values. Activity records remain equal and full LocalBackup logical snapshots
+(including pending changes) remain byte-identical after each language/render pass.
+User-authored Greek text is preserved. Existing calendar and activity UI tests pass.
+`git diff --check`: PASS. No full suite, packaging, commit or push.
+
+Phase16J localization and Phase16J overall remain PARTIAL. Remaining audited gaps:
+Windows Greek-mode static labels, dynamic alerts, annual-report explanations,
+year-correction messages, backup errors and data-quality table display text.
+No other localization batch, responsiveness/scaling or accessibility work started.
+
+## Windows year-correction templates — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered HEAD
+`4dea1865f863b85075c1b0c9788e5c14270ac031`, branch `icon-runtime-qa-final`.
+At recovery only `diagnostics/` and the existing untracked
+`tests/test_phase16j_year_correction.py` were present; no production fix existed.
+The owner-confirmed baseline was **1 PASS / 5 FAIL**: inactive banner passed;
+active banner, begin/finish confirmations, mutation warning and existing-session
+error failed. Fragment translation after interpolation changed user-authored
+Greek words inside correction reasons, as well as producing mixed-language UI.
+
+Scoped fix: exact catalog templates are translated before inserting years,
+reason and current action text. The correction banner and dialogs render plain
+text and opt out of a second automatic text translation. Open banners and owned
+dialogs refresh on language changes. Known existing-session errors use a complete
+template; other start failures use a safe generic message, never raw exception
+fragment translation. No correction/domain logic or stored values changed.
+The only shared translator change is a four-line QMessageBox opt-in honoring
+`mastixaI18nSkipText`, while retaining standard-button translation. Ordinary
+message boxes keep their existing behavior.
+
+The recovered six-test module was preserved without edits in this continuation.
+Final results (Python 3.14, `PYTHONUTF8=1`, offscreen Qt):
+
+```powershell
+python -m unittest tests.test_phase16j_year_correction -v
+# 6/6 PASS, 0 failures/errors/skips, 3.009s
+python -m unittest tests.test_phase16j_localization tests.test_language_and_logging -v
+# 11/11 PASS, 0 failures/errors/skips, 29.012s
+python -m unittest tests.test_alpha2_step3_year_context -v
+# 12/12 PASS, 0 failures/errors/skips, 2.508s
+```
+
+Run the last module in a fresh process: an initial combined run was interrupted
+when a controller left active by the language tests caused an older static
+QMessageBox mock to wait on a real modal dialog. No assertions were weakened.
+Exact-text assertions preserve Greek words, literal HTML-looking tags, braces,
+newline, spacing and Unicode in the user reason across EL/EN/EL cycles. Full SQL
+dumps and correction-state comparisons remain equal during rendering/switching
+and cancelled confirmations; year values and button defaults remain unchanged.
+Existing year-context tests confirm physical locks and session behavior.
+
+`git diff --check`: PASS. No Android, schema, migration, MASTER_PROGRESS,
+original-checkout or diagnostics changes. No commit/push.
+Phase16J localization remains PARTIAL: static labels, alerts, annual-report
+explanations, backup errors and data-quality output remain separate gaps. The
+application-exit correction warning in year_context_integration.py is outside
+this tested module boundary and remains a separate wording follow-up.
+No next batch or Phase16J-B work started.
+
+## Windows Data Quality generated results — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered clean tracked/untracked state
+at `950fa2217a7e22b8845102d2f639ebfa9acba915`, branch `icon-runtime-qa-final`.
+The owner intentionally deleted diagnostics; it remains absent. Reused verified
+CI/full-suite checkpoint evidence; Annual Report remains closed.
+
+Issue-generation inventory at that HEAD: **86 _add_issue call sites**:
+
+- A: **51** fully static problem/fix pairs, left unchanged at their call sites.
+- B: **35** dynamic sites (34 problem arguments and one concatenated fix),
+  covering dates, missing-reference IDs, field/product/equipment/item names,
+  partner-name comparisons, stock/quantity formatting and duplicate-field IDs.
+  These reduce to **24 distinct complete dynamic templates**.
+- C: all **86 record arguments** are canonical/raw identifiers, names or composed
+  record labels and remain untouched. Embedded values in B stay opaque. Existing
+  source trimming, date/number formatting and persisted enum handling are unchanged.
+
+Baseline: **1 PASS / 8 FAIL / 0 ERROR** across nine focused tests. Static and
+dynamic table text, CSV body, labels/count and refreshed status remained Greek.
+Existing generic translation can translate status labels temporarily; a targeted
+baseline check using the existing English word `Clear` confirmed refresh resets
+the label to Greek. Filter/search/order/DB preservation already passed.
+
+Root cause: generated Greek problem/fix text was inserted directly into table/CSV
+body cells. The global header-only translation policy is intentional. Composed
+dynamic text cannot safely use fragment translation because values may themselves
+match catalog entries.
+
+Implementation: a scoped _IssueText string retains its original Greek value plus
+owned-template metadata. Existing consumers, equality, source search and sorting
+continue to see the canonical string. The presentation boundary reuses existing
+localized_messages._text / translate_exact before inserting opaque values. Static
+owned fields use exact lookup without fragment fallback. Only the 35 dynamic
+arguments were converted; no detection logic was duplicated. The dedicated English
+catalog contains 129 distinct static problem/fix texts, 24 dynamic templates and
+three count/owned-fallback entries. Existing severity/category/status translations
+are reused. Record text is never translated, including existing Greek identifier
+prefixes. Existing unmapped equipment/invoice_documents keys are not redesigned.
+
+Table and CSV share _issue_values. CSV keeps five columns, order, semicolon
+delimiter and UTF-8 BOM. Status/count bypass generic text translation. One signal
+connection at construction re-renders existing issues without queries or detection.
+app/language.py and shared helpers are unchanged.
+
+Search explicitly remains casefolded search over canonical Greek severity/category,
+record, problem and fix text, independent of UI language. English translated words
+do not gain new matches. All category/severity filters, source sort order and issue
+counts retain their previous semantics.
+
+Verification (Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen):
+
+```powershell
+python -m unittest tests.test_phase16j_data_quality_localization -v
+# 12 PASS / 0 FAIL / 0 ERROR, 4.818s
+python -m unittest tests.test_phase16e_cross_module_validation tests.test_alpha2_step4_ui.Alpha2Step4UiTests.test_data_quality_metric_cards_have_safe_vertical_space tests.test_alpha2_step4_ui.Alpha2Step4UiTests.test_data_quality_page_scroll_contains_cards_filters_and_table tests.test_phase16f_realistic_performance -v
+# 5 PASS / 0 FAIL / 0 ERROR, 1.723s (separate process)
+```
+
+Coverage includes all template catalog entries and placeholder/format-spec parity,
+all five columns, clean/warning/error states, dynamic ID/date/numeric wrappers,
+two protected partner values, and exact Greek catalog-like words, literal tags,
+braces and embedded newlines. Empty owned fallback and identical literal user text
+are distinguished. Full logical SQLite snapshots remain identical after refresh,
+filtering, live switching and tested export. EL/EN/EL renders exactly once per
+change with no database reads and unchanged canonical issues. Existing cross-module
+drift and UI tests pass; realistic quality check took 0.115s on the 18,250-row fixture.
+AST review confirms all 17 detection methods identical to HEAD after excluding
+problem/fix arguments: queries, thresholds, records and conditions are unchanged.
+
+`git diff --check`: PASS. No original-checkout, Android, schema, business-rule,
+MASTER_PROGRESS, commit or push changes; no diagnostics recreated. No full desktop
+or Android suite rerun. Phase16J remains PARTIAL: Greek-mode static labels and
+application-exit correction warning remain pending. Separately, export success/error
+dialogs still contain interpolated path/exception text; their generic-dialog
+protection is a follow-up, not changed or runtime-validated in this batch.
+No next batch or Phase16J-B work started.
+
+## Windows backup/restore error localization — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered clean tracked state at
+`616662c01da72a7f1f74491dc537ed4a82ffc8ea` on `icon-runtime-qa-final`;
+only existing `diagnostics/` was untracked. Required automatic CI verified green:
+Verify desktop and Android run 36283174790; Windows release gate 36283174736.
+
+Reproduction: **0 PASS / 6 FAIL** for missing selected backup, missing live DB,
+creation failure, restore failure, invalid SQLite, and unknown raw BackupError.
+The UI passed already-composed Greek exception strings to generic fragment
+translation, mixing wrapper languages and translating path/raw-detail components.
+
+BackupError now carries owned-template metadata while keeping its type, original
+Greek str/args, exception chaining and logging. Only error construction changed
+in BackupManager; SQLite copy, validation decisions, rollback, safety snapshots
+and retention are unchanged. Presentation translates exact templates before
+inserting opaque paths/raw details. Unknown errors remain entirely verbatim.
+All five BackupError UI catch sites use this boundary (manual create/restore,
+startup, shutdown and profile switching), including outer lifecycle wrappers.
+Raw nested exception detail deliberately remains raw, even if it contains Greek.
+
+Reused the protected dialog helpers by moving them from year_context_ui.py into
+localized_messages.py, adding Critical icon support. Year-correction imports the
+same helpers; no correction behavior changes. LanguageController is unchanged.
+No competing translator or raw-string parsing was introduced.
+
+Verification commands (Python 3.14, PYTHONUTF8=1, offscreen Qt):
+
+```powershell
+python -m unittest tests.test_phase16j_backup_localization tests.test_phase16d_backup_restore tests.test_phase16j_year_correction tests.test_phase16j_localization -v
+# Initial post-fix run: 24/24 PASS (6 new + 7 backup + 6 correction + 5 localization).
+python -m unittest tests.test_phase16j_backup_localization -v
+# After adding 3 validation/lifecycle coverage tests: 9/9 PASS, 1.575s.
+```
+
+Final coverage: **9 focused + 7 existing backup + 11 directly affected localization
+tests PASS**, zero failures/errors/skips. Production code remained unchanged
+between these successful runs. The added cases exercise integrity results,
+missing-table identifiers and actual lifecycle error dialogs with EL/EN/EL live
+switching and No/default-button semantics. Exact-string assertions preserve paths,
+Greek catalog-like words, HTML-looking tags, braces, newlines and raw SQLite
+details. Exception args/causes remain identical; fixture files remain byte-identical
+across rendering. Existing tests verify real round-trip recovery, failed-restore
+rollback, safety/source preservation at zero retention and distinct snapshots.
+Expected injected-failure logs were retained, not suppressed.
+
+`git diff --check`: PASS. Original checkout and diagnostics untouched; no Android,
+schema/migration, MASTER_PROGRESS, commit or push changes. Phase16J remains PARTIAL.
+Remaining gaps: alerts, annual-report explanations, data-quality results, remaining
+Greek-mode static labels and the separate application-exit correction warning.
+No next batch or Phase16J-B work started.
+
+## Windows Alerts presentation localization — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered HEAD
+`9999e5878e39e7af99d9da326297f19bb4cfd7d2` on `icon-runtime-qa-final`,
+with clean tracked files and existing untracked `diagnostics/`. Reused owner's
+verified green desktop/Android and Windows release-gate checkpoint.
+
+Baseline: **4 PASS / 6 FAIL**, zero errors, in the initial 10 focused tests.
+Failures covered English activity, inventory, equipment and harvest-wait rows,
+live language switching, and count immediately after refresh. Generic widget
+translation could temporarily display the count in English, but refresh wrote
+Greek again. Table body cells intentionally bypass LanguageController translation;
+AlertsPage constructed Greek generated strings without localizing them.
+
+AlertsPage now uses `tr` on owned templates before inserting raw values, translates
+owned severity/category labels, and refreshes on the existing language-change
+signal. The count owns its translation and opts out of generic label translation.
+Activity overdue/today/upcoming, inventory exhausted/low stock, service date/meter
+details and harvest-wait singular/plural templates are covered. Known activity
+enums and hours display are localized; unknown categories remain verbatim.
+Fallback subject labels have separate display values so sorting retains its
+canonical source subjects. Existing catalog terminology is reused.
+
+Final verification (Python 3.14, PYTHONUTF8=1, offscreen Qt):
+
+```powershell
+python -m unittest tests.test_phase16j_alerts_localization -v
+```
+
+**12 PASS / 0 FAIL / 0 ERROR / 0 SKIP**, 4.572s. The original 10 cases passed;
+two additional cases cover fallback subjects and a legacy category matching a
+catalog key. No pre-existing behavioral Alerts tests were found. Shared translator
+infrastructure is unchanged, so unrelated localization/full desktop/Android tests
+were not rerun. The pre-existing Qt integer-alignment DeprecationWarning remains;
+this batch does not change alignment behavior.
+
+Exact assertions preserve `Παραγωγή Ναι Αποθήκευση <b>tag</b> {year}` in field,
+item, equipment and product names, descriptions and stored units. Tests verify
+dates, quantities, meter numbers, known/legacy category source values, record IDs,
+canonical filter keys and severity ordering. All category/severity combinations
+retain matching records, counts, action enablement and navigation targets through
+EL/EN/EL. Complete logical SQLite dumps remain equal after refresh, filters and
+language switching. No database writes occur during presentation.
+
+`git diff --check`: PASS. `app/language.py` and its table-header-only policy are
+unchanged. No Android, schema/migration, alert rules/thresholds, MASTER_PROGRESS,
+original-checkout or diagnostics changes. No commit/push.
+Phase16J remains PARTIAL: annual-report explanations, data-quality results,
+remaining Greek-mode static labels and the application-exit correction warning
+remain separate gaps. No next batch or Phase16J-B work started.
+
+## Windows Annual Report generated explanations — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered expected HEAD
+`5ce7861e489a4a27d3a5975d6bd8d9c596aa1be0` on `icon-runtime-qa-final`;
+tracked files were clean, with only existing untracked `diagnostics/`.
+Reused the owner's verified green CI checkpoint; Alerts remains closed.
+
+Baseline: **2 PASS / 4 FAIL / 0 ERROR** in six focused tests. Finance categories
+and handling remained Greek in English mode. Refresh overwrote the all-products
+note with Greek. The product-note case initially also exposed AutoText handling;
+moving that assertion after the language cycle independently reproduced actual
+English corruption: the product name became `Production Yes Save Expenses...`
+while the surrounding explanation retained Greek fragments.
+
+Root causes: the scope QLabel exposed an already-interpolated product name to
+generic fragment translation, while finance table body cells intentionally bypass
+that translator. AnnualFarmReportPage now reuses localized_messages._text for
+exact complete-template translation before interpolation. Its scope label uses
+PlainText and mastixaI18nSkipText. Finance-owned category/handling text uses tr
+before insertion. A single initialization-time language-change connection refreshes
+the existing page. Neither language.py nor shared helper infrastructure changed.
+
+Verification commands (Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen):
+
+```powershell
+python -m unittest tests.test_phase16j_annual_localization -v
+# 6 PASS / 0 FAIL / 0 ERROR, 3.668s
+python -m unittest tests.test_stabilization.StabilizationTests.test_product_registry_integration_active_inactive_legacy_and_reports -v
+# 1 PASS / 0 FAIL / 0 ERROR, 3.897s (fresh process)
+```
+
+Tests verify full Greek/English notes and finance explanations, repeated live
+EL/EN/EL switching, and exact preservation of
+`Παραγωγή Ναι Αποθήκευση Έξοδα <b>tag</b> {year}` in the note, combo/source value,
+product breakdown and CSV. Product IDs, selected year, cached report rows,
+production/sold/stock/revenue/average values, finance amounts and the absence of
+a product net result remain unchanged. Complete logical SQLite snapshots match
+after page construction, refresh, filtering, language switching and CSV export.
+The existing integration test also verifies renamed/inactive product identity.
+
+CSV does not export these explanations; its product names and numeric rows were
+already correct and remain untouched. No calculation, allocation, query, sorting,
+navigation, schema, Android or export-format changes. No full desktop/Android suite
+rerun. `git diff --check`: PASS. Original dirty checkout and diagnostics untouched.
+No commit/push. Phase16J remains PARTIAL: data-quality results, remaining Greek-mode
+static labels and the application-exit correction warning are still pending.
+No next batch or Phase16J-B work started.
+
+## Windows static sensor/inventory labels — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered clean checkout at
+`4928a4b2448c7b880b8f7f27dcfe5f0ba749f368`, branch `icon-runtime-qa-final`.
+Reused verified CI checkpoint; diagnostics remains absent.
+
+Narrow inventory/classification:
+- A, owned UI: sensor UNDER CONSTRUCTION; inventory title, subtitle, Stock filter
+  label, two metric captions, two stock table headers and explanatory note.
+  Generated inventory status labels were also untranslated in English table cells.
+- B, raw data: item names, category strings/itemData, units and numerical values.
+  A category equal to Αποθήκευση actually displayed Save in English, demonstrating
+  the need for scoped category-combo protection.
+- C, internal: stock variables, SQL aliases, all/positive/low filter keys and
+  inventory_stock_report.csv remain unchanged. API, CSV and OK are intentional
+  technical/status tokens, not translated Greek prose.
+- D, dynamic dialogs: filename/path and exception messages remain separate work.
+  No edits to export dialogs or application-exit warnings.
+
+Baseline: **1 PASS / 6 FAIL / 0 ERROR** in seven focused tests. Failures reproduce
+Greek sensor/stock wording, generated English statuses, category-name translation
+and shared CSV-header wording. Filtering/calculations/database preservation passed.
+
+Implementation: Greek source now uses ΥΠΟ ΚΑΤΑΣΚΕΥΗ and natural απόθεμα labels,
+with a small English catalog retaining the established English wording. Existing
+LanguageController handles static labels and headers. Only the database category
+combo opts out of generic item translation; its owned All option is rendered
+separately. A single language-change connection updates that option and displayed
+status cells from canonical cached rows. No queries/calculations/filtering changes.
+app/language.py and shared helpers are unchanged. The existing sensor test's Greek
+status expectation was updated to match the requested wording; its interaction and
+navigation assertions were retained.
+
+Verification (Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen):
+
+```powershell
+python -m unittest tests.test_phase16j_static_labels_localization -v
+# 7 PASS / 0 FAIL / 0 ERROR, 4.405s
+python -m unittest tests.test_sensor_view_ui tests.test_phase16j_localization -v
+# 9 PASS / 0 FAIL / 0 ERROR, 1.825s
+```
+
+Tests assert exact Greek/English wording through EL/EN/EL on the same pages,
+unchanged sensor page indexes/navigation, protected category names including exact
+catalog keys, and literal Παραγωγή Αποθήκευση Stock Ναι <b>tag</b> {year} in
+item/unit values. All category/stock/search combinations retain canonical keys,
+row counts, cached logical values and weighted-cost/stock calculations. Logical
+SQLite snapshots remain identical after refresh, switching, filters and CSV export.
+No separate pre-existing InventoryReportPage test module was found.
+
+CSV shares the two corrected static headers and keeps its numeric/user values,
+structure, order, delimiter and UTF-8 BOM unchanged. CSV body statuses deliberately
+remain canonical Greek/OK; localizing those exported values is a separate follow-up
+if desired, not silently added to this static-header batch.
+
+`git diff --check`: PASS. No Android, schema, original-checkout, diagnostics,
+commit or push changes. No full desktop/Android suite run. Phase16J remains PARTIAL:
+application-exit correction warning, export dialogs containing paths/exceptions,
+and the final read-only localization closure audit remain. No next batch started.
+
+## Application-exit correction warning — 2026-09-27
+
+Classification: DESKTOP localization only. Recovered clean checkout at
+`00b46afab04601864703e7a47d2ca55f46b8e7d9`, branch `icon-runtime-qa-final`.
+Reused verified CI checkpoint; diagnostics remains absent.
+
+Actual pre-fix baseline: **4 PASS / 3 FAIL / 0 ERROR** in seven focused tests.
+An initial fixture-only run had seven setup errors because year_locks had not been
+initialized; the fixture was corrected before obtaining this baseline or editing
+production code. Failures reproduced Greek correction-mode wording, fragmented
+English (including mixed Greek with "year" / "enabled year"), and the live-modal
+wording assertion. All four existing close-semantic cases passed before the fix.
+
+The direct QMessageBox.warning composed text before generic translation. It now
+uses the existing protected _message helper with a complete owned template and
+separate year/active_year values. Greek uses "η λειτουργία προσωρινής διόρθωσης";
+English is complete. Exact tests use locked year 2024 and active year 2027, retain
+Yes/No with default No, and verify localized standard buttons. No reason text was
+added. app/language.py, localized_messages.py and year_context.py are unchanged.
+
+The close-event ordering is untouched and directly exercised using the real
+installed override with a controlled parent closeEvent:
+- No ignores the event, never delegates or finishes, and retains the guard/state.
+- Yes delegates exactly once. Parent acceptance finishes exactly once, then removes
+  the guard. Audit details retain the exact original Greek outcome
+  `Τερματισμός προσωρινής διόρθωσης κατά το κλείσιμο εφαρμογής` and original reason.
+- Parent rejection retains active correction and the installed guard; no finish.
+- Inactive correction shows no warning and delegates accepted/rejected close.
+Logical DB snapshots remain identical for No, parent rejection and modal switching.
+An event probe confirms guard installation/removal, and recorded call ordering is
+parent -> finish -> remove. The same modal cycles EL/EN/EL repeatedly without a
+replacement dialog; years, buttons and default remain correct.
+
+Verification (Python 3.14, PYTHONUTF8=1, offscreen Qt):
+
+```powershell
+python -m unittest tests.test_phase16j_exit_correction_localization tests.test_phase16j_year_correction tests.test_phase16j_backup_localization.BackupLocalizationTests.test_lifecycle_error_dialogs_live_switch_and_keep_no_semantics -v
+```
+
+**14 PASS / 0 FAIL / 0 ERROR**, 6.743s: seven new exit tests, six existing
+correction tests and one existing lifecycle/backup-close test. The injected backup
+failure emits its expected cancellation log. No full desktop/Android suite run.
+
+`git diff --check`: PASS. Only integration wording/helper call, one English catalog
+entry, focused tests and this ledger changed. No original-checkout, Android,
+schema, backup behavior, diagnostics, commit or push changes. Phase16J remains
+PARTIAL: export dialogs with interpolated paths/exceptions and the final read-only
+localization closure audit remain. Neither next task was started.
+
+
+## Phase16J-A — Export path/exception dialogs (2026-09-27)
+
+DESKTOP only. Recovered clean `icon-runtime-qa-final` at
+`3647d38cea891c6f2c4d05b1fb612cdc4e8dff29`; diagnostics absent.
+The approved helper extension adds only `information: QMessageBox.Icon.Information`
+to the icon mapping. No other shared-helper behavior or app/language.py changed.
+
+Before owner fixes, the 18 focused tests produced **2 PASS / 16 FAIL / 0 ERROR**
+(the helper mapping was already added). Real export methods reproduced mixed or
+untranslated owned wording and mutation of raw values during generic translation:
+`Αποθήκευση` became `Save` inside paths/errors, and `Ναι` became `Yes` in raw errors.
+The helper icon/live-switch regression and existing static ZIP verification success
+already passed. Fixtures use existing catalog title wording.
+
+Scoped fixes:
+- Data Quality CSV: success path and OSError wrapper.
+- Reports PDF/Excel: success paths and existing failure wrappers.
+- Inventory and Annual CSV: success paths and raw-only exception dialogs/titles.
+- Sales CSV: success path only; no new exception handling.
+- Portable ZIP: creation error, success path, protected last-export label,
+  automatic verification warning, manual verification failure/success.
+
+Owned templates are translated before interpolation through _message/_text.
+Paths, raw exceptions and archive-member names remain exact, including Greek,
+English, braces, ampersands and markup-like text. The last-export label is plain
+text and refreshes on language changes without querying or changing data.
+Locally tagged verification strings retain their canonical Greek string value and
+carry owned-template metadata for dialog rendering; raw library exceptions stay
+plain strings. CRC/schema/required-file checks and archive formats are unchanged.
+No new dialog abstraction or global translation behavior was introduced.
+
+Files: six export-owner modules, the approved one-entry localized_messages.py
+extension, en_phase16j_export.json, new test_phase16j_export_dialog_localization.py,
+three existing CSV localization tests (only their dialog mock target changed), and
+this ledger. No MASTER_PROGRESS change was necessary.
+
+Verification (Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen):
+
+```powershell
+python -m unittest tests.test_phase16j_export_dialog_localization tests.test_phase16j_data_quality_localization tests.test_phase16j_annual_localization tests.test_phase16j_static_labels_localization tests.test_phase16j_year_correction tests.test_phase16j_exit_correction_localization tests.test_phase16j_backup_localization -q
+```
+
+**65 PASS / 0 FAIL / 0 ERROR**, 29.770s (18 export tests at this point).
+After adding two tests for remaining ZIP verification branches:
+
+```powershell
+python -m unittest tests.test_phase16j_export_dialog_localization tests.test_phase16a_csv tests.test_language_and_logging.LanguageAndLoggingTests.test_report_export_uses_active_language -v
+python -m unittest tests.test_stabilization.StabilizationTests.test_data_export_product_filter_and_unfiltered_export -v
+```
+
+**25 PASS / 0 FAIL / 0 ERROR**, 10.781s; **1 PASS / 0 FAIL / 0 ERROR**, 4.663s.
+Final coverage: **73 distinct passing tests**, including **20 new focused tests**;
+no full desktop/Android suite run. Expected injected backup failures log their
+error/traceback during successful backup regression tests.
+
+Same-modal EL -> EN -> EL checks preserve icon, Ok button semantics, exact raw
+values, logical DB snapshots, cached rows and selected filters. Real CSV/ZIP bytes
+remain identical through switching. Existing CSV tests retain BOM, delimiters,
+headers, user values and filtering; the report exporter invocation/path is unchanged
+and its existing active-language file-output regression passes. Export payload
+construction, row ordering, filenames and manifest/schema are untouched.
+
+`git diff --check`: PASS. Original dirty checkout untouched; no Android, schema,
+dependency, icon, installer, diagnostics, commit or push changes.
+Phase16J remains PARTIAL. Native QFileDialog/platform wording is outside this batch;
+no wider export-dialog sweep was performed. The final HIGH/read-only localization
+closure audit remains pending and was not started. Scaling/accessibility remains
+outside this phase.
+
+## Phase16J remediation boundary #1 — Windows native file dialogs (2026-09-27)
+
+DESKTOP localization only. Recovered clean `icon-runtime-qa-final` at
+`0f5ae2367647f901f89056f432c95de8b9290e44`; diagnostics absent. Reused verified CI;
+did not rerun the closure audit. All 20 audit-listed QFileDialog calls still match.
+
+The OS does not translate captions/filter descriptions supplied by the app.
+Real production methods intercepted at QFileDialog reproduced **7 PASS / 20 FAIL /
+0 ERROR** before production edits (27 tests): every English caption remained Greek.
+The seven original preservation/cancellation tests already passed. Three further
+tests cover JSON/snapshot paths, GIS output destination, and catalog integrity.
+
+Only captions and descriptive filter labels now use the existing exact `_text`
+helper. Technical patterns remain literal. Reused 19 caption keys and the two
+descriptor keys `Τιμολόγια` / `Όλα`; added exactly five previously absent keys in
+`en_phase16j_file_dialogs.json`: `Εισαγωγή τιμολογίων`, `Όλα τα αρχεία`, `Γεωμετρία`,
+`Εικόνες`, `Προφίλ Mastixa`. JSON, placeholder parity, English text, and absence of
+duplicate new keys are tested. app/language.py and app/localized_messages.py are
+unchanged. OS-native buttons/file-browser chrome and live retitling of an already
+open native dialog are outside app ownership and this phase.
+
+All these actual call sites pass exact Greek/English caption assertions on
+successive EL -> EN -> EL openings (not an in-dialog language switch):
+
+| Owner | Function | English caption (Greek source preserved in EL) |
+|---|---|---|
+| app/annual_report.py | export_csv | Save Annual Report |
+| app/audit.py | export_csv | Export history CSV |
+| app/dashboard.py | restore_backup | Select a backup to restore |
+| app/data_export.py | export_zip | Create portable ZIP |
+| app/data_quality.py | export_csv | Export data check |
+| app/field_finance.py | export_csv | Export cost by field |
+| app/gis/dialog.py | import_file | Import boundary |
+| app/gis/export_dialog.py | export | Export |
+| app/inventory_report.py | export_csv | Save Inventory Report |
+| app/invoice_documents.py | choose_files | Import invoices |
+| app/invoice_documents.py | export_selected | Export selected invoices |
+| app/reports.py | export_pdf | Export report to PDF |
+| app/reports.py | export_excel | Export report to Excel |
+| app/sales_report.py | export_csv | Save Sales Report |
+| app/settings.py | choose_profile_avatar | Profile image |
+| app/settings.py | export_profile | Export profile |
+| app/settings.py | import_profile | Import profile |
+| app/settings.py | choose_backup_folder | Choose backup folder |
+| app/upload_center.py | export_selected_snapshot | Export selected snapshot |
+| app/upload_center.py | export_json | Export JSON package |
+
+Preservation evidence:
+- All 20 actual argument lists retain default paths/names exactly, including frozen
+  timestamp ZIP names, years, snapshot IDs, raw profile names and GIS KAEK names.
+- All descriptive filters pass exact EL/EN assertions with identical patterns;
+  technical CSV/ZIP/PDF/Excel/JSON filters are unchanged. GIS import retains
+  geojson/json/kml/gml/xml/zip/dxf; all five GIS export formats are checked.
+- Selected adversarial Greek/English/braces/ampersand paths pass unchanged to
+  CSV/PDF/XLSX writers, invoice import/export, profile/avatar operations, directory
+  text, GIS import/export and JSON/snapshot writers. GIS receives the same EPSG.
+- Cancellation at all 20 entry points performs no downstream DB writes, file
+  writes, profile operations, restore/import or export. Dashboard still prepares
+  its backup directory before the picker: this pre-existing mkdir is deliberately
+  preserved and mocked/asserted separately, not described as a new no-I/O promise.
+- An AST comparison against HEAD confirms the entire production code is identical
+  except for `_text` imports and caption/descriptor expressions; evaluating those
+  expressions in Greek recovers the exact original strings. Defaults, formats,
+  extension handling, persistence and business logic remain unchanged.
+- Existing export tests retain logical DB snapshots and file bytes; existing GIS
+  cancellation/failure tests retain database snapshots and previous destination.
+
+Verification: Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen:
+
+```powershell
+python -B -m unittest tests.test_phase16j_file_dialog_localization tests.test_phase16j_export_dialog_localization tests.test_profiles.ProfileManagerTests.test_pin_identity_startup_setting_and_export_import tests.test_profiles.ProfileManagerTests.test_profile_import_under_path_with_uri_characters tests.test_profiles.ProfileManagerTests.test_interrupted_profile_export_preserves_previous_destination tests.test_gis.GeometryTests.test_geojson_crs_and_multiple_features tests.test_gis.GeometryTests.test_kml_hole_and_gml_authority_axis_order tests.test_gis.GeometryTests.test_shapefile_zip_and_linear_dxf tests.test_coordinate_exports -q
+python -B -m unittest tests.test_alpha2_step5_ui.Alpha2Step5UiTests.test_invoice_documents_page_hides_all_unfinished_actions -v
+```
+
+First command: **60 PASS / 0 FAIL / 0 ERROR**, 15.222s (30 new file-dialog,
+20 existing export-dialog, 3 profile, 3 GIS import, 4 coordinate-export tests).
+Second command: **1 PASS / 0 FAIL / 0 ERROR**. No pre-existing direct invoice
+import/export function tests were found; the new tests exercise their real picker
+methods and verify exact downstream arguments, plus the existing page-action gate.
+Total: **61 distinct PASS**, no full desktop or Android suite run.
+
+`git diff --check`: PASS. Changed only the 14 listed dialog-owner modules, the new
+catalog/test module and this ledger. MASTER_PROGRESS, shared localization helpers,
+Android, schema, dependencies, icons and the original dirty checkout are untouched;
+diagnostics remains absent. No commit/push.
+
+Phase16J localization remains PARTIAL. Five audit remediation boundaries remain:
+1. Windows static selectors/accessibility (owned enum labels, month/inactive labels,
+   tab-scroll accessible name).
+2. Windows generated table/body presentation and its language refresh.
+3. Windows composed UI/raw-value boundaries outside these QFileDialog arguments.
+4. Android report movement-type display mapping.
+5. Android dashboard product-button raw-name protection.
+
+None of those boundaries, the closure audit, or scaling/accessibility work started.
+
+## Phase16J remediation boundary #2 — Windows static selectors (2026-09-27)
+
+DESKTOP localization only. Recovered clean `icon-runtime-qa-final` at
+`19f80dcd0099d0bda8e099e28155ec936298a004`; diagnostics absent. Reused supplied
+successful remote CI. The closed QFileDialog batch was not reopened.
+
+All seven audit surfaces match current source:
+- equipment.EquipmentPage.reminder_filter: upcoming/overdue labels.
+- inventory_report.InventoryReportPage.stock_filter: positive/low labels.
+- invoice_documents.InvoiceDocumentsPage.document_type: unknown/purchase/sale.
+- products.ProductsPage.status_filter: integer-backed 1/0 static options.
+- phase13_calendar_integration.Phase13FarmCalendarPage.month: all 12 month names.
+- product_registry.add_product_choices: owned inactive suffix only.
+- tab_scroll_fix._ensure_left_scroll_proxy: app-owned accessibleName.
+No app-created right-scroll proxy exists; the right native Qt button is unchanged.
+
+Before production edits: **0 PASS / 8 FAIL / 0 ERROR**, with 12 failing language
+subcases. Two initial fixture mistakes were corrected before this recorded
+baseline: established placeholder wording is "Select a product", and the test
+must select the last tab to enable the left scroller. The corrected baseline
+reproduced all seven real defects.
+
+Root causes and fixes:
+- String-key selectors lacked exact catalog entries; adding entries fixes display
+  through existing combo translation, with no edits to their owner modules.
+- Numeric product-status/month options lacked both translations and the existing
+  mastixaI18nStaticItems opt-in. Only these two static combos opt in; global
+  protection for integer-backed user records remains unchanged.
+- Product-name/unit composites are correctly protected as raw data. A private,
+  combo-owned QObject refreshes only the selected inactive suffix via the existing
+  _text("Ανενεργό") key. Raw prefix is never passed to translation. It blocks combo
+  signals during display refresh, uses no DB queries, and is reused on population;
+  stale selection metadata is cleared. Active/legacy choice behavior is unchanged.
+- The left proxy now has a Greek source accessibleName and an exact English key;
+  existing controller property translation handles live changes. Its arrow,
+  geometry, identity, click delegation and native scroll behavior are unchanged.
+
+New en_phase16j_static_selectors.json contains **22 unique keys**: two reminder,
+two stock, three invoice descriptions, two product-status, twelve month and one
+accessible-name translation. Reused existing Ανενεργό -> Inactive plus existing
+All/All months/Select a product entries. New keys have no duplicate/conflicting
+definitions, empty values, Greek English-values, or placeholder mismatches.
+
+New tests exercise actual production widgets/functions through EL -> EN -> EL:
+all visible labels, all 12 ordered months, canonical itemData (including exact
+integer types), selection, no duplicate/reordered items, no index-change actions,
+and unchanged logical DB snapshots. Equipment upcoming/overdue, inventory
+positive/low and product active/inactive results remain identical. Calendar month
+filtering retains the selected month; existing generated-task/calendar test passes.
+Invoice types stay unknown/purchase/sale without writes or import/OCR actions.
+Adversarial product names and units containing Greek catalog words, markup-like
+text, braces and ampersands remain exact; active products acquire no suffix.
+Repopulation does not duplicate suffix callbacks or retain stale suffixes, and
+suffix language refresh emits no currentTextChanged or DB reads.
+
+Verification (Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen):
+
+```powershell
+python -B -m unittest tests.test_phase16j_static_selectors_localization -q
+```
+
+Initial fixed run: **8 PASS / 0 FAIL / 0 ERROR**, 3.158s. After adding catalog
+integrity and single/silent/read-only suffix-refresh tests, final focused run:
+
+```powershell
+python -B -m unittest tests.test_phase16j_static_selectors_localization tests.test_phase16j_localization.LocalizationBoundaryTests.test_record_combo_preserves_names_matching_translation_keys tests.test_phase16j_localization.LocalizationBoundaryTests.test_explicit_static_readonly_and_enum_still_translate tests.test_language_and_logging.LanguageAndLoggingTests.test_translated_combo_retains_canonical_source_value tests.test_stabilization.StabilizationTests.test_product_registry_starts_empty_crud_status_legacy_and_navigation tests.test_stabilization.StabilizationTests.test_product_registry_integration_active_inactive_legacy_and_reports tests.test_product_link_performance tests.test_equipment_meter_type_ui_guard tests.test_phase16j_static_labels_localization tests.test_phase13_calendar tests.test_tab_scroll_fix -q
+```
+
+**28 PASS / 0 FAIL / 0 ERROR**, 24.977s, process exit 0: 10 new focused tests,
+3 combo-controller tests, 3 registry/backfill tests, 2 equipment tests,
+7 existing inventory/static-label tests, 1 calendar and 2 native tab-scroll tests.
+No full desktop or Android suite run.
+
+`git diff --check`: PASS. Only four production modules (products, calendar
+integration, product_registry, tab_scroll_fix), new catalog/test and this ledger
+changed. app/language.py and app/localized_messages.py unchanged. No database,
+schema, canonical values, business rules, original dirty checkout, Android,
+MASTER_PROGRESS, diagnostics, commit or push changes.
+
+Phase16J remains PARTIAL. Four remediation boundaries remain:
+1. Windows generated table/body presentation.
+2. Windows composed UI / raw-value protection.
+3. Android report movement-type display.
+4. Android dashboard product-name protection.
+
+None of those boundaries, the final closure audit, or general
+accessibility/responsiveness/scaling work was started.
+
+## Phase16J remediation boundary #3 — Windows generated bodies (2026-09-28)
+
+DESKTOP localization only. Recovered clean `icon-runtime-qa-final` at
+`0a7b498980dfbc3132e64a707aa6e9975b59eea5`; diagnostics absent. Reused supplied
+successful remote CI. Closed native-file-dialog and static-selector boundaries
+were not reopened.
+
+All 15 confirmed surfaces exist at this checkpoint. Root cause: the controller
+intentionally skips table-body cells. Canonical enum labels and generated Greek
+templates therefore reached cells unchanged; products translated only during
+ordinary refresh, leaving already-open status cells stale after language changes.
+
+Fixed display owners:
+1. activities: known category/status, owned general fallback, irrigation duration,
+   and generated count summary; unknown canonical labels remain opaque.
+2. equipment: status/reminder labels and owned hours wording, including next-meter
+   detail; canonical reminder thresholds and filtering remain unchanged.
+3. inventory: all stock states, known movement labels, general fallback and automatic
+   marker; item/category/unit/notes and movement source values remain unchanged.
+4. labor: general fallback and active/inactive worker display; names/roles/work raw.
+5. money: general fallback and automatic marker; existing inherited text filtering
+   sees canonical cell text, temporarily restored under blocked signals, then the
+   localized display is restored. Search semantics are unchanged.
+6. partners: mapped partner-type cell labels; the canonical _type_label mapping
+   itself remains unchanged for other callers.
+7. plant_tracking_ui: status, health and event/history mappings plus count summary.
+8. plant_protection: owned area/day suffixes; numbers and dose-unit values unchanged.
+9. audit: known table/action mappings and count wording; raw details remain opaque.
+10. farm_calendar / phase13_calendar_integration: section/category, crop-task state,
+    owned fallbacks, generated units/counts; titles/notes/dates/IDs remain raw.
+11. global_search: owned sections/fallbacks/generated result wording/counts only.
+12. field_profile: timeline and cost-category cell projections. The canonical
+    field_activity_timeline adapter remains unchanged; localization occurs at its
+    table consumer. No raw field identity labels were changed.
+13. data_export: preview section/missing-table labels and summary counts only.
+14. invoice_documents: known OCR table-status codes and linked-financial-entry
+    explanation; unknown codes preserved. Composed OCR suggestion/raw-value labels
+    and rejected-import dialogs remain in the next boundary.
+15. products: targeted live status-cell rerender, including English initial render.
+
+Owner-local hooks update only explicitly annotated display cells in place using
+existing _text. They preserve item objects, selection, ordering, navigation data
+and raw values, and block table signals during language rerender. Each page binds
+one QObject-owned language-change callback at construction, not during refresh.
+Callbacks perform no DB reads/writes. Shared app/language.py and
+app/localized_messages.py are unchanged; no generic table translation was added.
+
+Calendar/search display specifications are sidecars, separate from canonical
+record dictionaries. Raw user values enter template interpolation only after
+translation. Source comparison against HEAD proves unchanged SQL/DB call ASTs,
+canonical calendar/search record construction, reminder rules, canonical partner
+mapping, navigation methods, ZIP/manifest/export-byte generation and verification.
+
+No audited surface was excluded. Invoice actions remain gated as before; their
+production body renderers are tested directly without enabling unfinished actions.
+
+Catalog: **58 new non-conflicting exact entries** in
+en_phase16j_generated_tables.json. Existing exact enum/section/unit keys are reused
+(including Irrigation, Scheduled, Active, Receipt, Low, Fields and decares).
+Validation covers JSON, nonempty values, braces, placeholder/format-specifier/
+conversion parity, English values and duplicate-key conflicts. No unrelated
+catalog cleanup. The Greek area abbreviation retains its decare/stremma semantics;
+numeric formatting and calculations remain unchanged.
+
+Baseline before production edits: **0 PASS / 15 FAIL / 0 ERROR**, with 18 failing
+assertions/subcases. Initial test setup issues (audit trigger prerequisites,
+supplier-selector isolation and field selection) were corrected before recording
+this baseline. Existing catalog wording is reused rather than changed to satisfy
+an initially assumed English label.
+
+Tests use actual production widgets/renderers, isolated SQLite fixtures, and
+controlled row sources where a renderer needs independent boundary coverage.
+They exercise EL -> EN -> EL and preserve adversarial raw Greek/English values,
+markup-like text, braces, units, filenames, IDs and dates. Known/unknown enum
+coverage includes all OCR codes, all stock states, and catalog-like unknown values.
+Search identity/order/navigation payloads remain canonical; translated words do
+not become newly searchable. Money filtering is explicitly tested both ways.
+Prepared database construction/refresh snapshots match across 14 page owners;
+the audit test isolates its pre-existing trigger prerequisites and verifies
+render/switch snapshots. Initial existing schema setup is deliberate fixture work.
+All live switches tested perform zero writes; targeted rerender tests also prohibit
+queries. Existing ZIP regression confirms identical logical archive members/bytes
+through language switching, with source export/verification methods unchanged.
+
+Verification: Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen.
+
+```powershell
+python -B -m unittest tests.test_phase16j_generated_tables_localization -q
+```
+
+Baseline above; initial fixed run **15 PASS**, expanded run **21 PASS**. Then:
+
+```powershell
+python -B -m unittest tests.test_phase16j_generated_tables_localization tests.test_equipment_maintenance_contract tests.test_inventory_quality_gate.InventoryQualityGateTests.test_inventory_page_low_stock_metrics_statuses_and_filter tests.test_plant_tracking_ui.PlantTrackingUiTest.test_page_lists_projected_state_history_and_soft_deleted_records tests.test_phase9d_field_activity_timeline tests.test_phase13_calendar tests.test_phase16a_csv tests.test_phase16j_export_dialog_localization.ExportDialogTests.test_zip_success_last_label_and_bytes tests.test_stabilization.StabilizationTests.test_data_export_product_filter_and_unfiltered_export tests.test_stabilization.StabilizationTests.test_expense_and_inventory_sync_are_idempotent_and_clean_up tests.test_stabilization.StabilizationTests.test_plant_protection_hides_approval_number_but_preserves_legacy_value tests.test_stabilization.StabilizationTests.test_product_registry_integration_active_inactive_legacy_and_reports -q
+```
+
+**40 PASS / 0 FAIL / 0 ERROR**, 22.611s, exit 0 (21 new + 19 related existing).
+Final inventory-state review found one additional missing exact key, Εξαντλήθηκε;
+added Out of stock and its three-state regression, then reran the new module:
+**22 PASS / 0 FAIL / 0 ERROR**, 7.503s. Two further invariant tests ran individually:
+
+```powershell
+python -B -m unittest tests.test_phase16j_generated_tables_localization.GeneratedBodyTests.test_prepared_database_page_construction_and_refresh_preserve_state -v
+python -B -m unittest tests.test_phase16j_generated_tables_localization.GeneratedBodyTests.test_products_english_initial_render_and_single_refresh_hook -v
+```
+
+Each **1 PASS / 0 FAIL / 0 ERROR**, 3.680s and 0.613s, exit 0. Final coverage:
+**43 distinct passing tests (24 new + 19 existing)**. No full desktop/Android suite.
+
+`git diff --check`: PASS. Changed only 16 scoped production owners, new catalog,
+new focused tests and this ledger. No schema/migration/dependency/Android changes;
+original dirty checkout untouched; diagnostics absent; MASTER_PROGRESS unchanged.
+No commit/push. Phase16J localization remains PARTIAL, with three boundaries left:
+1. Windows composed UI / raw-value protection.
+2. Android report movement-type display.
+3. Android dashboard product-name protection.
+
+No next boundary, final closure audit, or scaling/accessibility work started.
+
+## Phase16J remediation boundary #4 — Windows composed UI/raw values (2026-09-28)
+
+DESKTOP localization only. Continued the existing dirty `icon-runtime-qa-final`
+worktree at `fe43b46a260c8a448218d6bac1ebe9b293b3061d`; no reset/recreation.
+At resume, 22 production modules were modified and the scoped catalog/test were
+untracked. The first 14 regressions had passed after fixes; expanded coverage,
+remaining invariants, existing regressions and this ledger were unfinished.
+Diagnostics stayed absent and the original dirty refactor/pages checkout was
+untouched. No commit/push, Android, schema, dependency or packaging changes.
+
+Baseline before production edits: **1 PASS / 13 FAIL / 0 ERROR** (14 production-
+surface tests, 3.855s). Unmarked titles already passed; the other tests reproduced
+raw-value corruption in titles, identity labels, paths and exception details.
+The owner explicitly approved exactly two opt-in guards in app/language.py:
+`mastixaI18nSkipWindowTitle` and `mastixaI18nSkipTitle`. No other behavior in that
+module changed. app/localized_messages.py remains unchanged. Unmarked window and
+QGroupBox titles still translate normally.
+
+Implementation: existing _text/_message translate complete owned templates before
+interpolating raw values. Persistent labels use explicit owner-local template
+state and language refresh; QLabel values use PlainText and SkipText. Scoped
+QGroupBox titles use SkipTitle; the version title uses SkipWindowTitle. No generic
+table-body or selector behavior changed. Crop-program headings reuse the existing
+page refresh connection rather than adding a redundant language callback.
+Declaration's read-only QLineEdit is kept non-static for generic translation and
+renders its saved base status plus the locked-year wrapper explicitly.
+
+Completed owners:
+- audit / field_finance: CSV success/error wrappers; CSV writer unchanged.
+- upload_center: JSON/snapshot export wrappers, comparison labels/counts and
+  valid/invalid integrity status; raw payload keys/values, hashes and IDs preserved.
+- invoice_documents: rejected filenames, ZIP success/errors and OCR suggestion
+  label composed from owned templates with opaque supplier/date/amount values;
+  form locked/edit/new titles protected. Unfinished-action gating unchanged.
+- dashboard: farm subtitle, backup status/filename/counts, backup/restore paths.
+- settings: profile state/database path; create/import/export/archive/activate
+  names and paths; profile errors and backup-folder errors; empty-selection reset.
+- version_integration: canonical app/version wrapper plus opaque profile name.
+  This wrapper is language-neutral and stays exact through EL/EN/EL.
+- field_profile: identity/location/KAEK/area/tree values, including clear/reselect.
+- crop_programs: complete program-heading template and protected raw program name.
+- sales: insufficient-stock product/quantity warning, with unchanged validation.
+- fields: deletion exception; main_window: profile-switch errors and rollback.
+- update_integration: installed/current/new/download-ready status and confirmation;
+  raw release notes/version/errors preserved. Internal failure signal accepts a
+  template/detail pair so worker failures need no translation after composition.
+  Network/download/install calls, decisions and default buttons are unchanged.
+- locked headings: activities, inventory, labor, income/expenses, plantings,
+  production, sales and declaration; edit-state controls remain unchanged.
+  Audit naming differed: plantings uses load_record(), not load_batch(), at HEAD.
+- year_context_ui: next-year confirmation and already-locked next-year warning;
+  the closed temporary-correction implementation remains unchanged.
+
+Catalog: 67 missing exact entries in en_phase16j_composed_ui.json; existing exact
+static/enum translations reused. All existing catalogs were searched first.
+Validation covers nonempty English, JSON, braces, placeholder/conversion/specifier
+parity and absence of conflicting exact keys or Greek in English values. No
+unrelated catalog conflict cleanup.
+
+Evidence: adversarial raw Greek catalog words, English words, braces, markup-like
+text, names equal to Παραγωγή, Windows paths, exception strings, filenames, hashes,
+OCR supplier/date/amount values and JSON comparison data remain exact. Live
+EL -> EN -> EL includes repeated generic translation passes and an actual modal
+exec/event-loop test. Language switches reject Database.execute and compare
+logical database snapshots. Repeated settings/crop refreshes retain single owned
+callback behavior. Record headings preserve identities, row source dictionaries,
+edit controls and years. Profile cancellation preserves state; failure restores
+old profile identity. Existing profile archive/export/import contracts pass.
+
+Year locking: cancelling the initial lock confirmation leaves DB unchanged.
+Declining the subsequent next-year prompt preserves the already-approved lock
+and keeps the active year unchanged; it does not undo that lock. Accepting advances
+only when the next year is unlocked. The already-locked warning preserves that
+state. Live switching inside either modal leaves its DB snapshot unchanged.
+Yes/No/default semantics are checked explicitly.
+
+File invariants: actual CSV rows/encoding and JSON/snapshot bytes checked; selected
+paths and profile-operation arguments remain exact. Invoice export destination,
+IDs and returned bytes remain unchanged, with build_export_zip AST unchanged.
+Source comparison confirms unchanged SQL/database-call ASTs, all existing
+QFileDialog argument ASTs, generated-body helpers, ZIP builder, OCR extraction,
+payload hashing and snapshot-integrity functions across all 22 production files.
+
+Verification used installed Python 3.14, PYTHONUTF8=1, QT_QPA_PLATFORM=offscreen:
+
+```powershell
+python -B -m unittest tests.test_phase16j_composed_ui_localization -q
+```
+
+Final **33 PASS / 0 FAIL / 0 ERROR**, 12.824s, exit 0.
+
+```powershell
+python -B -m unittest tests.test_phase16j_file_dialog_localization tests.test_profiles tests.test_alpha2_updates tests.test_crop_program_ui tests.test_phase16j_backup_localization tests.test_phase16j_year_correction tests.test_phase16j_generated_tables_localization -q
+```
+
+**88 PASS / 0 FAIL / 0 ERROR**, 26.783s. Three old file-dialog test mocks initially
+intercepted QMessageBox.information instead of the now-used _message boundary.
+Only those mock targets were updated; every path/payload assertion is unchanged.
+Real protected dialog behavior is covered by the new tests.
+
+```powershell
+python -B -m unittest tests.test_phase16j_composed_ui_localization tests.test_phase16j_localization tests.test_crop_program_ui -q
+```
+
+**45 PASS / 0 FAIL / 0 ERROR**, 14.746s (31 new at that point, 5 existing controller
+contracts and 9 crop-program tests). Two additional new tests and strengthened
+assertions are included in the final 33-test run above.
+
+```powershell
+python -B -m unittest tests.test_alpha2_step3_year_context.Alpha2Step3YearContextTest.test_locking_active_year_can_advance_to_next_working_year -v
+```
+
+**1 PASS / 0 FAIL / 0 ERROR**, 0.822s.
+
+```powershell
+python -B -m unittest tests.test_stabilization.StabilizationTests.test_sale_creates_updates_and_deletes_exactly_one_income tests.test_stabilization.StabilizationTests.test_year_lock_schema_and_state tests.test_stabilization.StabilizationTests.test_all_modules_import_and_all_pages_refresh tests.test_alpha2_step5_ui.Alpha2Step5UiTest.test_invoice_documents_page_hides_all_unfinished_actions -q
+```
+
+The three stabilization checks passed; the final selector above had a singular
+class-name typo (one loader error, not a runtime failure). Corrected selector:
+
+```powershell
+python -B -m unittest tests.test_phase16j_composed_ui_localization tests.test_alpha2_step5_ui.Alpha2Step5UiTests.test_invoice_documents_page_hides_all_unfinished_actions -q
+```
+
+**34 PASS / 0 FAIL / 0 ERROR**, 13.215s (33 new + invoice gating). Across final
+coverage: **131 distinct passing tests**, 33 new + 98 existing. Counts are from
+multiple focused runs, not one full-suite invocation. Expected failure-injection
+logs include profile-switch/backup errors; no unresolved test failures remain.
+No complete desktop suite or Android tests were run.
+
+`git diff --check`: PASS; new catalog/test whitespace checks PASS. Git only notes
+normal LF-to-CRLF conversion. Production files: activities, audit, crop_programs,
+dashboard, declaration, field_finance, field_profile, fields, inventory,
+invoice_documents, labor, language, main_window, money, plantings, production,
+sales, settings, update_integration, upload_center, version_integration and
+year_context_ui. Also changed: this ledger and three mock targets in
+ tests/test_phase16j_file_dialog_localization.py; new scoped catalog/test module.
+
+Phase16J localization remains PARTIAL. Remaining remediation boundaries:
+1. Android report movement-type display.
+2. Android dashboard product-name protection.
+
+Stopped without commit/push, Android work, scaling/accessibility work or final
+closure audit.

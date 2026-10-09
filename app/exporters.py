@@ -10,8 +10,9 @@ from PySide6.QtCore import QMarginsF
 from PySide6.QtGui import QPageLayout, QPageSize, QTextDocument
 from PySide6.QtPrintSupport import QPrinter
 
-from .ui_helpers import compact_decimal, format_kg
+from .ui_helpers import compact_decimal
 from .language import tr
+from .report_quantities import quantity_text
 
 
 def export_report_pdf(path: str, snapshot: dict) -> None:
@@ -34,7 +35,7 @@ def export_report_pdf(path: str, snapshot: dict) -> None:
         f"""
         <tr>
             <td>{escape(str(row["year"]))}</td>
-            <td class="num">{compact_decimal(row["production"], 3)}</td>
+            <td class="num">{escape(quantity_text(row["production"]))}</td>
             <td class="num">{row["income"]:.2f} €</td>
             <td class="num">{row["expenses"]:.2f} €</td>
             <td class="num">{row["balance"]:.2f} €</td>
@@ -49,8 +50,8 @@ def export_report_pdf(path: str, snapshot: dict) -> None:
             <td>{escape(str(row["name"]))}</td>
             <td class="num">{compact_decimal(row["area"], 3)}</td>
             <td class="num">{row["trees"]}</td>
-            <td class="num">{compact_decimal(row["production"], 3)}</td>
-            <td class="num">{row["grams_per_tree"]:.1f}</td>
+            <td class="num">{escape(quantity_text(row["production"]))}</td>
+            <td class="num">{"—" if row["grams_per_tree"] is None else compact_decimal(row["grams_per_tree"], 1)}</td>
         </tr>
         """
         for row in snapshot["field_rows"]
@@ -104,7 +105,7 @@ def export_report_pdf(path: str, snapshot: dict) -> None:
 
         <table class="metrics">
             <tr>
-                <td><div class="metric-label">{production_label}</div><div class="metric-value">{format_kg(snapshot["production"])}</div></td>
+                <td><div class="metric-label">{production_label}</div><div class="metric-value">{escape(quantity_text(snapshot["production"]))}</div></td>
                 <td><div class="metric-label">{income_label}</div><div class="metric-value">{snapshot["income"]:.2f} €</div></td>
                 <td><div class="metric-label">{expenses_label}</div><div class="metric-value">{snapshot["expenses"]:.2f} €</div></td>
                 <td><div class="metric-label">{balance_label}</div><div class="metric-value">{snapshot["balance"]:.2f} €</div></td>
@@ -114,7 +115,7 @@ def export_report_pdf(path: str, snapshot: dict) -> None:
         <h2>{yearly_label}</h2>
         <table>
             <tr>
-                <th>{year_header}</th><th>{production_label} kg</th><th>{income_label}</th><th>{expenses_label}</th><th>{balance_label}</th>
+                <th>{year_header}</th><th>{production_label}</th><th>{income_label}</th><th>{expenses_label}</th><th>{balance_label}</th>
             </tr>
             {yearly_rows}
         </table>
@@ -122,7 +123,7 @@ def export_report_pdf(path: str, snapshot: dict) -> None:
         <h2>{field_production_label}</h2>
         <table>
             <tr>
-                <th>{field_label}</th><th>{area_label}</th><th>{trees_label}</th><th>{production_label} kg</th><th>{grams_label}</th>
+                <th>{field_label}</th><th>{area_label}</th><th>{trees_label}</th><th>{production_label}</th><th>{grams_label}</th>
             </tr>
             {field_rows}
         </table>
@@ -233,13 +234,13 @@ def export_report_xlsx(path: str, snapshot: dict) -> None:
         _row_xml(1, [_inline_cell("A1", tr("Mastixa Manager - Αναφορά"), 1)], 26),
         _row_xml(2, [_inline_cell("A2", tr(snapshot["year_label"]), 2)]),
         _row_xml(4, [
-            _inline_cell("A4", tr("Παραγωγή kg"), 3),
+            _inline_cell("A4", tr("Παραγωγή"), 3),
             _inline_cell("B4", tr("Έσοδα"), 3),
             _inline_cell("C4", tr("Έξοδα"), 3),
             _inline_cell("D4", tr("Καθαρό αποτέλεσμα"), 3),
         ]),
         _row_xml(5, [
-            _number_cell("A5", snapshot["production"], 4),
+            _inline_cell("A5", quantity_text(snapshot["production"]), 6),
             _number_cell("B5", snapshot["income"], 5),
             _number_cell("C5", snapshot["expenses"], 5),
             _number_cell("D5", snapshot["balance"], 5, formula="B5-C5"),
@@ -247,7 +248,7 @@ def export_report_xlsx(path: str, snapshot: dict) -> None:
         _row_xml(7, [_inline_cell("A7", tr("Σύνοψη ανά έτος"), 2)]),
         _row_xml(8, [
             _inline_cell("A8", tr("Έτος"), 3),
-            _inline_cell("B8", tr("Παραγωγή kg"), 3),
+            _inline_cell("B8", tr("Παραγωγή"), 3),
             _inline_cell("C8", tr("Έσοδα"), 3),
             _inline_cell("D8", tr("Έξοδα"), 3),
             _inline_cell("E8", tr("Καθαρό αποτέλεσμα"), 3),
@@ -258,7 +259,7 @@ def export_report_xlsx(path: str, snapshot: dict) -> None:
     for row in snapshot["yearly_rows"]:
         summary_rows.append(_row_xml(r, [
             _inline_cell(f"A{r}", row["year"], 6),
-            _number_cell(f"B{r}", row["production"], 4),
+            _inline_cell(f"B{r}", quantity_text(row["production"]), 6),
             _number_cell(f"C{r}", row["income"], 5),
             _number_cell(f"D{r}", row["expenses"], 5),
             _number_cell(f"E{r}", row["balance"], 5, formula=f"C{r}-D{r}"),
@@ -272,7 +273,7 @@ def export_report_xlsx(path: str, snapshot: dict) -> None:
             _inline_cell("A4", tr("Αγροτεμάχιο"), 3),
             _inline_cell("B4", tr("Έκταση στρ."), 3),
             _inline_cell("C4", tr("Παραγωγικά δέντρα"), 3),
-            _inline_cell("D4", tr("Παραγωγή kg"), 3),
+            _inline_cell("D4", tr("Παραγωγή"), 3),
             _inline_cell("E4", tr("g / δέντρο"), 3),
         ]),
     ]
@@ -283,13 +284,9 @@ def export_report_xlsx(path: str, snapshot: dict) -> None:
             _inline_cell(f"A{r}", row["name"], 6),
             _number_cell(f"B{r}", row["area"], 4),
             _number_cell(f"C{r}", row["trees"], 6),
-            _number_cell(f"D{r}", row["production"], 4),
-            _number_cell(
-                f"E{r}",
-                row["grams_per_tree"],
-                7,
-                formula=f"IF(C{r}>0,D{r}*1000/C{r},0)",
-            ),
+            _inline_cell(f"D{r}", quantity_text(row["production"]), 6),
+            (_inline_cell(f"E{r}", "—", 6) if row["grams_per_tree"] is None
+             else _number_cell(f"E{r}", row["grams_per_tree"], 7)),
         ]))
         r += 1
 

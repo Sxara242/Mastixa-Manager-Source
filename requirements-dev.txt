@@ -1,0 +1,4 @@
+# Development/tests only; Pillow is not a Windows release runtime dependency.
+-r requirements.txt
+-r requirements-build.txt
+Pillow==12.3.0

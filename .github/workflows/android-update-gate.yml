@@ -1,0 +1,38 @@
+name: Android QA build (development)
+on:
+  workflow_dispatch:
+    inputs:
+      upload_apk:
+        description: Retain the debug QA APK for one day
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  qa-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+      - run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Build and lint development APKs
+        working-directory: android
+        run: bash ./gradlew --no-daemon lintDebug assembleDebug assembleChecksAndroidTest --console=plain
+      - name: Optional development APK
+        if: ${{ inputs.upload_apk }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mastixa-Android-development-${{ github.run_id }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 1

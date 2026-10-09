@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import tempfile
@@ -21,7 +22,14 @@ REQUIRED_TABLES = {
 
 
 class BackupError(RuntimeError):
-    pass
+    @classmethod
+    def from_template(cls, template: str, **values) -> BackupError:
+        """Retain the legacy exception text while exposing owned UI boundaries."""
+        values = {key: str(value) for key, value in values.items()}
+        error = cls(template.format(**values))
+        error.ui_template = template
+        error.ui_values = values
+        return error
 
 
 class BackupManager:
@@ -123,8 +131,8 @@ class BackupManager:
         logger.info("Backup restore started")
 
         if not source_path.exists():
-            raise BackupError(
-                f"Δεν βρέθηκε το αρχείο backup:\n{source_path}"
+            raise BackupError.from_template(
+                "Δεν βρέθηκε το αρχείο backup:\n{path}", path=source_path
             )
 
         # Never restore an invalid or unrelated SQLite file.
@@ -154,12 +162,12 @@ class BackupManager:
                     destination_path=self.database_path,
                 )
             except Exception:
-                pass
+                logger.exception("Backup restore recovery failed; safety snapshot retained")
 
-            raise BackupError(
-                f"Η επαναφορά απέτυχε.\n\n{exc}\n\n"
-                f"Δημιουργήθηκε αντίγραφο ασφαλείας πριν την επαναφορά:\n"
-                f"{safety_backup}"
+            raise BackupError.from_template(
+                "Η επαναφορά απέτυχε.\n\n{detail}\n\n"
+                "Δημιουργήθηκε αντίγραφο ασφαλείας πριν την επαναφορά:\n"
+                "{path}", detail=exc, path=safety_backup
             ) from exc
 
         # Retention must not destroy the input or recovery snapshot mid-restore.
@@ -172,8 +180,8 @@ class BackupManager:
 
     def _ensure_source_exists(self) -> None:
         if not self.database_path.exists():
-            raise BackupError(
-                f"Δεν βρέθηκε η βάση δεδομένων:\n{self.database_path}"
+            raise BackupError.from_template(
+                "Δεν βρέθηκε η βάση δεδομένων:\n{path}", path=self.database_path
             )
         self._validate_database(self.database_path)
 
@@ -187,28 +195,22 @@ class BackupManager:
         target.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            source = sqlite3.connect(
+            with closing(sqlite3.connect(
                 self.database_path.resolve().as_uri() + "?mode=ro",
                 uri=True,
                 timeout=30,
-            )
-            destination = sqlite3.connect(
+            )) as source, closing(sqlite3.connect(
                 target,
                 timeout=30,
-            )
-
-            try:
+            )) as destination:
                 source.execute("PRAGMA busy_timeout = 30000")
                 destination.execute("PRAGMA busy_timeout = 30000")
                 source.backup(destination, pages=256, sleep=0.05)
                 destination.commit()
-            finally:
-                destination.close()
-                source.close()
 
         except Exception as exc:
-            raise BackupError(
-                f"Αποτυχία δημιουργίας backup:\n{exc}"
+            raise BackupError.from_template(
+                "Αποτυχία δημιουργίας backup:\n{detail}", detail=exc
             ) from exc
 
         self._validate_database(target)
@@ -257,24 +259,18 @@ class BackupManager:
         source_path = Path(source_path)
         destination_path = Path(destination_path)
 
-        source = sqlite3.connect(
+        with closing(sqlite3.connect(
             source_path.resolve().as_uri() + "?mode=ro",
             uri=True,
             timeout=30,
-        )
-        destination = sqlite3.connect(
+        )) as source, closing(sqlite3.connect(
             destination_path,
             timeout=30,
-        )
-
-        try:
+        )) as destination:
             destination.execute("PRAGMA busy_timeout = 30000")
             source.execute("PRAGMA busy_timeout = 30000")
             source.backup(destination, pages=256, sleep=0.05)
             destination.commit()
-        finally:
-            destination.close()
-            source.close()
 
     @staticmethod
     def _validate_database(path: Path) -> None:
@@ -285,9 +281,9 @@ class BackupManager:
             integrity_row = con.execute("PRAGMA integrity_check").fetchone()
             integrity = integrity_row[0] if integrity_row else ""
             if str(integrity).lower() != "ok":
-                raise BackupError(
-                    f"Η βάση δεδομένων απέτυχε στον έλεγχο ακεραιότητας:\n"
-                    f"{path}\n\nΑποτέλεσμα: {integrity}"
+                raise BackupError.from_template(
+                    "Η βάση δεδομένων απέτυχε στον έλεγχο ακεραιότητας:\n"
+                    "{path}\n\nΑποτέλεσμα: {detail}", path=path, detail=integrity
                 )
 
             rows = con.execute(
@@ -298,16 +294,16 @@ class BackupManager:
             missing = REQUIRED_TABLES - tables
             if missing:
                 missing_text = ", ".join(sorted(missing))
-                raise BackupError(
+                raise BackupError.from_template(
                     "Το αρχείο SQLite δεν φαίνεται να είναι backup του "
                     "Mastixa Manager.\n\n"
-                    f"Λείπουν πίνακες: {missing_text}"
+                    "Λείπουν πίνακες: {tables}", tables=missing_text
                 )
         except BackupError:
             raise
         except sqlite3.Error as exc:
-            raise BackupError(
-                f"Το αρχείο δεν είναι έγκυρη βάση SQLite:\n{path}\n\n{exc}"
+            raise BackupError.from_template(
+                "Το αρχείο δεν είναι έγκυρη βάση SQLite:\n{path}\n\n{detail}", path=path, detail=exc
             ) from exc
         finally:
             if con is not None:

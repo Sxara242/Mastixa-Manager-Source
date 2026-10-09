@@ -289,9 +289,12 @@ def _apply_icon_theme_impl(root) -> int:
 
     # Buttons / tool buttons / radio-like navigation items.
     for button in root.findChildren(QAbstractButton):
+        if button.property("mastixaPresentationIcon"):
+            continue
         icon = _icon_for_text(button.text())
         if icon is not None:
-            button.setIcon(icon)
+            if button.icon().cacheKey() != icon.cacheKey():
+                button.setIcon(icon)
             # The current Mastixa Manager renders the upper navigation tabs as
             # QAbstractButton-derived widgets. Give those icon-bearing category
             # controls the same larger visual weight as the main categories.
@@ -308,14 +311,16 @@ def _apply_icon_theme_impl(root) -> int:
             # may have been assigned by an earlier theme pass and never add
             # category icons there.
             for i in range(widget.count()):
-                widget.item(i).setIcon(QIcon())
+                if not widget.item(i).icon().isNull():
+                    widget.item(i).setIcon(QIcon())
             continue
         widget.setIconSize(_ICON_SIZE)
         for i in range(widget.count()):
             item = widget.item(i)
             icon = _icon_for_text(item.text())
             if icon is not None:
-                item.setIcon(icon)
+                if item.icon().cacheKey() != icon.cacheKey():
+                    item.setIcon(icon)
                 changed += 1
 
     # Trees.
@@ -326,6 +331,8 @@ def _apply_icon_theme_impl(root) -> int:
 
     # Standard tab widgets.
     for tabs in root.findChildren(QTabWidget):
+        if tabs.property("mastixaHiddenNavigation"):
+            continue
         tabs.setIconSize(_TAB_ICON_SIZE)
         tabs.setMaximumHeight(_QT_MAX_SIZE)
         tabs.tabBar().setMaximumHeight(_QT_MAX_SIZE)
@@ -334,32 +341,38 @@ def _apply_icon_theme_impl(root) -> int:
         for i in range(tabs.count()):
             icon = _icon_for_text(tabs.tabText(i))
             if icon is not None:
-                tabs.setTabIcon(i, icon)
+                if tabs.tabIcon(i).cacheKey() != icon.cacheKey():
+                    tabs.setTabIcon(i, icon)
                 changed += 1
 
     # Direct QTabBar support is important because the current Mastixa Manager
     # uses tab-like navigation that can be populated/wrapped dynamically.
     for bar in root.findChildren(QTabBar):
+        if bar.parent() is not None and bar.parent().property("mastixaHiddenNavigation"):
+            continue
         bar.setMaximumHeight(_QT_MAX_SIZE)
         bar.setIconSize(_TAB_ICON_SIZE)
         bar.setMinimumHeight(_TAB_MIN_HEIGHT)
         for i in range(bar.count()):
             icon = _icon_for_text(bar.tabText(i))
             if icon is not None:
-                bar.setTabIcon(i, icon)
+                if bar.tabIcon(i).cacheKey() != icon.cacheKey():
+                    bar.setTabIcon(i, icon)
                 changed += 1
 
     for toolbox in root.findChildren(QToolBox):
         for i in range(toolbox.count()):
             icon = _icon_for_text(toolbox.itemText(i))
             if icon is not None:
-                toolbox.setItemIcon(i, icon)
+                if toolbox.itemIcon(i).cacheKey() != icon.cacheKey():
+                    toolbox.setItemIcon(i, icon)
                 changed += 1
 
     for action in root.findChildren(QAction):
         icon = _icon_for_text(action.text())
         if icon is not None:
-            action.setIcon(icon)
+            if action.icon().cacheKey() != icon.cacheKey():
+                action.setIcon(icon)
             changed += 1
 
     return changed

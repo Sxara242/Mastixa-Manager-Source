@@ -1,0 +1,45 @@
+IAU scientific parameters and consolidated input collection
+
+Scientific origin: Archinal, B. A., Acton, C. H., A'Hearn, M. F., Conrad,
+A., Consolmagno, G. J., Duxbury, T., Hestroffer, D., Hilton, J. L., Kirk,
+R. L., Klioner, S. A., McCarthy, D., Meech, K., Oberst, J., Ping, J.,
+Seidelmann, P. K., Tholen, D. J., Thomas, P. C., and Williams, I. P. (2018),
+Report of the IAU Working Group on Cartographic Coordinates and Rotational
+Elements: 2015, Celestial Mechanics and Dynamical Astronomy 130:22,
+https://doi.org/10.1007/s10569-017-9805-5.
+
+Input collection: csvForWKT, PlanetMap; Jean-Christophe Malapert (CNES),
+Trent Hare (USGS) and Benoit Seignovert (University of Nantes), as identified
+in the collection's AUTHORS.rst. PROJ's contemporaneous issue2601 links the
+thareUSGS/csvForWKT fork. The consolidated CSV currently published by
+PlanetMap at commit7f693aa1d980d5e3f33b0dd94cd811f4aab3f832 has exactly the same
+182 records and all field values as the PROJ9.8.1 input (line endings differ).
+https://github.com/PlanetMap/csvForWKT/tree/7f693aa1d980d5e3f33b0dd94cd811f4aab3f832
+
+That collection's published license is GNU LGPL Version3. Its license,
+author credits and preferred CSV source are preserved in the matching source
+materials. Full GNU LGPLv3 and incorporated GPLv3 terms accompany Mastixa.
+The collection's covered contributions retain those terms; this notice does
+not relicense PROJ's independently authored MIT software or the entire
+upstream database. No csvForWKT program code or generated WKT is shipped.
+
+PROJ's MIT generator by Even Rouault / Hobu Inc (2021) selects97 bodies,
+constructs115 ellipsoids and127 geodetic CRS plus2074 projected CRS. It
+converts radii/axes into sphere/biaxial definitions, sometimes computes an
+arithmetic mean, assigns identifiers and longitude conventions, and excludes
+unusable/unsupported definitions. It retains the report DOI. Mastixa ships
+that upstream database unchanged and makes no further database edits.
+
+Report prose, tables as typeset, illustrations, original observations, NAIF
+kernels and the planetary naming database are not distributed. Scientific
+values, body identifiers and short landmark names are factual inputs. Mixed
+authorship is credited; no claim that the whole collection or article is a
+US government work or public domain is made.
+
+One separate legacy input is PROJ:EARTH2000: Earth ellipsoid axes6378140m and
+6356750m, from the older IAU2000 dictionary. This is an isolated numeric pair
+in PROJ's independent definition, not redistribution of that older dictionary.
+
+The collection and PROJ representation are supplied without warranty under
+their applicable terms. Matching source and notices must accompany any later
+authorized distribution; no source or binary publication has occurred here.

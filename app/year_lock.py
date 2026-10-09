@@ -9,8 +9,10 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QLayout,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
@@ -18,6 +20,8 @@ from PySide6.QtWidgets import (
 
 from .database import Database
 from .language import tr
+from .localized_messages import _message
+from .year_context import permanently_unlock_year
 from .ui_helpers import table_widget
 
 
@@ -70,21 +74,10 @@ def locked_year_reason(db: Database, year: int) -> str:
 
 def warn_locked_year(parent, db: Database, year: int) -> None:
     reason = locked_year_reason(db, year)
-
-    message = (
-        f"Το έτος {year} είναι κλειδωμένο.\n\n"
-        "Δεν επιτρέπεται προσθήκη, αλλαγή ή διαγραφή "
-        "ετήσιων δεδομένων όσο παραμένει κλειδωμένο."
-    )
-
-    if reason:
-        message += f"\n\nΑιτιολογία:\n{reason}"
-
-    QMessageBox.warning(
-        parent,
-        "Κλειδωμένο έτος",
-        message,
-    )
+    _message(parent, "warning", "Κλειδωμένο έτος",
+             "Το έτος {year} είναι κλειδωμένο — Μόνο προβολή.\n\n"
+             "Για αλλαγές: Ασφάλεια → Κλείδωμα Έτους → Προσωρινή διόρθωση.\n\n"
+             "Αιτιολογία: {reason}", year=year, reason=reason)
 
 
 class YearLockPage(QWidget):
@@ -95,7 +88,26 @@ class YearLockPage(QWidget):
 
         self._ensure_schema_and_audit_triggers()
 
-        layout = QVBoxLayout(self)
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.page_scroll = QScrollArea()
+        self.page_scroll.setWidgetResizable(True)
+        self.page_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        outer_layout.addWidget(self.page_scroll)
+
+        self.page_content = QWidget()
+        self.page_content.setObjectName("yearLockContent")
+        self.content_layout = QVBoxLayout(self.page_content)
+        self.content_layout.setContentsMargins(14, 14, 14, 14)
+        self.content_layout.setSpacing(12)
+        self.content_layout.setSizeConstraint(
+            QLayout.SizeConstraint.SetMinimumSize
+        )
+        self.page_scroll.setWidget(self.page_content)
+        layout = self.content_layout
 
         title = QLabel("Κλείδωμα Έτους")
         title.setObjectName("pageTitle")
@@ -119,8 +131,10 @@ class YearLockPage(QWidget):
         info = QLabel(
             "Όταν ένα έτος είναι κλειδωμένο, δεν επιτρέπονται αλλαγές "
             "σε Παραγωγή, Πωλήσεις, Άρδευση & Λίπανση, Φυτοπροστασία, Εργατικά, Φυτεύσεις, Κινήσεις Αποθήκης, Έσοδα, Έξοδα και στη Δήλωση Καλλιέργειας "
-            "του συγκεκριμένου έτους. Τα Αγροτεμάχια παραμένουν master "
-            "δεδομένα και μπορούν να ενημερώνονται. Για ακριβές ιστορικό "
+            "του συγκεκριμένου έτους. Τα μητρώα αγροτεμαχίων, εργαζομένων, "
+            "ειδών αποθήκης, προϊόντων, συναλλασσομένων και μηχανημάτων "
+            "ακολουθούν επίσης το έτος εργασίας. Για αλλαγές σε κλειδωμένο "
+            "έτος χρησιμοποίησε Προσωρινή διόρθωση. Για ακριβές ιστορικό "
             "της δήλωσης χρησιμοποίησε τα snapshots του Κέντρου Αποστολής."
         )
         info.setWordWrap(True)
@@ -139,12 +153,18 @@ class YearLockPage(QWidget):
         control_layout.addWidget(control_title)
 
         form = QFormLayout()
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        form.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
+        )
 
         self.year = QComboBox()
+        self.year.setMinimumWidth(140)
         self.year.currentIndexChanged.connect(self._year_changed)
-        form.addRow("Έτος", self.year)
+        form.addRow("Έτος προς διαχείριση", self.year)
 
         self.reason = QLineEdit()
+        self.reason.setMinimumWidth(220)
         self.reason.setPlaceholderText(
             "Π.χ. Ολοκληρώθηκε η χρήση / υποβλήθηκε η δήλωση"
         )
@@ -186,6 +206,7 @@ class YearLockPage(QWidget):
             ]
         )
         self.table.cellClicked.connect(self._load_selected)
+        self.table.setMinimumHeight(260)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(
@@ -479,7 +500,7 @@ class YearLockPage(QWidget):
 
             values = [
                 str(year),
-                tr("Κλειδωμένο" if locked else "Ανοιχτό"),
+                tr("Κλειδωμένο" if locked else "Ξεκλείδωτο"),
                 (
                     lock_row["locked_at"] or ""
                     if lock_row is not None
@@ -642,6 +663,11 @@ class YearLockPage(QWidget):
         if not is_year_locked(self.db, year):
             return
 
+        reason = self.reason.text()
+        if not reason.strip():
+            _message(self, "warning", "Ξεκλείδωμα έτους", "Συμπλήρωσε αιτία ενέργειας.")
+            return
+
         answer = QMessageBox.warning(
             self,
             "Ξεκλείδωμα έτους",
@@ -656,16 +682,7 @@ class YearLockPage(QWidget):
         if answer != QMessageBox.StandardButton.Yes:
             return
 
-        self.db.execute(
-            """
-            UPDATE year_locks
-            SET
-                is_locked=0,
-                unlocked_at=CURRENT_TIMESTAMP
-            WHERE year=?
-            """,
-            (year,),
-        )
+        permanently_unlock_year(self.db, year, reason)
 
         self.refresh()
 

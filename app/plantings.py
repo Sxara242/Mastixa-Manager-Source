@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .date_preferences import format_iso_date, refresh_date_inputs
+
+from .localized_messages import _language, _text
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -20,16 +26,42 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .numeric_inputs import NumericDoubleSpinBox
+from .numeric_inputs import NumericSpinBox
 from .crud import CrudPage
 from .database import Database
 from .language import combo_source_text
 from .ui_helpers import compact_decimal, table_widget
 from .widgets import date_input
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 
 
 class PlantingsPage(CrudPage):
     """Καταγραφή παρτίδων φύτευσης και επιβίωσης δέντρων ανά αγροτεμάχιο."""
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
 
     def __init__(self, db: Database) -> None:
         super().__init__()
@@ -88,15 +120,15 @@ class PlantingsPage(CrudPage):
         self.form_box = QGroupBox("Νέα φύτευση")
         form = QFormLayout(self.form_box)
 
-        self.planting_date = date_input()
+        self.planting_date = date_input(self.db)
         self.field = QComboBox()
 
-        self.trees_planted = QSpinBox()
+        self.trees_planted = NumericSpinBox()
         self.trees_planted.setRange(1, 1_000_000)
         self.trees_planted.setValue(1)
         self.trees_planted.valueChanged.connect(self._sync_alive_limit)
 
-        self.trees_alive = QSpinBox()
+        self.trees_alive = NumericSpinBox()
         self.trees_alive.setRange(0, 1_000_000)
 
         self.material_type = QComboBox()
@@ -118,7 +150,7 @@ class PlantingsPage(CrudPage):
         self.spacing = QLineEdit()
         self.spacing.setPlaceholderText("Π.χ. 2 x 6 m")
 
-        self.cost = QDoubleSpinBox()
+        self.cost = NumericDoubleSpinBox()
         self.cost.setRange(0, 999_999_999)
         self.cost.setDecimals(2)
         self.cost.setSuffix(" €")
@@ -375,25 +407,7 @@ class PlantingsPage(CrudPage):
         self.field_filter.blockSignals(False)
 
     def _refresh_years(self) -> None:
-        selected = self.year_filter.currentData()
-        rows = self.db.query(
-            """
-            SELECT DISTINCT SUBSTR(planting_date,1,4) AS year
-            FROM planting_batches
-            WHERE planting_date IS NOT NULL AND planting_date <> ''
-            ORDER BY year DESC
-            """
-        )
-
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-        self.year_filter.addItem("Όλα τα έτη", None)
-        for row in rows:
-            if row["year"]:
-                self.year_filter.addItem(row["year"], row["year"])
-        index = self.year_filter.findData(selected)
-        self.year_filter.setCurrentIndex(index if index >= 0 else 0)
-        self.year_filter.blockSignals(False)
+        populate_year_filter(self, self.year_filter, strings=True)
 
     def _record_year(self, record_id: int) -> int | None:
         row = self.db.query_one(
@@ -434,6 +448,8 @@ class PlantingsPage(CrudPage):
 
     def save_record(self) -> None:
         if self._locked_for_save():
+            if self.selected_id is None:
+                self.clear_form()
             return
 
         field_id = self.field.currentData()
@@ -567,14 +583,12 @@ class PlantingsPage(CrudPage):
         )
 
         if locked:
-            self.form_box.setTitle(
-                f"Προβολή φύτευσης — ΚΛΕΙΔΩΜΕΝΟ {year}"
-            )
+            self._composed_text(self.form_box, 'Προβολή φύτευσης — ΚΛΕΙΔΩΜΕΝΟ {year}', year=year)
             self.save_button.setText("Κλειδωμένο")
             self.save_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
-            self.form_box.setTitle("Επεξεργασία φύτευσης")
+            self._composed_text(self.form_box, 'Επεξεργασία φύτευσης')
             self.save_button.setText("Αποθήκευση")
             self.save_button.setEnabled(True)
             self.delete_button.setEnabled(True)
@@ -583,7 +597,7 @@ class PlantingsPage(CrudPage):
 
     def clear_form(self) -> None:
         self.selected_id = None
-        self.planting_date.setDate(QDate.currentDate())
+        self.planting_date.setDate(working_context_date(self.db))
         self._refresh_fields()
         self.field.setCurrentIndex(0)
         self.trees_planted.setValue(1)
@@ -595,7 +609,7 @@ class PlantingsPage(CrudPage):
         self.cost.setValue(0)
         self.notes.clear()
 
-        self.form_box.setTitle("Νέα φύτευση")
+        self._composed_text(self.form_box, 'Νέα φύτευση')
         self.save_button.setText("Προσθήκη")
         self.save_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
@@ -626,6 +640,7 @@ class PlantingsPage(CrudPage):
         self.refresh()
 
     def refresh(self, *_args) -> None:
+        refresh_date_inputs(self, self.db)
         self._ensure_schema()
         self._refresh_fields()
         self._refresh_years()
@@ -694,7 +709,7 @@ class PlantingsPage(CrudPage):
             total_alive += alive
 
             values = [
-                row["planting_date"] or "",
+                format_iso_date(row["planting_date"], self.db),
                 row["field_name"] or "",
                 str(planted),
                 str(alive),

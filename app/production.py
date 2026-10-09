@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .localized_messages import _language, _message, _text
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -10,26 +14,56 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QTableWidgetItem,
     QVBoxLayout,
 )
 
 from .crud import CrudPage
+from .ui_helpers import batched_table_refresh, scrollable_entry_layout
+from .date_preferences import format_iso_date, refresh_date_inputs, selected_date_format
 from .database import Database
 from .ui_helpers import compact_decimal, table_widget
 from .widgets import date_input, quantity_input
-from .year_lock import is_year_locked, warn_locked_year
-from .product_registry import add_product_choices, ensure_product_links, product_row
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
+from .product_registry import (
+    ProductionStockError, add_product_choices, ensure_product_links,
+    ensure_production_stock, product_row,
+)
 
 
 class ProductionPage(CrudPage):
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
         ensure_product_links(self.db)
         self.selected_production_id: int | None = None
 
-        layout = QVBoxLayout(self)
+        layout = scrollable_entry_layout(self)
 
         title = QLabel("Παραγωγή ανά αγροτεμάχιο")
         title.setObjectName("pageTitle")
@@ -37,8 +71,10 @@ class ProductionPage(CrudPage):
 
         self.form_box = QGroupBox("Νέα καταχώρηση παραγωγής")
         form = QFormLayout(self.form_box)
+        form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
 
-        self.date = date_input()
+        self.date = date_input(self.db)
+        self.date.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
         self.field = QComboBox()
         self.product = QComboBox()
         self.product.currentIndexChanged.connect(self._product_changed)
@@ -71,6 +107,13 @@ class ProductionPage(CrudPage):
 
         layout.addWidget(self.form_box)
 
+        filters = QHBoxLayout()
+        filters.addWidget(QLabel("Έτος"))
+        self.year_filter = QComboBox()
+        self.year_filter.currentIndexChanged.connect(self.refresh)
+        filters.addWidget(self.year_filter)
+        layout.addLayout(filters)
+
         self.search = QLineEdit()
         self.search.setPlaceholderText("Αναζήτηση παραγωγής...")
         self.search.setClearButtonEnabled(True)
@@ -83,6 +126,7 @@ class ProductionPage(CrudPage):
             ["Ημερομηνία", "Αγροτεμάχιο", "Προϊόν", "Ποσότητα", "Παρατηρήσεις"]
         )
         self.table.cellClicked.connect(self.load_selected)
+        self.table.setMinimumHeight(180)
         layout.addWidget(self.table)
 
         self.refresh()
@@ -151,8 +195,35 @@ class ProductionPage(CrudPage):
 
         return False
 
+    def _stock_allows_change(self, *, product_id=None, quantity=0.0) -> bool:
+        try:
+            ensure_production_stock(
+                self.db, self.selected_production_id,
+                product_id=product_id, quantity=quantity,
+                field_id=self.field.currentData() if product_id is not None else None,
+            )
+        except ProductionStockError as exc:
+            if exc.field is not None:
+                _message(self, "warning", "Η παραγωγή απαιτείται από πωλήσεις",
+                         "Οι πωλήσεις του προϊόντος «{product}» από το αγροτεμάχιο «{field}» απαιτούν τουλάχιστον {sold} {unit}. Μετά την αλλαγή απομένουν {proposed} {unit}. Η αλλαγή δεν αποθηκεύτηκε.",
+                         product=exc.product, field=exc.field, sold=f"{exc.sold:g}",
+                         proposed=f"{exc.proposed:g}", unit=exc.unit)
+                return False
+            _message(
+                self, "warning", "Η παραγωγή απαιτείται από πωλήσεις",
+                "Οι υπάρχουσες πωλήσεις του προϊόντος «{product}» απαιτούν να παραμείνει "
+                "επαρκής παραγωγή. Η αλλαγή δεν αποθηκεύτηκε.\n\n"
+                "Πωλημένη ποσότητα / ελάχιστη συνολική παραγωγή: {sold}\n"
+                "Συνολική παραγωγή μετά την αλλαγή: {proposed}",
+                product=exc.product, sold=f"{exc.sold:g}", proposed=f"{exc.proposed:g}",
+            )
+            return False
+        return True
+
     def save_production(self) -> None:
         if self._locked_for_save():
+            if self.selected_production_id is None:
+                self.clear_form()
             return
 
         field_id = self.field.currentData()
@@ -202,6 +273,10 @@ class ProductionPage(CrudPage):
                 values,
             )
         else:
+            if not self._stock_allows_change(
+                product_id=int(selected_product["id"]), quantity=self.quantity.value(),
+            ):
+                return
             self.db.execute(
                 """
                 UPDATE production
@@ -265,14 +340,12 @@ class ProductionPage(CrudPage):
         )
 
         if locked:
-            self.form_box.setTitle(
-                f"Προβολή παραγωγής — ΚΛΕΙΔΩΜΕΝΟ {record_year}"
-            )
+            self._composed_text(self.form_box, 'Προβολή παραγωγής — ΚΛΕΙΔΩΜΕΝΟ {record_year}', record_year=record_year)
             self.save_button.setText("Κλειδωμένο")
             self.save_button.setEnabled(False)
             self.delete_button.setEnabled(False)
         else:
-            self.form_box.setTitle("Επεξεργασία παραγωγής")
+            self._composed_text(self.form_box, 'Επεξεργασία παραγωγής')
             self.save_button.setText("Αποθήκευση")
             self.save_button.setEnabled(True)
             self.delete_button.setEnabled(True)
@@ -282,7 +355,7 @@ class ProductionPage(CrudPage):
     def clear_form(self) -> None:
         self.selected_production_id = None
 
-        self.date.setDate(QDate.currentDate())
+        self.date.setDate(working_context_date(self.db))
         self.refresh_fields(None)
         self.field.setCurrentIndex(0)
         self.product.blockSignals(True)
@@ -292,7 +365,7 @@ class ProductionPage(CrudPage):
         self.quantity.setValue(0)
         self.notes.clear()
 
-        self.form_box.setTitle("Νέα καταχώρηση παραγωγής")
+        self._composed_text(self.form_box, 'Νέα καταχώρηση παραγωγής')
         self.save_button.setText("Προσθήκη")
         self.save_button.setEnabled(True)
         self.cancel_button.setEnabled(False)
@@ -321,6 +394,9 @@ class ProductionPage(CrudPage):
         ):
             return
 
+        if not self._stock_allows_change():
+            return
+
         self.db.execute(
             "DELETE FROM production WHERE id=?",
             (self.selected_production_id,),
@@ -329,7 +405,9 @@ class ProductionPage(CrudPage):
         self.clear_form()
         self.refresh()
 
-    def refresh(self) -> None:
+    @batched_table_refresh
+    def refresh(self, *_args) -> None:
+        refresh_date_inputs(self, self.db)
         ensure_product_links(self.db)
         current_field_id = self.field.currentData()
         self.refresh_fields(current_field_id)
@@ -341,8 +419,10 @@ class ProductionPage(CrudPage):
         self.product.blockSignals(False)
         self._product_changed()
 
+        populate_year_filter(self, self.year_filter)
+        year = self.year_filter.currentData()
         rows = self.db.query(
-            """
+            f"""
             SELECT
                 p.id,
                 p.entry_date,
@@ -354,15 +434,18 @@ class ProductionPage(CrudPage):
             FROM production p
             LEFT JOIN fields f ON f.id = p.field_id
             LEFT JOIN products pr ON pr.id = p.product_id
+            {"WHERE SUBSTR(p.entry_date,1,4)=?" if year is not None else ""}
             ORDER BY p.entry_date DESC, p.id DESC
-            """
+            """,
+            (str(year),) if year is not None else (),
         )
 
         self.table.setRowCount(len(rows))
+        date_format = selected_date_format(self.db)
 
         for row_index, row in enumerate(rows):
             values = [
-                row["entry_date"] or "",
+                format_iso_date(row["entry_date"], self.db, display_format=date_format),
                 row["field_name"] or "",
                 row["product_name"] or "",
                 f"{compact_decimal(row['quantity_kg'], 3)} {row['product_unit']}",

@@ -24,6 +24,8 @@ class SalesReportConsistencyTests(unittest.TestCase):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sale_date TEXT NOT NULL,
                 buyer_id INTEGER,
+                product TEXT DEFAULT 'Μαστίχα',
+                product_id INTEGER,
                 buyer_name TEXT NOT NULL DEFAULT '',
                 quantity_kg REAL NOT NULL,
                 price_per_kg REAL NOT NULL,
@@ -56,6 +58,11 @@ class SalesReportConsistencyTests(unittest.TestCase):
             ) VALUES(?,?,?,?,?,?,?)""",
             ("2027-08-10", "Buyer B", 10, 12, 120, "", ""),
         )
+        # Quantities now require registry identity/unit; the old column name
+        # alone cannot establish kg for an unidentified sale.
+        product = self.db.execute("INSERT INTO products(name,unit) VALUES('Μαστίχα','kg')")
+        self.db.execute("UPDATE production SET product_id=?", (product,))
+        self.db.execute("UPDATE production_sales SET product_id=?", (product,))
         self.page = SalesReportPage(self.db)
 
     def tearDown(self) -> None:
@@ -69,6 +76,7 @@ class SalesReportConsistencyTests(unittest.TestCase):
         self.page.refresh()
 
     def test_year_filter_scopes_production_but_keeps_current_stock_all_time(self) -> None:
+        self.page.year_filter.setCurrentIndex(self.page.year_filter.findData(None))
         self.assertEqual("140 kg", self.page.production_metric[1].text())
         self.assertEqual("35 kg", self.page.sold_metric[1].text())
         self.assertEqual("105 kg", self.page.stock_metric[1].text())

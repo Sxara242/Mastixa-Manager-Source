@@ -1,0 +1,22 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "{count} ειδοποιήσεις": "{count} alerts",
+    "Άμεση": "Immediate",
+    "Προσοχή": "Warning",
+    "Ενημέρωση": "Information",
+    "Μηχανήματα & Service": "Equipment & Service",
+    "Εκπρόθεσμη προγραμματισμένη εργασία: {activity}": "Overdue planned activity: {activity}",
+    "Προγραμματισμένη για σήμερα: {activity}": "Scheduled for today: {activity}",
+    "Επερχόμενη εργασία: {activity}": "Upcoming activity: {activity}",
+    "Εξαντλημένο απόθεμα: {stock} {unit}": "Out of stock: {stock} {unit}",
+    "Χαμηλό απόθεμα: {stock} {unit} (ελάχιστο {minimum})": "Low stock: {stock} {unit} (minimum {minimum})",
+    "Εκπρόθεσμο service": "Overdue service",
+    "Πλησιάζει service": "Service due soon",
+    "ημερομηνία {date}": "date {date}",
+    "μετρητής {meter} {unit}": "meter {meter} {unit}",
+    "ώρες": "hours",
+    "Μην γίνει συγκομιδή για ακόμη {days} ημέρα. Ασφαλής ημερομηνία: {date} — {product}": "Do not harvest for another {days} day. Safe date: {date} — {product}",
+    "Μην γίνει συγκομιδή για ακόμη {days} ημέρες. Ασφαλής ημερομηνία: {date} — {product}": "Do not harvest for another {days} days. Safe date: {date} — {product}"
+  }
+}

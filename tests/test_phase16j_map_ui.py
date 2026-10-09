@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import (QApplication, QAbstractButton, QDialog, QLabel,
     QTableWidget, QComboBox, QLineEdit, QPlainTextEdit, QMessageBox)
 from app.database import Database
@@ -70,6 +71,34 @@ class MapLocalizationTests(unittest.TestCase):
         GeometryStore(self.db).save(self.field, manual_coordinates(
             '26 38\n26.001 38\n26.001 38.001\n26 38.001', 'EPSG:4326'), 'Παραγωγή.geojson')
         self.verify_cycles(True)
+
+    def test_native_map_background_follows_application_palette(self):
+        from app.gis.map_view import ParcelMap
+
+        map_view = ParcelMap(Path(self.folder.name) / "theme-map-cache")
+        try:
+            light = QPalette()
+            light.setColor(QPalette.ColorRole.Window, QColor("#F5F6F3"))
+            map_view.setPalette(light)
+            map_view._apply_palette_theme()
+            self.assertFalse(map_view._dark_map)
+            self.assertEqual(
+                "#edf1e8",
+                map_view.backgroundBrush().color().name(),
+            )
+
+            dark = QPalette()
+            dark.setColor(QPalette.ColorRole.Window, QColor("#171D21"))
+            map_view.setPalette(dark)
+            map_view._apply_palette_theme()
+            self.assertTrue(map_view._dark_map)
+            self.assertEqual(
+                "#151a1e",
+                map_view.backgroundBrush().color().name(),
+            )
+        finally:
+            map_view.shutdown()
+            map_view.deleteLater()
 
     def test_empty_map_preserves_name_and_switches_empty_state(self):
         self.verify_cycles(False)

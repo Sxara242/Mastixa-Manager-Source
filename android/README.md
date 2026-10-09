@@ -1,3 +1,7 @@
+> Android remains in development. Current public-development instructions and
+> licensing: [BUILDING](../docs/BUILDING.md), [release status](../docs/RELEASE_STATUS.md),
+> [LICENSE](../LICENSE), [Android notices](THIRD_PARTY_NOTICES.md).
+
 # Mastixa Android — πρώτη offline έκδοση
 
 Android έργο στο `android/` του κοινού repository με την εφαρμογή Windows.
@@ -52,7 +56,7 @@ Android Studio → Open → αυτός ο φάκελος. Gradle JDK: JDK 17 ή 
 
 APK: `app/build/outputs/apk/debug/app-debug.apk`.
 
-Ο συνολικός σχεδιασμός βρίσκεται στο `../MastixaManager/ANDROID_OFFLINE_PLAN.md`.
+Ο συνολικός σχεδιασμός βρίσκεται στο `../ANDROID_OFFLINE_PLAN.md`.
 
 
 ## Τοπικό backup

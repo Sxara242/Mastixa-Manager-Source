@@ -293,14 +293,14 @@ class LanguageAndLoggingTests(unittest.TestCase):
     def test_diagnostic_formatter_redacts_local_paths(self) -> None:
         formatter = _PrivacyFormatter(
             "%(message)s",
-            redactions=((r"C:\\Users\\private\\Mastixa", "<APP_DIR>"),),
+            redactions=((r"C:\\SyntheticProfiles\\private\\Mastixa", "<APP_DIR>"),),
         )
         record = logging.LogRecord(
             "mastixa.test",
             logging.ERROR,
             __file__,
             1,
-            r"Failure at C:\\Users\\private\\Mastixa\\app\\main.py",
+            r"Failure at C:\\SyntheticProfiles\\private\\Mastixa\\app\\main.py",
             (),
             None,
         )
@@ -319,7 +319,7 @@ class LanguageAndLoggingTests(unittest.TestCase):
                 str(output),
                 {
                     "year_label": "Όλα τα έτη",
-                    "production": 5.0,
+                    "production": [dict(key=("id", 1), product="Crop", unit="pieces", quantity=5.0, revenue=0.0)],
                     "income": 10.0,
                     "expenses": 2.0,
                     "balance": 8.0,
@@ -334,7 +334,9 @@ class LanguageAndLoggingTests(unittest.TestCase):
                     + package.read("xl/worksheets/sheet2.xml")
                 ).decode("utf-8")
             self.assertIn("Summary", text)
-            self.assertIn("Production kg", text)
+            self.assertIn("Production", text)
+            self.assertIn("5 pieces", text)
+            self.assertNotIn("Production kg", text)
             self.assertNotRegex(text, r"[Α-Ωα-ωάέήίόύώϊϋΐΰ]")
 
 

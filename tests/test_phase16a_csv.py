@@ -1,6 +1,7 @@
 """16A Windows portable CSV compatibility, without constructing Qt pages."""
 
 import csv
+from contextlib import closing
 import io
 import sqlite3
 import unittest
@@ -43,7 +44,7 @@ class PortableCsvCompatibilityTests(unittest.TestCase):
         self.assertEqual(data, DataExportPage._csv_bytes(headers, rows))
 
     def test_table_export_preserves_source_values_and_product_filter(self):
-        with sqlite3.connect(":memory:") as db:
+        with closing(sqlite3.connect(":memory:")) as db, db:
             db.row_factory = sqlite3.Row
             db.executescript("""
                 CREATE TABLE production(id INTEGER PRIMARY KEY, product_id INTEGER,
@@ -63,7 +64,7 @@ class PortableCsvCompatibilityTests(unittest.TestCase):
             self.assertEqual(before, list(db.iterdump()))
 
     def test_portable_credential_exclusion_and_legacy_activity_policy(self):
-        with sqlite3.connect(":memory:") as db:
+        with closing(sqlite3.connect(":memory:")) as db, db:
             db.row_factory = sqlite3.Row
             db.executescript("""
                 CREATE TABLE products(id INTEGER, name TEXT, unit TEXT, api_key TEXT);
@@ -84,7 +85,7 @@ class PortableCsvCompatibilityTests(unittest.TestCase):
                               ["1", "2026-09-12", "Λίπανση", "1.25", "kg"]], self.parse(data))
 
     def test_absent_and_empty_sources_do_not_create_tables(self):
-        with sqlite3.connect(":memory:") as db:
+        with closing(sqlite3.connect(":memory:")) as db, db:
             db.row_factory = sqlite3.Row
             db.execute("CREATE TABLE production(id INTEGER, entry_date TEXT)")
             before = list(db.iterdump())

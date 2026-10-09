@@ -423,6 +423,7 @@ def sync_expense(
     amount: float,
     notes: str,
     partner_id: int | None = None,
+    field_id: int | None = None,
 ) -> int | None:
     ensure_expense_source_schema(db)
 
@@ -453,7 +454,7 @@ def sync_expense(
 
     values = (
         entry_date,
-        None,
+        field_id,
         category,
         description,
         supplier,

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from PySide6.QtCore import Qt
+
 from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -16,12 +20,14 @@ from PySide6.QtWidgets import (
 )
 
 from .charts import BarChartWidget
+from .report_quantities import quantities, quantity_text, money_total, grams_per_tree
 from .database import Database
+from .localized_messages import _message, _text
 from .exporters import export_report_pdf, export_report_xlsx
-from .ui_helpers import compact_decimal, format_kg, table_widget
+from .ui_helpers import compact_decimal, table_widget
 
 
-class ReportsPage(QWidget):
+class ReportsPage(YearFilteredPage):
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
@@ -104,7 +110,7 @@ class ReportsPage(QWidget):
 
         metrics = QGridLayout()
 
-        self.production_card = self._metric_card("Παραγωγή", "0 kg")
+        self.production_card = self._metric_card("Παραγωγή", "—")
         self.income_card = self._metric_card("Έσοδα", "0,00 €")
         self.expenses_card = self._metric_card("Έξοδα", "0,00 €")
         self.balance_card = self._metric_card("Καθαρό αποτέλεσμα", "0,00 €")
@@ -121,12 +127,17 @@ class ReportsPage(QWidget):
         charts_title = QLabel("Γραφήματα ανά έτος")
         charts_title.setStyleSheet("font-weight: 700; font-size: 15px; color: #26382f;")
         charts_outer.addWidget(charts_title)
+        self.chart_product = QComboBox()
+        self.chart_product.setProperty("mastixaI18nSkipItems", True)
+        self.chart_product.currentIndexChanged.connect(self.refresh)
+        charts_outer.addWidget(QLabel("Προϊόν"))
+        charts_outer.addWidget(self.chart_product)
         charts_layout = QHBoxLayout()
         charts_outer.addLayout(charts_layout)
 
         self.production_chart = BarChartWidget(
             "Παραγωγή ανά έτος",
-            "kg",
+            "",
         )
         self.balance_chart = BarChartWidget(
             "Καθαρό αποτέλεσμα ανά έτος",
@@ -143,7 +154,7 @@ class ReportsPage(QWidget):
         yearly_title.setStyleSheet("font-weight: 700; font-size: 15px; color: #26382f;")
         yearly_layout.addWidget(yearly_title)
         self.yearly_table = table_widget(
-            ["Έτος", "Παραγωγή kg", "Έσοδα", "Έξοδα", "Καθαρό αποτέλεσμα"]
+            ["Έτος", "Παραγωγή", "Έσοδα", "Έξοδα", "Καθαρό αποτέλεσμα"]
         )
         yearly_layout.addWidget(self.yearly_table)
         layout.addWidget(yearly_box)
@@ -158,7 +169,7 @@ class ReportsPage(QWidget):
                 "Αγροτεμάχιο",
                 "Έκταση στρ.",
                 "Παραγωγικά δέντρα",
-                "Παραγωγή kg",
+                "Παραγωγή",
                 "g / δέντρο",
             ]
         )
@@ -189,73 +200,32 @@ class ReportsPage(QWidget):
         return box, value_label
 
     def _load_years(self) -> None:
-        current = self.year.currentData()
-
-        rows = self.db.query(
-            """
-            SELECT year
-            FROM (
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM production
-                UNION
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM income
-                UNION
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM expenses
-            )
-            WHERE year IS NOT NULL AND year <> ''
-            ORDER BY year DESC
-            """
-        )
-
-        self.year.blockSignals(True)
-        self.year.clear()
-        self.year.addItem("Όλα τα έτη", None)
-
-        for row in rows:
-            year = str(row["year"])
-            self.year.addItem(year, year)
-
-        index = self.year.findData(current)
-        if index >= 0:
-            self.year.setCurrentIndex(index)
-
-        self.year.blockSignals(False)
-
-    def _total_for(self, table: str, column: str, year: str | None) -> float:
-        if year is None:
-            row = self.db.query_one(
-                f"SELECT COALESCE(SUM({column}), 0) AS total FROM {table}"
-            )
-        else:
-            row = self.db.query_one(
-                f"""
-                SELECT COALESCE(SUM({column}), 0) AS total
-                FROM {table}
-                WHERE SUBSTR(entry_date, 1, 4)=?
-                """,
-                (year,),
-            )
-
-        return float(row["total"] or 0)
+        populate_year_filter(self, self.year, strings=True)
 
     def refresh(self) -> None:
         self._load_years()
-        selected_year = self.year.currentData()
-
-        production = self._total_for(
-            "production", "quantity_kg", selected_year
-        )
-        income = self._total_for("income", "amount", selected_year)
-        expenses = self._total_for("expenses", "amount", selected_year)
-
-        self.production_card[1].setText(format_kg(production))
+        year = self.year.currentData()
+        production = quantities(self.db, year=year)
+        income = money_total(self.db, "income", year)
+        expenses = money_total(self.db, "expenses", year)
+        self.production_card[1].setProperty("mastixaI18nSkipText", True)
+        self.production_card[1].setTextFormat(Qt.TextFormat.PlainText)
+        self.production_card[1].setWordWrap(True)
+        self.production_card[1].setText(quantity_text(production))
         self.income_card[1].setText(self._money(income))
         self.expenses_card[1].setText(self._money(expenses))
         self.balance_card[1].setText(self._money(income - expenses))
-
-        yearly_rows = self._yearly_rows()
-        self._refresh_charts(yearly_rows)
-        self._refresh_yearly_table(yearly_rows)
-        self._refresh_fields_table(selected_year)
+        yearly = self._yearly_rows()
+        self._refresh_charts(yearly)
+        self._refresh_yearly_table(yearly)
+        self._refresh_fields_table(year)
+        self._snapshot = dict(
+            production=production, income=income, expenses=expenses,
+            balance=income-expenses, yearly_rows=[dict(
+                year=r["year"], production=r["production"], income=r["income_total"],
+                expenses=r["expense_total"], balance=r["income_total"]-r["expense_total"]
+            ) for r in reversed(yearly)], field_rows=self._field_rows,
+        )
 
     @staticmethod
     def _money(value: float) -> str:
@@ -277,67 +247,45 @@ class ReportsPage(QWidget):
         table.setMaximumHeight(header_height + visible_rows * row_height + 18)
 
     def _yearly_rows(self):
-        return self.db.query(
-            """
-            WITH years AS (
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM production
-                UNION
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM income
-                UNION
-                SELECT SUBSTR(entry_date, 1, 4) AS year FROM expenses
-            )
-            SELECT
-                y.year,
-                COALESCE((
-                    SELECT SUM(p.quantity_kg)
-                    FROM production p
-                    WHERE SUBSTR(p.entry_date, 1, 4)=y.year
-                ), 0) AS production_total,
-                COALESCE((
-                    SELECT SUM(i.amount)
-                    FROM income i
-                    WHERE SUBSTR(i.entry_date, 1, 4)=y.year
-                ), 0) AS income_total,
-                COALESCE((
-                    SELECT SUM(e.amount)
-                    FROM expenses e
-                    WHERE SUBSTR(e.entry_date, 1, 4)=y.year
-                ), 0) AS expense_total
-            FROM years y
-            WHERE y.year IS NOT NULL AND y.year <> ''
-            ORDER BY y.year ASC
-            """
-        )
+        years = self.db.query("""SELECT SUBSTR(entry_date,1,4) year FROM production
+            UNION SELECT SUBSTR(entry_date,1,4) FROM income
+            UNION SELECT SUBSTR(entry_date,1,4) FROM expenses ORDER BY year""")
+        return [dict(year=r["year"], production=quantities(self.db, year=r["year"]),
+                     income_total=money_total(self.db, "income", r["year"]),
+                     expense_total=money_total(self.db, "expenses", r["year"]))
+                for r in years if r["year"]]
 
-    def _refresh_charts(self, rows) -> None:
-        labels: list[str] = []
-        production_values: list[float] = []
-        balance_values: list[float] = []
-
-        for row in rows:
-            production = float(row["production_total"] or 0)
-            income = float(row["income_total"] or 0)
-            expenses = float(row["expense_total"] or 0)
-
-            labels.append(str(row["year"]))
-            production_values.append(production)
-            balance_values.append(income - expenses)
-
-        self.production_chart.set_data(labels, production_values)
-        self.balance_chart.set_data(labels, balance_values)
+    def _refresh_charts(self, rows):
+        selected = self.chart_product.currentData()
+        groups = {str(g["key"]): g for r in rows for g in r["production"]}
+        self.chart_product.blockSignals(True)
+        self.chart_product.clear()
+        for key, group in groups.items():
+            self.chart_product.addItem(f"{group['product']} ({group['unit'] or '[?]'})", key)
+        index = self.chart_product.findData(selected)
+        self.chart_product.setCurrentIndex(index if index >= 0 else 0)
+        self.chart_product.blockSignals(False)
+        selected = self.chart_product.currentData()
+        group = groups.get(selected)
+        self.production_chart.unit = group["unit"] if group else ""
+        labels = [str(r["year"]) for r in rows]
+        self.production_chart.set_data(labels if group and group["unit"] else [], [
+            sum(g["quantity"] for g in r["production"] if str(g["key"]) == selected) for r in rows
+        ] if group and group["unit"] else [])
+        self.balance_chart.set_data(labels, [r["income_total"]-r["expense_total"] for r in rows])
 
     def _refresh_yearly_table(self, rows) -> None:
         display_rows = list(reversed(rows))
         self.yearly_table.setRowCount(len(display_rows))
 
         for row_index, row in enumerate(display_rows):
-            production = float(row["production_total"] or 0)
+            production = row["production"]
             income = float(row["income_total"] or 0)
             expenses = float(row["expense_total"] or 0)
 
             values = [
                 str(row["year"]),
-                compact_decimal(production, 3),
+                quantity_text(production),
                 self._money(income),
                 self._money(expenses),
                 self._money(income - expenses),
@@ -353,75 +301,17 @@ class ReportsPage(QWidget):
         self._fit_table_height(self.yearly_table, len(display_rows), 8)
 
 
-    def _table_rows_as_text(self, table) -> list[list[str]]:
-        rows: list[list[str]] = []
-        for row_index in range(table.rowCount()):
-            values = []
-            for column_index in range(table.columnCount()):
-                item = table.item(row_index, column_index)
-                values.append(item.text() if item is not None else "")
-            rows.append(values)
-        return rows
-
-    @staticmethod
-    def _parse_float(text: str) -> float:
-        cleaned = text.replace("€", "").replace("kg", "").replace(" ", "").strip()
-        if "," in cleaned:
-            cleaned = cleaned.replace(".", "").replace(",", ".")
-        try:
-            return float(cleaned)
-        except ValueError:
-            return 0.0
-
     def _report_snapshot(self) -> dict:
-        selected_year = self.year.currentData()
-        year_label = (
-            f"Έτος: {selected_year}"
-            if selected_year is not None
-            else "Όλα τα έτη"
-        )
-
-        yearly_rows = []
-        for values in self._table_rows_as_text(self.yearly_table):
-            yearly_rows.append(
-                {
-                    "year": values[0] if len(values) > 0 else "",
-                    "production": self._parse_float(values[1]) if len(values) > 1 else 0.0,
-                    "income": self._parse_float(values[2]) if len(values) > 2 else 0.0,
-                    "expenses": self._parse_float(values[3]) if len(values) > 3 else 0.0,
-                    "balance": self._parse_float(values[4]) if len(values) > 4 else 0.0,
-                }
-            )
-
-        field_rows = []
-        for values in self._table_rows_as_text(self.fields_table):
-            field_rows.append(
-                {
-                    "name": values[0] if len(values) > 0 else "",
-                    "area": self._parse_float(values[1]) if len(values) > 1 else 0.0,
-                    "trees": int(self._parse_float(values[2])) if len(values) > 2 else 0,
-                    "production": self._parse_float(values[3]) if len(values) > 3 else 0.0,
-                    "grams_per_tree": self._parse_float(values[4]) if len(values) > 4 else 0.0,
-                }
-            )
-
-        return {
-            "year_label": year_label,
-            "production": self._parse_float(self.production_card[1].text()),
-            "income": self._parse_float(self.income_card[1].text()),
-            "expenses": self._parse_float(self.expenses_card[1].text()),
-            "balance": self._parse_float(self.balance_card[1].text()),
-            "yearly_rows": yearly_rows,
-            "field_rows": field_rows,
-            "font": self.font(),
-        }
+        # Exports consume the same typed values, never numbers parsed from labels.
+        year = self.year.currentData()
+        return dict(self._snapshot, year_label=_text("Έτος: {year}", year=year) if year is not None else _text("Όλα τα έτη"), font=self.font())
 
     def export_pdf(self) -> None:
         year = self.year.currentData()
         suffix = str(year) if year is not None else "ola_ta_eti"
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή αναφοράς σε PDF",
+            _text("Εξαγωγή αναφοράς σε PDF"),
             f"mastixa_report_{suffix}.pdf",
             "PDF (*.pdf)",
         )
@@ -433,17 +323,15 @@ class ReportsPage(QWidget):
         try:
             export_report_pdf(path, self._report_snapshot())
         except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Αποτυχία εξαγωγής PDF",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
+            _message(
+                self, "critical", "Αποτυχία εξαγωγής PDF",
+                "Η εξαγωγή απέτυχε.\n\n{error}", error=str(exc),
             )
             return
 
-        QMessageBox.information(
-            self,
-            "Εξαγωγή PDF",
-            f"Το PDF δημιουργήθηκε:\n{path}",
+        _message(
+            self, "information", "Εξαγωγή PDF",
+            "Το PDF δημιουργήθηκε:\n{path}", path=path,
         )
 
     def export_excel(self) -> None:
@@ -451,7 +339,7 @@ class ReportsPage(QWidget):
         suffix = str(year) if year is not None else "ola_ta_eti"
         path, _ = QFileDialog.getSaveFileName(
             self,
-            "Εξαγωγή αναφοράς σε Excel",
+            _text("Εξαγωγή αναφοράς σε Excel"),
             f"mastixa_report_{suffix}.xlsx",
             "Excel (*.xlsx)",
         )
@@ -463,92 +351,29 @@ class ReportsPage(QWidget):
         try:
             export_report_xlsx(path, self._report_snapshot())
         except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Αποτυχία εξαγωγής Excel",
-                f"Η εξαγωγή απέτυχε.\n\n{exc}",
+            _message(
+                self, "critical", "Αποτυχία εξαγωγής Excel",
+                "Η εξαγωγή απέτυχε.\n\n{error}", error=str(exc),
             )
             return
 
-        QMessageBox.information(
-            self,
-            "Εξαγωγή Excel",
-            f"Το Excel δημιουργήθηκε:\n{path}",
+        _message(
+            self, "information", "Εξαγωγή Excel",
+            "Το Excel δημιουργήθηκε:\n{path}", path=path,
         )
 
-    def _refresh_fields_table(self, year: str | None) -> None:
-        if year is None:
-            rows = self.db.query(
-                """
-                SELECT
-                    f.id,
-                    f.name,
-                    f.area_stremma,
-                    f.productive_trees,
-                    COALESCE(SUM(p.quantity_kg), 0) AS production_total
-                FROM fields f
-                LEFT JOIN production p ON p.field_id = f.id
-                GROUP BY
-                    f.id,
-                    f.name,
-                    f.area_stremma,
-                    f.productive_trees
-                ORDER BY f.name, f.id
-                """
-            )
-        else:
-            rows = self.db.query(
-                """
-                SELECT
-                    f.id,
-                    f.name,
-                    f.area_stremma,
-                    f.productive_trees,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN SUBSTR(p.entry_date, 1, 4)=?
-                            THEN p.quantity_kg
-                            ELSE 0
-                        END
-                    ), 0) AS production_total
-                FROM fields f
-                LEFT JOIN production p ON p.field_id = f.id
-                GROUP BY
-                    f.id,
-                    f.name,
-                    f.area_stremma,
-                    f.productive_trees
-                ORDER BY f.name, f.id
-                """,
-                (year,),
-            )
-
-        self.fields_table.setRowCount(len(rows))
-
-        for row_index, row in enumerate(rows):
-            area = float(row["area_stremma"] or 0)
+    def _refresh_fields_table(self, year):
+        self._field_rows = []
+        for row in self.db.query("SELECT * FROM fields ORDER BY name,id"):
+            production = quantities(self.db, year=year, field_id=row["id"])
             trees = int(row["productive_trees"] or 0)
-            production = float(row["production_total"] or 0)
-
-            grams_per_tree = (
-                production * 1000.0 / trees
-                if trees > 0
-                else 0.0
-            )
-
-            values = [
-                row["name"] or "",
-                compact_decimal(area, 3),
-                str(trees),
-                compact_decimal(production, 3),
-                f"{grams_per_tree:.1f}",
-            ]
-
-            for column_index, value in enumerate(values):
-                self.fields_table.setItem(
-                    row_index,
-                    column_index,
-                    QTableWidgetItem(value),
-                )
-
-        self._fit_table_height(self.fields_table, len(rows), 10)
+            self._field_rows.append(dict(name=row["name"], area=float(row["area_stremma"] or 0),
+                trees=trees, production=production, grams_per_tree=grams_per_tree(production, trees)))
+        self.fields_table.setRowCount(len(self._field_rows))
+        for index, row in enumerate(self._field_rows):
+            values = [row["name"], compact_decimal(row["area"],3), str(row["trees"]),
+                      quantity_text(row["production"]),
+                      "—" if row["grams_per_tree"] is None else f"{row['grams_per_tree']:.1f}"]
+            for column, value in enumerate(values):
+                self.fields_table.setItem(index, column, QTableWidgetItem(value))
+        self._fit_table_height(self.fields_table, len(self._field_rows), 10)

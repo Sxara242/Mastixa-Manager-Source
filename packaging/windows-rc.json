@@ -1,0 +1,54 @@
+{
+  "product": "Mastixa Manager",
+  "version": "1.0.0-rc.2",
+  "channel": "rc",
+  "license": "AGPL-3.0-only",
+  "signing": "UNSIGNED",
+  "update_mode": "staging",
+  "publisher": "Mastixa Manager",
+  "publisher_status": "existing product label; legal entity not yet confirmed",
+  "python_target": "3.14.8",
+  "native_notices_complete": true,
+  "corresponding_source_ready": true,
+  "blockers": [],
+  "compliance_matrix": "docs/WINDOWS_DISTRIBUTION_COMPLIANCE_MATRIX.md",
+  "mesa_native_B5": "PASS — exact unused Mesa/LLVM fallback excluded and frozen qualified; OpenSSL subgate reused unchanged",
+  "microsoft_crt_B2": "PASS — canonical imports, zero Microsoft DLL/installer shipment; independent x64 VC Redist >=14.51.36247.0 prerequisite; frozen/controlled-search qualification",
+  "distribution_legal_gates": {
+    "B1": {
+      "legal_status": "PASS",
+      "audit_status": "INCOMPLETE",
+      "RC_blocking": false,
+      "reason": "Required license/notice/source-version/redistribution materials retained. Exact private QtPdf producer/config/job/output correspondence is audit-only; no known necessary source input is waived."
+    },
+    "B2": {
+      "legal_status": "PASS",
+      "audit_status": "COMPLETE",
+      "RC_blocking": false,
+      "retained": true,
+      "reason": "Retained zero-Microsoft-shipment, canonical imports and independent x64 VC Redist >=14.51.36247.0 qualification; no rerun."
+    },
+    "B3": {
+      "legal_status": "PASS",
+      "audit_status": "COMPLETE",
+      "RC_blocking": false,
+      "reason": "Scoped clause6(vii) attribution remedy: point-of-export PROJ provenance for accuracy1312/1462 and interpolation7001; unofficial900913 independently attributed to PROJ with legacy Mastixa input canonicalized to EPSG3857. Hash-locked metadata-only derived database, unchanged ranking/parameters; full EPSG terms/IOGP credit preserved. Documented terms interpretation, not provider approval."
+    },
+    "B4": {
+      "legal_status": "PASS",
+      "audit_status": "INCOMPLETE",
+      "RC_blocking": false,
+      "reason": "Prebuild source/replacement preparation complete from retained matching sources, controlling scripts and dynamic recipient path. Historical bit-identical/full producer rebuild is not mandatory. Final artifact binding and equivalent source access remain mandatory at distribution."
+    },
+    "B5": {
+      "legal_status": "PASS",
+      "audit_status": "COMPLETE",
+      "RC_blocking": false,
+      "retained": true,
+      "reason": "Retained qualified Python/Qt OpenSSL3.5.9 and Mesa exclusion; security-critical input qualification unchanged."
+    }
+  },
+  "legal_scope": "Prebuild material readiness only; final artifact/source access/legal inclusion/privacy/functional checks remain mandatory at authorized distribution.",
+  "release_gate_policy": "docs/WINDOWS_RELEASE_GATE_POLICY.md",
+  "epsg_provenance_policy": "packaging/windows-epsg-provenance.json"
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "product": "Mastixa Manager",
+  "version": "0.40.0",
+  "channel": "stable",
+  "release_url": "https://github.com/Sxara242/Mastixa-Manager-Source/releases",
+  "notes": "Offline schema fixture only. This is not a real stable release announcement.",
+  "windows": null,
+  "android": null
+}

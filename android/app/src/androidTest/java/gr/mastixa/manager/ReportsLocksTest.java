@@ -15,4 +15,110 @@ public class ReportsLocksTest {
     @Test public void csvEscapesFormulasAndMultilinePdfPaginates()throws Exception{var rows=new ArrayList<String[]>();rows.add(new String[]{"=HYPERLINK(\"url\")","Line one;\nLine two"});for(int n=0;n<140;n++)rows.add(new String[]{"Ελληνική αναφορά "+n,"Πληροφορίες δοκιμής"});String csv=new String(ReportStore.csv(rows),java.nio.charset.StandardCharsets.UTF_8);assertTrue(csv,csv.startsWith("\uFEFF\"'=HYPERLINK("));assertTrue(csv.contains("Line one;\nLine two"));byte[] pdf=ReportStore.pdf(rows);File f=new File(context.getCacheDir(),"report-pages.pdf");try{try(var out=new FileOutputStream(f)){out.write(pdf);}try(var fd=android.os.ParcelFileDescriptor.open(f,android.os.ParcelFileDescriptor.MODE_READ_ONLY);var renderer=new android.graphics.pdf.PdfRenderer(fd)){assertTrue(renderer.getPageCount()>1);}}finally{f.delete();}}
 
     @Test public void annualHistoricalStockBuyerSummaryAndExcelExport()throws Exception{String name="reports-history.db";context.deleteDatabase(name);var file=new File(context.getCacheDir(),"reports-history.json");try(var store=new FarmStore(context,name);var in=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("windows-production.zip")){CatalogImport.apply(store,CatalogImport.read(in),file);var p=new CatalogStore(store).products().get(0);var production=new ProductionStore(store);production.saveHarvest(new ProductionStore.Harvest(null,"2027-01-01",p.id(),p.name(),store.fields().get(0).id(),5,"Later",""));var rows=new ReportStore(store,true).report("Ετήσια Αναφορά Εκμετάλλευσης",new ReportStore.Filter("2026-01-01","2026-12-31","","",""));assertTrue(rows.stream().anyMatch(x->x[0].contains("Stock through 2026-12-31")&&x[1].startsWith("14.00 kg")));assertTrue(rows.stream().anyMatch(x->x[0].contains("Sales count / Average price")&&x[1].startsWith("1 / 8.50")));assertTrue(rows.stream().anyMatch(x->x[1].contains("1 sales · 6.00 kg · 51.00 €")));byte[] xlsx=ReportStore.xlsx(rows);try(var zip=new java.util.zip.ZipInputStream(new ByteArrayInputStream(xlsx))){int files=0;java.util.zip.ZipEntry e;while((e=zip.getNextEntry())!=null){files++;var bytes=new ByteArrayOutputStream();byte[] b=new byte[8192];int count;while((count=zip.read(b))!=-1)bytes.write(b,0,count);javax.xml.parsers.DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(bytes.toByteArray()));}assertEquals(5,files);}try(var out=new FileOutputStream(new File(context.getExternalFilesDir(null),"verified-report.xlsx"))){out.write(xlsx);}try(var out=new FileOutputStream(new File(context.getExternalFilesDir(null),"verified-report.pdf"))){out.write(ReportStore.pdf(rows));}}finally{context.deleteDatabase(name);file.delete();}}
-}
+@Test public void fieldReportLocalizesMovementTypesWithoutChangingCanonicalValues()throws Exception{
+    String name="reports-movement-localization.db";
+    context.deleteDatabase(name);
+
+    try(var store=new FarmStore(context,name)){
+        store.addField("Field",1);
+        String field=store.fields().get(0).id();
+
+        var inventory=new InventoryStore(store);
+        String item=inventory.saveItem(
+            new InventoryStore.Item(
+                null,
+                "Input",
+                "Supplies",
+                "kg",
+                0,
+                ""
+            )
+        );
+
+        String[] types={
+            "Παραλαβή",
+            "Κατανάλωση",
+            "Διόρθωση +",
+            "Διόρθωση -"
+        };
+
+        double[] quantities={10,2,1,1};
+
+        for(int i=0;i<types.length;i++){
+            inventory.saveMovement(
+                new InventoryStore.Movement(
+                    null,
+                    item,
+                    "2026-09-0"+(i+1),
+                    types[i],
+                    quantities[i],
+                    field,
+                    "",
+                    "",
+                    0,
+                    0,
+                    "",
+                    "",
+                    "",
+                    "",
+                    ""
+                )
+            );
+        }
+
+        var filter=new ReportStore.Filter(
+            "2026-01-01",
+            "2026-12-31",
+            field,
+            "",
+            ""
+        );
+
+        var english=new ReportStore(store,true)
+            .report("Καρτέλα Αγροτεμαχίου",filter);
+
+        String[] labels={
+            "Receipt",
+            "Consumption",
+            "Correction +",
+            "Correction -"
+        };
+
+        for(String label:labels){
+            assertTrue(
+                english.stream().anyMatch(
+                    row->row.length>1 &&
+                         row[1].startsWith(label+" · ")
+                )
+            );
+        }
+
+        var greek=new ReportStore(store,false)
+            .report("Καρτέλα Αγροτεμαχίου",filter);
+
+        for(String type:types){
+            assertTrue(
+                greek.stream().anyMatch(
+                    row->row.length>1 &&
+                         row[1].startsWith(type+" · ")
+                )
+            );
+        }
+
+        try(var c=store.getReadableDatabase().rawQuery(
+            "SELECT movement_type FROM inventory_movements " +
+            "WHERE deleted_at IS NULL ORDER BY movement_date",
+            null
+        )){
+            for(String type:types){
+                assertTrue(c.moveToNext());
+                assertEquals(type,c.getString(0));
+            }
+
+            assertFalse(c.moveToNext());
+        }
+
+    }finally{
+        context.deleteDatabase(name);
+    }
+}}

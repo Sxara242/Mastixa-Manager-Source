@@ -1,5 +1,29 @@
 # Pre-release bug audit — 2026-09-12
 
+## Windows v1 owner manual QA — 2026-10-03
+
+The owner completed the full **400-step Windows v1 manual QA** on
+`icon-runtime-qa-final`. This is a completed manual-QA checkpoint, **not** a
+release-ready verdict. Confirmed blockers and owner-requested fixes are now
+captured in the authoritative report:
+
+[Windows v1 Manual QA — Owner Acceptance & Fix Plan](WINDOWS_V1_MANUAL_QA_2026-10-03.md)
+
+The report preserves:
+- PASS/N/A/FAIL evidence from the 400-step run;
+- confirmed local Money/Sales fixes that must not be discarded;
+- year-context/year-lock defects;
+- financial cross-feature sync findings;
+- Dashboard/Reports unit and year issues;
+- requested Sales source tracking and per-field reporting;
+- UI/UX, performance, export and packaging TODOs;
+- the ordered Codex fix-batch plan and mandatory final Deep Cross-Feature
+  Real-World Usage Audit.
+
+Do not infer public-release approval from manual QA completion. Fix batches,
+regression, rebuilt owner retest, deep real-world audit and final release gate
+remain pending.
+
 Baseline: `8ae808d9cfa756cb4e1a41b5f7ee98bea04007c5`, branch `refactor/pages`.
 Scope: repository inspection and targeted reproductions before Phase 16I.
 This is not a claim that all possible runtime scenarios or all repository lines

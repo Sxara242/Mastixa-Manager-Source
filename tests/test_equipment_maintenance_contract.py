@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 
 from app.database import Database
 from app.equipment import EquipmentPage
+from tests.language_fixture import scoped_language
 
 
 class EquipmentMaintenanceContractTests(unittest.TestCase):
@@ -21,10 +22,13 @@ class EquipmentMaintenanceContractTests(unittest.TestCase):
         cls.qt = QApplication.instance() or QApplication([])
 
     def setUp(self) -> None:
+        # This contract asserts Greek presentation, regardless of prior tests.
+        self.enterContext(scoped_language(self.qt, "el"))
         self.tempdir = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(self.tempdir.cleanup)
         self.db = Database(Path(self.tempdir.name) / "phase11a.db")
         self.page = EquipmentPage(self.db)
+        self.addCleanup(self.page.deleteLater)
         self.addCleanup(self.page.close)
 
     def _create_equipment(self) -> int:

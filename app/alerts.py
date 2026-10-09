@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QComboBox,
     QGridLayout,
     QGroupBox,
@@ -18,8 +19,10 @@ from PySide6.QtWidgets import (
 )
 
 from .database import Database
+from .language import tr
 from .ui_helpers import compact_decimal, table_widget
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context import is_year_write_blocked as is_year_locked
 
 
 class AlertsPage(QWidget):
@@ -192,6 +195,7 @@ class AlertsPage(QWidget):
         actions = QHBoxLayout(actions_box)
 
         self.result_label = QLabel("0 ειδοποιήσεις")
+        self.result_label.setProperty("mastixaI18nSkipText", True)
         self.result_label.setStyleSheet(
             "font-weight: 700; color: #26382f;"
         )
@@ -224,6 +228,9 @@ class AlertsPage(QWidget):
         note.setStyleSheet("color: #67746d;")
         layout.addWidget(note)
 
+        controller = getattr(QApplication.instance(), "_mastixa_language_controller", None)
+        if controller is not None:
+            controller.language_changed.connect(self.refresh)
         self.refresh()
 
     def _metric(self, caption: str, value: str):
@@ -315,28 +322,35 @@ class AlertsPage(QWidget):
                     or "Γενική / όλα τα αγροτεμάχια"
                 )
                 activity_type = row["category"] or "Εργασία"
+                # Only known application enums are display-translated; legacy
+                # categories and user descriptions remain opaque source values.
+                activity_display = (
+                    tr(activity_type)
+                    if not row["category"] or activity_type in ("Πότισμα", "Λίπανση")
+                    else activity_type
+                )
                 description = row["description"] or ""
 
                 if parsed < today:
                     overdue_count += 1
                     severity = "critical"
                     severity_label = "Άμεση"
-                    message = (
-                        f"Εκπρόθεσμη προγραμματισμένη εργασία: {activity_type}"
-                    )
+                    message = tr(
+                        "Εκπρόθεσμη προγραμματισμένη εργασία: {activity}"
+                    ).format(activity=activity_display)
                 elif date_text == today_iso:
                     today_count += 1
                     severity = "warning"
                     severity_label = "Προσοχή"
-                    message = (
-                        f"Προγραμματισμένη για σήμερα: {activity_type}"
+                    message = tr("Προγραμματισμένη για σήμερα: {activity}").format(
+                        activity=activity_display
                     )
                 elif date_text <= next_7_iso:
                     upcoming_count += 1
                     severity = "info"
                     severity_label = "Ενημέρωση"
-                    message = (
-                        f"Επερχόμενη εργασία: {activity_type}"
+                    message = tr("Επερχόμενη εργασία: {activity}").format(
+                        activity=activity_display
                     )
                 else:
                     continue
@@ -353,6 +367,7 @@ class AlertsPage(QWidget):
                         "category_label": "Άρδευση & Λίπανση",
                         "date": date_text,
                         "subject": field_name,
+                        "subject_display": row["field_name"] or tr("Γενική / όλα τα αγροτεμάχια"),
                         "message": message,
                     }
                 )
@@ -389,17 +404,18 @@ class AlertsPage(QWidget):
                     out_stock_count += 1
                     severity = "critical"
                     severity_label = "Άμεση"
-                    message = (
-                        f"Εξαντλημένο απόθεμα: {compact_decimal(stock, 3)} "
-                        f"{row['unit'] or ''}"
+                    message = tr("Εξαντλημένο απόθεμα: {stock} {unit}").format(
+                        stock=compact_decimal(stock, 3), unit=row["unit"] or ""
                     )
                 elif minimum > 0 and stock <= minimum:
                     low_stock_count += 1
                     severity = "warning"
                     severity_label = "Προσοχή"
-                    message = (
-                        f"Χαμηλό απόθεμα: {compact_decimal(stock, 3)} {row['unit'] or ''} "
-                        f"(ελάχιστο {compact_decimal(minimum, 3)})"
+                    message = tr(
+                        "Χαμηλό απόθεμα: {stock} {unit} (ελάχιστο {minimum})"
+                    ).format(
+                        stock=compact_decimal(stock, 3), unit=row["unit"] or "",
+                        minimum=compact_decimal(minimum, 3),
                     )
                 else:
                     continue
@@ -506,22 +522,24 @@ class AlertsPage(QWidget):
 
                 if due_date.isValid():
                     details.append(
-                        f"ημερομηνία {due_date.toString('dd/MM/yyyy')}"
+                        tr("ημερομηνία {date}").format(date=due_date.toString("dd/MM/yyyy"))
                     )
 
                 if due_meter is not None:
                     meter_label = (
                         "km"
                         if row["meter_type"] == "km"
-                        else "ώρες"
+                        else tr("ώρες")
                         if row["meter_type"] == "hours"
                         else ""
                     )
                     details.append(
-                        f"μετρητής {compact_decimal(due_meter, 1)} {meter_label}".strip()
+                        tr("μετρητής {meter} {unit}").format(
+                            meter=compact_decimal(due_meter, 1), unit=meter_label
+                        ).strip()
                     )
 
-                message = (
+                message = tr(
                     "Εκπρόθεσμο service"
                     if overdue
                     else "Πλησιάζει service"
@@ -599,14 +617,16 @@ class AlertsPage(QWidget):
                     else "Προσοχή"
                 )
 
-                product = row["product_name"] or "Φυτοπροστασία"
+                product = row["product_name"] or tr("Φυτοπροστασία")
                 field_name = row["field_name"] or "Αγροτεμάχιο"
 
-                message = (
-                    f"Μην γίνει συγκομιδή για ακόμη {days_left} "
-                    f"{'ημέρα' if days_left == 1 else 'ημέρες'}. "
-                    f"Ασφαλής ημερομηνία: {safe_date.toString('dd/MM/yyyy')} "
-                    f"— {product}"
+                template = (
+                    "Μην γίνει συγκομιδή για ακόμη {days} ημέρα. Ασφαλής ημερομηνία: {date} — {product}"
+                    if days_left == 1
+                    else "Μην γίνει συγκομιδή για ακόμη {days} ημέρες. Ασφαλής ημερομηνία: {date} — {product}"
+                )
+                message = tr(template).format(
+                    days=days_left, date=safe_date.toString("dd/MM/yyyy"), product=product
                 )
 
                 alerts.append(
@@ -618,6 +638,7 @@ class AlertsPage(QWidget):
                         "category_label": "Φυτοπροστασία",
                         "date": row["application_date"] or "",
                         "subject": field_name,
+                        "subject_display": row["field_name"] or tr("Αγροτεμάχιο"),
                         "message": message,
                     }
                 )
@@ -672,10 +693,10 @@ class AlertsPage(QWidget):
 
         for row_index, alert in enumerate(alerts):
             values = [
-                alert["severity_label"],
-                alert["category_label"],
+                tr(alert["severity_label"]),
+                tr(alert["category_label"]),
                 alert["date"],
-                alert["subject"],
+                alert.get("subject_display", alert["subject"]),
                 alert["message"],
             ]
 
@@ -702,7 +723,7 @@ class AlertsPage(QWidget):
                 )
 
         self.result_label.setText(
-            f"{len(alerts)} ειδοποιήσεις"
+            tr("{count} ειδοποιήσεις").format(count=len(alerts))
         )
         self._selection_changed()
 

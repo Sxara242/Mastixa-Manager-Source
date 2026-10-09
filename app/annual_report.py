@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import csv
+from .year_filters import populate_year_filter, YearFilteredPage
+
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -12,20 +14,27 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMessageBox,
+    QMenu,
     QPushButton,
     QScrollArea,
     QTableWidgetItem,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from .database import Database
+from .report_quantities import quantities, quantity_text, stock_quantities, average_price_text, product_rows
 from .language import combo_source_text, tr
-from .product_registry import ensure_product_links
-from .ui_helpers import compact_decimal, format_kg, table_widget
+from .localized_messages import _language, _text, _message
+from .ui_helpers import compact_decimal, table_widget
+from .annual_report_exports import (
+    AnnualProduct, AnnualSnapshot, export_annual_csv, export_annual_pdf,
+    export_annual_xlsx, scope_note,
+)
 
 
-class AnnualFarmReportPage(QWidget):
+class AnnualFarmReportPage(YearFilteredPage):
     """
     Ετήσια αναφορά εκμετάλλευσης.
 
@@ -34,10 +43,10 @@ class AnnualFarmReportPage(QWidget):
     ως μη κατανεμημένα και δεν επιμερίζονται αυθαίρετα.
     """
 
-    def __init__(self, db: Database) -> None:
-        super().__init__()
+    def __init__(self, db: Database, *, staged=False, parent=None) -> None:
+        super().__init__(parent)
+        self._finance_ready = False
         self.db = db
-        ensure_product_links(self.db)
         self._rows_cache: list[dict[str, object]] = []
 
         outer = QVBoxLayout(self)
@@ -46,7 +55,7 @@ class AnnualFarmReportPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
         outer.addWidget(scroll)
 
@@ -83,8 +92,21 @@ class AnnualFarmReportPage(QWidget):
         self.product_filter = QComboBox()
         self.product_filter.currentIndexChanged.connect(self.refresh)
 
-        self.export_button = QPushButton("Εξαγωγή CSV")
-        self.export_button.clicked.connect(self.export_csv)
+        self.export_button = QToolButton()
+        # Windows' split-button style derives a point-sized menu font. The
+        # application uses pixels, whose QFont.pointSize() is -1; provide a
+        # valid equivalent point size at this native control's font source.
+        self.export_button.setStyleSheet(f"font-size: {14 * 72 / self.logicalDpiY():g}pt;")
+        self.export_button.setPopupMode(QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+        menu = QMenu(self.export_button)
+        self.export_actions = {}
+        for kind, callback in (("pdf", self.export_pdf), ("xlsx", self.export_xlsx), ("csv", self.export_csv)):
+            action = QAction(self.export_button)
+            action.triggered.connect(callback)
+            menu.addAction(action)
+            self.export_actions[kind] = action
+        self.export_button.setMenu(menu)
+        self.export_button.setDefaultAction(self.export_actions["pdf"])
 
         filters.addWidget(QLabel("Έτος"))
         filters.addWidget(self.year_filter)
@@ -96,6 +118,8 @@ class AnnualFarmReportPage(QWidget):
         layout.addWidget(filters_box)
 
         self.scope_note = QLabel()
+        self.scope_note.setProperty("mastixaI18nSkipText", True)
+        self.scope_note.setTextFormat(Qt.TextFormat.PlainText)
         self.scope_note.setWordWrap(True)
         self.scope_note.setObjectName("pageSubtitle")
         layout.addWidget(self.scope_note)
@@ -109,7 +133,7 @@ class AnnualFarmReportPage(QWidget):
         self.sold_metric = self._metric("Πωλημένα")
         self.stock_metric = self._metric("Υπόλοιπο stock τέλους έτους")
         self.sales_revenue_metric = self._metric("Έσοδα πωλήσεων")
-        self.avg_price_metric = self._metric("Μέση τιμή / kg")
+        self.avg_price_metric = self._metric("Μέση τιμή / μονάδα")
         self.other_income_metric = self._metric("Λοιπά έσοδα")
         self.expenses_metric = self._metric("Έξοδα")
         self.result_metric = self._metric("Καθαρό αποτέλεσμα")
@@ -134,16 +158,52 @@ class AnnualFarmReportPage(QWidget):
 
         layout.addWidget(metrics_box)
 
+        self._finance_section = QWidget(content)
+        self._finance_section.setMinimumHeight(620)
+        self._finance_layout = QVBoxLayout(self._finance_section)
+        self._finance_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._finance_section)
+        if staged and parent is not None and parent.isVisible() and parent.window().height() < 800:
+            from .staged_construction import AfterFirstPaint
+            self._secondary_construction = AfterFirstPaint(self, self._finish_finance_section, viewport_limit=610)
+            scroll.verticalScrollBar().valueChanged.connect(self._secondary_construction.finish)
+        else:
+            self._build_finance_section()
+
+        layout.addStretch()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self.refresh)
+        self.refresh()
+
+    def _finish_finance_section(self):
+        self._finance_section.hide()
+        self._build_finance_section()
+        # Reuse the same navigation invalidation token as the owning window.
+        # Filter/language changes already refresh the snapshot synchronously;
+        # an independent write or year/context change requires a fresh read.
+        token = getattr(self.window(), "_presentation_token", None)
+        if callable(token) and token() == self._snapshot_token:
+            self._populate_product()
+            self._populate_finance()
+        else:
+            self.refresh()
+        from .staged_construction import prepare_subtree
+        prepare_subtree(self, self._finance_section)
+        self._finance_section.show()
+
+    def _build_finance_section(self):
+        layout = self._finance_layout
         breakdown_box = QGroupBox("Ανάλυση προϊόντων")
         breakdown_layout = QVBoxLayout(breakdown_box)
 
         self.product_table = table_widget(
             [
                 "Προϊόν",
-                "Παραγωγή kg",
-                "Πωλημένα kg",
+                "Παραγωγή",
+                "Πωλημένα",
                 "Έσοδα πωλήσεων",
-                "Μέση τιμή / kg",
+                "Μέση τιμή / μονάδα",
                 "Stock τέλους έτους",
             ]
         )
@@ -168,8 +228,8 @@ class AnnualFarmReportPage(QWidget):
 
         layout.addWidget(finance_box)
 
-        layout.addStretch()
-        self.refresh()
+        self._finance_ready = True
+        self._finance_section.setMinimumHeight(0)
 
     @staticmethod
     def _metric(caption: str):
@@ -179,6 +239,7 @@ class AnnualFarmReportPage(QWidget):
 
         label = QLabel(caption)
         label.setObjectName("metricCaption")
+        label.setWordWrap(True)
 
         value = QLabel("0")
         value.setObjectName("metricValue")
@@ -209,83 +270,10 @@ class AnnualFarmReportPage(QWidget):
         ) is not None
 
     def _refresh_filters(self) -> None:
-        current_year = self.year_filter.currentData()
         current_product = self.product_filter.currentData()
+        populate_year_filter(self, self.year_filter, all_years=False)
 
-        years: set[int] = set()
-
-        if self._table_exists("production"):
-            for row in self.db.query(
-                """
-                SELECT DISTINCT CAST(SUBSTR(entry_date,1,4) AS INTEGER) AS year
-                FROM production
-                WHERE entry_date IS NOT NULL AND entry_date<>''
-                """
-            ):
-                try:
-                    years.add(int(row["year"]))
-                except (TypeError, ValueError):
-                    pass
-
-        if self._table_exists("production_sales"):
-            for row in self.db.query(
-                """
-                SELECT DISTINCT CAST(SUBSTR(sale_date,1,4) AS INTEGER) AS year
-                FROM production_sales
-                WHERE sale_date IS NOT NULL AND sale_date<>''
-                """
-            ):
-                try:
-                    years.add(int(row["year"]))
-                except (TypeError, ValueError):
-                    pass
-
-        if self._table_exists("income"):
-            for row in self.db.query(
-                """
-                SELECT DISTINCT CAST(SUBSTR(entry_date,1,4) AS INTEGER) AS year
-                FROM income
-                WHERE entry_date IS NOT NULL AND entry_date<>''
-                """
-            ):
-                try:
-                    years.add(int(row["year"]))
-                except (TypeError, ValueError):
-                    pass
-
-        if self._table_exists("expenses"):
-            for row in self.db.query(
-                """
-                SELECT DISTINCT CAST(SUBSTR(entry_date,1,4) AS INTEGER) AS year
-                FROM expenses
-                WHERE entry_date IS NOT NULL AND entry_date<>''
-                """
-            ):
-                try:
-                    years.add(int(row["year"]))
-                except (TypeError, ValueError):
-                    pass
-
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-
-        for year in sorted(years, reverse=True):
-            self.year_filter.addItem(str(year), year)
-
-        if not years:
-            from PySide6.QtCore import QDate
-            current = QDate.currentDate().year()
-            self.year_filter.addItem(str(current), current)
-
-        idx = self.year_filter.findData(current_year)
-        self.year_filter.setCurrentIndex(idx if idx >= 0 else 0)
-        self.year_filter.blockSignals(False)
-
-        products = self.db.query(
-            """SELECT DISTINCT pr.id,pr.name
-               FROM products pr JOIN production p ON p.product_id=pr.id
-               ORDER BY pr.name,pr.id"""
-        ) if self._table_exists("production") else []
+        products = product_rows(self.db)
 
         self.product_filter.blockSignals(True)
         self.product_filter.clear()
@@ -297,75 +285,6 @@ class AnnualFarmReportPage(QWidget):
         idx = self.product_filter.findData(current_product)
         self.product_filter.setCurrentIndex(idx if idx >= 0 else 0)
         self.product_filter.blockSignals(False)
-
-    def _production_for(
-        self,
-        year: int,
-        product: int | None,
-        through_year_end: bool = False,
-    ) -> float:
-        if not self._table_exists("production"):
-            return 0.0
-
-        if through_year_end:
-            where = ["SUBSTR(entry_date,1,4)<=?"]
-        else:
-            where = ["SUBSTR(entry_date,1,4)=?"]
-
-        params: list[object] = [str(year)]
-
-        if product:
-            where.append("product_id=?")
-            params.append(product)
-
-        row = self.db.query_one(
-            f"""
-            SELECT COALESCE(SUM(quantity_kg),0) AS total
-            FROM production
-            WHERE {' AND '.join(where)}
-            """,
-            params,
-        )
-        return float(row["total"] or 0) if row else 0.0
-
-    def _sales_for(
-        self,
-        year: int,
-        product: int | None,
-        through_year_end: bool = False,
-    ) -> tuple[float, float]:
-        if not self._table_exists("production_sales"):
-            return 0.0, 0.0
-
-        if through_year_end:
-            where = ["SUBSTR(sale_date,1,4)<=?"]
-        else:
-            where = ["SUBSTR(sale_date,1,4)=?"]
-
-        params: list[object] = [str(year)]
-
-        if product:
-            where.append("product_id=?")
-            params.append(product)
-
-        row = self.db.query_one(
-            f"""
-            SELECT
-                COALESCE(SUM(quantity_kg),0) AS qty,
-                COALESCE(SUM(total_amount),0) AS revenue
-            FROM production_sales
-            WHERE {' AND '.join(where)}
-            """,
-            params,
-        )
-
-        if row is None:
-            return 0.0, 0.0
-
-        return (
-            float(row["qty"] or 0),
-            float(row["revenue"] or 0),
-        )
 
     def _finance_for_year(
         self,
@@ -428,64 +347,30 @@ class AnnualFarmReportPage(QWidget):
         )
         return total_income, other_income, expenses
 
-    def _product_breakdown(
-        self,
-        year: int,
-    ) -> list[dict[str, object]]:
-        if not self._table_exists("production"):
-            return []
-
-        products = self.db.query(
-            """SELECT DISTINCT pr.id,pr.name
-               FROM products pr JOIN production p ON p.product_id=pr.id
-               ORDER BY pr.name,pr.id"""
-        )
-
-        rows: list[dict[str, object]] = []
-
-        for product_row in products:
-            product = int(product_row["id"])
-            produced = self._production_for(
-                year,
-                product,
-            )
-            sold, revenue = self._sales_for(
-                year,
-                product,
-            )
-            produced_to_date = self._production_for(
-                year,
-                product,
-                through_year_end=True,
-            )
-            sold_to_date, _ = self._sales_for(
-                year,
-                product,
-                through_year_end=True,
-            )
-
-            avg = revenue / sold if sold > 0 else 0.0
-            stock = max(
-                produced_to_date - sold_to_date,
-                0.0,
-            )
-
-            rows.append(
-                {
-                    "product": product_row["name"],
-                    "product_id": product,
-                    "produced": produced,
-                    "sold": sold,
-                    "revenue": revenue,
-                    "avg": avg,
-                    "stock": stock,
-                }
-            )
-
-        return rows
+    def _product_breakdown(self, year):
+        produced = quantities(self.db, year=year)
+        sales = quantities(self.db, "production_sales", year)
+        stock = stock_quantities(quantities(self.db, year=year, through=True),
+                                 quantities(self.db, "production_sales", year, through=True))
+        products = {g["key"]: g for g in produced + sales + stock}
+        for product in product_rows(self.db):
+            key = ("id", product["id"])
+            products.setdefault(key, dict(key=key, product=product["name"], unit=product["unit"]))
+        production_map = {g["key"]: g["quantity"] for g in produced}
+        sales_map = {g["key"]: g for g in sales}
+        stock_map = {g["key"]: g["quantity"] for g in stock}
+        rows = []
+        for key, group in products.items():
+            sale = sales_map.get(key, {})
+            sold, revenue = sale.get("quantity", 0.0), sale.get("revenue", 0.0)
+            rows.append(dict(product=group["product"], product_id=key[1] if key[0] == "id" else None,
+                unit=group["unit"], key=key, produced=production_map.get(key, 0.0), sold=sold,
+                revenue=revenue, avg=revenue/sold if sold > 0 else 0.0, stock=stock_map.get(key,0.0)))
+        return sorted(rows, key=lambda row: (row["product"], str(row["key"])))
 
     def refresh(self, *_args) -> None:
-        ensure_product_links(self.db)
+        for kind, action in self.export_actions.items():
+            action.setText(_text("Εξαγωγή " + kind.upper()))
         self._refresh_filters()
 
         year = self.year_filter.currentData()
@@ -498,54 +383,30 @@ class AnnualFarmReportPage(QWidget):
         if product:
             product = int(product)
 
-        produced = self._production_for(
-            year,
-            product,
-        )
-        sold, sales_revenue = self._sales_for(
-            year,
-            product,
-        )
-
-        produced_to_date = self._production_for(
-            year,
-            product,
-            through_year_end=True,
-        )
-        sold_to_date, _ = self._sales_for(
-            year,
-            product,
-            through_year_end=True,
-        )
-        stock = max(
-            produced_to_date - sold_to_date,
-            0.0,
-        )
-        avg_price = (
-            sales_revenue / sold
-            if sold > 0
-            else 0.0
-        )
-
+        breakdown = self._product_breakdown(year)
+        if product is not None:
+            breakdown = [r for r in breakdown if r["product_id"] == product]
+        def groups(column):
+            return [dict(key=r["key"], product=r["product"], unit=r["unit"],
+                         quantity=r[column], revenue=r["revenue"]) for r in breakdown]
+        sales_revenue = sum(r["revenue"] for r in breakdown)
         total_income, other_income, expenses = (
             self._finance_for_year(year)
         )
+        self._export_snapshot = AnnualSnapshot(
+            year, product, product_name, tuple(AnnualProduct(**row) for row in breakdown),
+            total_income, other_income, expenses,
+        )
 
-        self.production_metric[1].setText(
-            format_kg(produced)
-        )
-        self.sold_metric[1].setText(
-            format_kg(sold)
-        )
-        self.stock_metric[1].setText(
-            format_kg(stock)
-        )
-        self.sales_revenue_metric[1].setText(
-            self._money(sales_revenue)
-        )
-        self.avg_price_metric[1].setText(
-            f"{compact_decimal(avg_price, 2)} €/kg"
-        )
+        for metric, column in ((self.production_metric,"produced"), (self.sold_metric,"sold"), (self.stock_metric,"stock")):
+            metric[1].setProperty("mastixaI18nSkipText", True)
+            metric[1].setTextFormat(Qt.TextFormat.PlainText)
+            metric[1].setWordWrap(True)
+            metric[1].setText(quantity_text(groups(column)))
+        self.sales_revenue_metric[1].setText(self._money(sales_revenue))
+        self.avg_price_metric[1].setProperty("mastixaI18nSkipText", True)
+        self.avg_price_metric[1].setTextFormat(Qt.TextFormat.PlainText)
+        self.avg_price_metric[1].setText(average_price_text(groups("sold")))
 
         if product is None:
             self.other_income_metric[0].setTitle("")
@@ -558,10 +419,6 @@ class AnnualFarmReportPage(QWidget):
             self.result_metric[1].setText(
                 self._money(total_income - expenses)
             )
-            self.scope_note.setText(
-                "Προβολή όλων των προϊόντων: το Καθαρό αποτέλεσμα είναι "
-                "Σύνολο εσόδων − Σύνολο εξόδων για ολόκληρη την εκμετάλλευση."
-            )
         else:
             self.other_income_metric[1].setText(
                 self._money(other_income)
@@ -570,43 +427,9 @@ class AnnualFarmReportPage(QWidget):
                 self._money(expenses)
             )
             self.result_metric[1].setText("—")
-            self.scope_note.setText(
-                f"Προβολή προϊόντος «{product_name}»: Παραγωγή, Πωλήσεις, Stock και "
-                "Έσοδα πωλήσεων αφορούν μόνο το προϊόν. Τα Λοιπά έσοδα και "
-                "Έξοδα εμφανίζονται ως γενικά / μη κατανεμημένα και ΔΕΝ "
-                "επιμερίζονται αυθαίρετα στο προϊόν. Για αυτό δεν υπολογίζεται "
-                "ψευδές «καθαρό αποτέλεσμα προϊόντος»."
-            )
-
-        breakdown = self._product_breakdown(year)
-
-        if product:
-            breakdown = [
-                row
-                for row in breakdown
-                if row["product_id"] == product
-            ]
+        self.scope_note.setText(scope_note(self._export_snapshot))
 
         self._rows_cache = breakdown
-        self.product_table.setRowCount(len(breakdown))
-
-        for r, row in enumerate(breakdown):
-            display = [
-                row["product"],
-                compact_decimal(row["produced"], 3),
-                compact_decimal(row["sold"], 3),
-                self._money(float(row["revenue"])),
-                f"{compact_decimal(row['avg'], 2)} €/kg",
-                compact_decimal(row["stock"], 3),
-            ]
-
-            for c, value in enumerate(display):
-                self.product_table.setItem(
-                    r,
-                    c,
-                    QTableWidgetItem(str(value)),
-                )
-
         finance_rows = [
             (
                 "Έσοδα πωλήσεων",
@@ -637,15 +460,45 @@ class AnnualFarmReportPage(QWidget):
             ),
         ]
 
+        self._finance_rows = finance_rows
+        if self._finance_ready:
+            self._populate_product()
+            self._populate_finance()
+        token = getattr(self.window(), "_presentation_token", None)
+        self._snapshot_token = token() if callable(token) else None
+
+    def _populate_product(self):
+        breakdown = self._rows_cache
+        self.product_table.setRowCount(len(breakdown))
+
+        for r, row in enumerate(breakdown):
+            display = [
+                row["product"],
+                f"{compact_decimal(row['produced'], 3)} {row['unit'] or '[?]'}",
+                f"{compact_decimal(row['sold'], 3)} {row['unit'] or '[?]'}",
+                self._money(float(row["revenue"])),
+                f"{compact_decimal(row['avg'], 2)} €/{row['unit']}" if row["unit"] and row['sold'] > 0 else "—",
+                f"{compact_decimal(row['stock'], 3)} {row['unit'] or '[?]'}",
+            ]
+
+            for c, value in enumerate(display):
+                self.product_table.setItem(
+                    r,
+                    c,
+                    QTableWidgetItem(str(value)),
+                )
+
+    def _populate_finance(self):
+        finance_rows = self._finance_rows
         self.finance_table.setRowCount(len(finance_rows))
 
         for r, (category, amount, handling) in enumerate(
             finance_rows
         ):
             values = [
-                category,
+                tr(category),
                 self._money(amount),
-                handling,
+                tr(handling),
             ]
             for c, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
@@ -657,95 +510,41 @@ class AnnualFarmReportPage(QWidget):
                     item,
                 )
 
-    def export_csv(self) -> None:
-        year = self.year_filter.currentData()
-        if year is None:
-            return
+    def _annual_report_snapshot(self) -> AnnualSnapshot:
+        return self._export_snapshot
 
-        product = self.product_filter.currentData()
-        product_label = (
-            combo_source_text(self.product_filter)
-            if product
-            else "Όλα τα προϊόντα"
-        )
-
+    def _export(self, kind: str) -> None:
+        snapshot = self._annual_report_snapshot()
         filename, _ = QFileDialog.getSaveFileName(
             self,
-            "Αποθήκευση Ετήσιας Αναφοράς",
-            f"annual_report_{year}.csv",
-            "CSV (*.csv)",
+            _text("Αποθήκευση Ετήσιας Αναφοράς"),
+            f"annual_report_{snapshot.year}.{kind}",
+            f"{kind.upper()} (*.{kind})",
         )
         if not filename:
             return
 
         path = Path(filename)
-        if path.suffix.lower() != ".csv":
-            path = path.with_suffix(".csv")
+        if path.suffix.lower() != "." + kind:
+            path = path.with_suffix("." + kind)
 
         try:
-            with path.open(
-                "w",
-                encoding="utf-8-sig",
-                newline="",
-            ) as handle:
-                writer = csv.writer(
-                    handle,
-                    delimiter=";",
-                )
-                writer.writerow(
-                    [tr("Ετήσια Αναφορά Εκμετάλλευσης")]
-                )
-                writer.writerow([tr("Έτος"), year])
-                writer.writerow(
-                    [tr("Προϊόν"), product_label]
-                )
-                writer.writerow([])
-                writer.writerow(
-                    [tr(value) for value in [
-                        "Προϊόν",
-                        "Παραγωγή kg",
-                        "Πωλημένα kg",
-                        "Έσοδα πωλήσεων",
-                        "Μέση τιμή / kg",
-                        "Stock τέλους έτους",
-                    ]]
-                )
-
-                for row in self._rows_cache:
-                    writer.writerow(
-                        [
-                            row["product"],
-                            compact_decimal(
-                                row["produced"],
-                                3,
-                            ),
-                            compact_decimal(
-                                row["sold"],
-                                3,
-                            ),
-                            compact_decimal(
-                                row["revenue"],
-                                2,
-                            ),
-                            compact_decimal(
-                                row["avg"],
-                                2,
-                            ),
-                            compact_decimal(
-                                row["stock"],
-                                3,
-                            ),
-                        ]
-                    )
-
-            QMessageBox.information(
-                self,
-                "Εξαγωγή CSV",
-                f"Η αναφορά αποθηκεύτηκε:\n{path}",
+            {"csv": export_annual_csv, "pdf": export_annual_pdf, "xlsx": export_annual_xlsx}[kind](path, snapshot)
+            _message(
+                self, "information", "Εξαγωγή " + kind.upper(),
+                "Η αναφορά αποθηκεύτηκε:\n{path}", path=path,
             )
         except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Σφάλμα εξαγωγής",
-                str(exc),
+            _message(
+                self, "critical", "Σφάλμα εξαγωγής",
+                "{error}", error=str(exc),
             )
+
+    def export_csv(self) -> None:
+        AnnualFarmReportPage._export(self, "csv")
+
+    def export_pdf(self) -> None:
+        AnnualFarmReportPage._export(self, "pdf")
+
+    def export_xlsx(self) -> None:
+        AnnualFarmReportPage._export(self, "xlsx")

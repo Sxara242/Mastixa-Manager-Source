@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import closing
+
 import importlib
 import csv
 import io
@@ -126,7 +128,7 @@ class StabilizationTests(unittest.TestCase):
         self.assertEqual(30, self.window._current_page_index())
 
         legacy_path = self.root / "legacy_products.db"
-        with sqlite3.connect(legacy_path) as con:
+        with closing(sqlite3.connect(legacy_path)) as con, con:
             con.execute(
                 """CREATE TABLE production(
                     id INTEGER PRIMARY KEY,entry_date TEXT,field_id INTEGER,
@@ -365,6 +367,212 @@ class StabilizationTests(unittest.TestCase):
         self.assertIsNotNone(legacy)
         self.assertEqual("Legacy Σύκα", legacy["name"])
 
+    def _stock_fixture(self, quantities=(100,), sold=80, *, legacy=False):
+        field = self.db.execute("INSERT INTO fields(name) VALUES('Stock field')")
+        product = self.db.execute("INSERT INTO products(name,unit) VALUES('Product A','kg')")
+        rows = [self.db.execute(
+            "INSERT INTO production(entry_date,field_id,product,product_id,quantity_kg) VALUES(?,?,?,?,?)",
+            ("2026-08-01", field, " product a " if legacy else "Product A",
+             None if legacy else product, quantity),
+        ) for quantity in quantities]
+        if sold:
+            self.db.execute(
+                "INSERT INTO production_sales(sale_date,product,product_id,quantity_kg,price_per_kg,total_amount) VALUES(?,?,?,?,?,?)",
+                ("2026-08-02", "PRODUCT A" if legacy else "Product A",
+                 None if legacy else product, sold, 2, sold * 2),
+            )
+        page = self.window.pages[3][1]
+        page.refresh()  # Existing legacy link repair runs before editing.
+        self._select_production(page, rows[0])
+        return page, product, rows
+
+    def _select_production(self, page, record_id):
+        row = next(row for row in range(page.table.rowCount())
+                   if page.table.item(row, 0).data(Qt.ItemDataRole.UserRole) == record_id)
+        page.load_selected(row, 0)
+
+    def _stock_snapshot(self):
+        with self.db.connect() as con:
+            return tuple(con.iterdump())
+
+    def _assert_stock_rejected(self, page, *, delete=False):
+        before = self._stock_snapshot()
+        selected = page.selected_production_id
+        page.confirm_delete = lambda *_: True
+        with patch("app.production._message") as warning:
+            (page.delete_production if delete else page.save_production)()
+        self.assertEqual(before, self._stock_snapshot())
+        self.assertEqual(selected, page.selected_production_id)
+        warning.assert_called_once()
+
+    def test_production_stock_rejects_reduction_below_sales(self):
+        page, _, rows = self._stock_fixture()
+        page.quantity.setValue(50)
+        self._assert_stock_rejected(page)
+        self.assertEqual(100, self.db.query_one("SELECT quantity_kg FROM production WHERE id=?", (rows[0],))[0])
+        self.assertEqual(80, self.db.query_one("SELECT quantity_kg FROM production_sales")[0])
+
+    def test_production_stock_rejects_required_row_deletion(self):
+        page, _, _ = self._stock_fixture()
+        self._assert_stock_rejected(page, delete=True)
+
+    def test_production_stock_allows_exact_sold_total(self):
+        page, _, rows = self._stock_fixture()
+        page.quantity.setValue(80)
+        with patch("app.production._message", side_effect=AssertionError("unexpected warning")):
+            page.save_production()
+        self.assertEqual(80, self.db.query_one("SELECT quantity_kg FROM production WHERE id=?", (rows[0],))[0])
+        self.assertIsNone(page.selected_production_id)
+        self.assertEqual(1, page.table.rowCount())
+
+    def test_production_stock_rejects_multiple_row_shortfall(self):
+        page, _, _ = self._stock_fixture((60, 60), 100)
+        page.quantity.setValue(30)
+        self._assert_stock_rejected(page)
+
+    def test_production_stock_allows_surplus_row_deletion(self):
+        page, _, rows = self._stock_fixture((60, 60), 50)
+        page.confirm_delete = lambda *_: True
+        with patch("app.production._message", side_effect=AssertionError("unexpected warning")):
+            page.delete_production()
+        self.assertIsNone(self.db.query_one("SELECT id FROM production WHERE id=?", (rows[0],)))
+        self.assertEqual(60, self.db.query_one("SELECT SUM(quantity_kg) FROM production")[0])
+        self.assertEqual(50, self.db.query_one("SELECT quantity_kg FROM production_sales")[0])
+        self.assertIsNone(page.selected_production_id)
+        self.assertEqual(1, page.table.rowCount())
+
+    def test_production_stock_product_change_protects_old_product(self):
+        page, _, rows = self._stock_fixture()
+        other = self.db.execute("INSERT INTO products(name,unit) VALUES('Product B','kg')")
+        page.refresh()
+        self._select_production(page, rows[0])
+        page.product.setCurrentIndex(page.product.findData(other))
+        self._assert_stock_rejected(page)
+        self.assertEqual(0, self.db.query_one("SELECT COUNT(*) FROM production WHERE product_id=?", (other,))[0])
+
+    def test_production_stock_unrelated_product_and_no_sales_lifecycle(self):
+        page, _, _ = self._stock_fixture()
+        other = self.db.execute("INSERT INTO products(name,unit) VALUES('Product B','kg')")
+        page.clear_form()
+        page.field.setCurrentIndex(1)
+        page.product.setCurrentIndex(page.product.findData(other))
+        page.quantity.setValue(20)
+        with patch("app.production._message", side_effect=AssertionError("unexpected warning")):
+            page.save_production()
+            row = self.db.query_one("SELECT id FROM production WHERE product_id=?", (other,))[0]
+            self._select_production(page, row)
+            page.quantity.setValue(10)
+            page.save_production()
+            self.assertEqual(10, self.db.query_one("SELECT quantity_kg FROM production WHERE id=?", (row,))[0])
+            self._select_production(page, row)
+            page.confirm_delete = lambda *_: True
+            page.delete_production()
+        self.assertIsNone(self.db.query_one("SELECT id FROM production WHERE id=?", (row,)))
+        self.assertEqual(100, self.db.query_one("SELECT SUM(quantity_kg) FROM production")[0])
+
+    def test_production_stock_year_locks_take_precedence(self):
+        page, _, rows = self._stock_fixture()
+        self.db.execute("INSERT INTO year_locks(year,is_locked) VALUES(2026,1)")
+        for year, delete in ((2026, False), (2027, False), (2026, True)):
+            with self.subTest(target_year=year, delete=delete):
+                page.date.setDate(QDate(year, 8, 1))
+                page.quantity.setValue(50)
+                before = self._stock_snapshot()
+                with patch("app.production.warn_locked_year") as locked, patch("app.production._message") as stock:
+                    (page.delete_production if delete else page.save_production)()
+                locked.assert_called_once_with(page, self.db, 2026)
+                stock.assert_not_called()
+                self.assertEqual(before, self._stock_snapshot())
+        self.db.execute("UPDATE year_locks SET is_locked=0 WHERE year=2026")
+        self.db.execute("INSERT INTO year_locks(year,is_locked) VALUES(2027,1)")
+        page.date.setDate(QDate(2027, 8, 1))
+        before = self._stock_snapshot()
+        with patch("app.production.warn_locked_year") as locked:
+            page.save_production()
+        locked.assert_called_once_with(page, self.db, 2027)
+        self.assertEqual(before, self._stock_snapshot())
+
+    def test_production_stock_legacy_links_and_inactive_history(self):
+        page, product, rows = self._stock_fixture(legacy=True)
+        self.assertEqual(product, self.db.query_one("SELECT product_id FROM production_sales")[0])
+        self.assertEqual("PRODUCT A", self.db.query_one("SELECT product FROM production_sales")[0])
+        self.db.execute("UPDATE products SET name='Renamed',is_active=0 WHERE id=?", (product,))
+        page.refresh()
+        self._select_production(page, rows[0])
+        page.quantity.setValue(50)
+        self._assert_stock_rejected(page)
+        self._assert_stock_rejected(page, delete=True)
+        self.assertEqual(" product a ", self.db.query_one("SELECT product FROM production")[0])
+
+    def test_production_stock_tolerance_matches_sales(self):
+        page, _, rows = self._stock_fixture(sold=80.0000005)
+        page.quantity.setValue(80)
+        with patch("app.production._message", side_effect=AssertionError("tolerance rejected")):
+            page.save_production()
+        self.assertEqual(80, self.db.query_one("SELECT quantity_kg FROM production")[0])
+        self.db.execute("UPDATE production SET quantity_kg=100")
+        self.db.execute("UPDATE production_sales SET quantity_kg=80.000002")
+        page.refresh()
+        self._select_production(page, rows[0])
+        page.quantity.setValue(80)
+        self._assert_stock_rejected(page)
+
+    def test_production_stock_product_change_allows_sufficient_remainder(self):
+        page, _, rows = self._stock_fixture((60, 60), 50)
+        other = self.db.execute("INSERT INTO products(name,unit) VALUES('Product B','kg')")
+        # A different field/year is still part of the same product-level stock.
+        field = self.db.execute("INSERT INTO fields(name) VALUES('Other field')")
+        self.db.execute("UPDATE production SET field_id=?,entry_date='2025-01-01' WHERE id=?", (field, rows[1]))
+        page.refresh()
+        self._select_production(page, rows[0])
+        page.product.setCurrentIndex(page.product.findData(other))
+        with patch("app.production._message", side_effect=AssertionError("unexpected warning")):
+            page.save_production()
+        self.assertEqual(other, self.db.query_one("SELECT product_id FROM production WHERE id=?", (rows[0],))[0])
+
+    def test_production_stock_product_change_checks_target_total(self):
+        page, _, rows = self._stock_fixture(sold=0)
+        other = self.db.execute("INSERT INTO products(name,unit) VALUES('Product B','kg')")
+        self.db.execute(
+            "INSERT INTO production_sales(sale_date,product,product_id,quantity_kg,price_per_kg,total_amount) VALUES('2026-08-02','Product B',?,80,2,160)",
+            (other,),
+        )
+        page.refresh()
+        self._select_production(page, rows[0])
+        page.product.setCurrentIndex(page.product.findData(other))
+        page.quantity.setValue(50)
+        self._assert_stock_rejected(page)
+
+    def test_production_stock_warning_localizes_without_mutating_raw_values(self):
+        from PySide6.QtWidgets import QMessageBox
+        from tests.language_fixture import scoped_language
+
+        page, product, _ = self._stock_fixture()
+        raw = "Παραγωγή Save <b>tag</b> {sold}"
+        self.db.execute("UPDATE products SET name=? WHERE id=?", (raw, product))
+        page.quantity.setValue(50)
+        before = self._stock_snapshot()
+        seen = []
+        with scoped_language(self.qt, "el") as controller:
+            def inspect(box):
+                seen.append(box)
+                for code in ("el", "en", "el"):
+                    controller.set_language(code, persist=False)
+                    self.assertIn(raw, box.text())
+                    self.assertIn(": 80", box.text())
+                    self.assertIn(": 50", box.text())
+                    self.assertEqual(
+                        "Production required by sales" if code == "en" else "Η παραγωγή απαιτείται από πωλήσεις",
+                        box.windowTitle(),
+                    )
+                    self.assertIn("The change was not saved." if code == "en" else "Η αλλαγή δεν αποθηκεύτηκε.", box.text())
+                    self.assertEqual(before, self._stock_snapshot())
+                return QMessageBox.StandardButton.Ok
+            with patch.object(QMessageBox, "exec", inspect):
+                page.save_production()
+        self.assertEqual(1, len(seen))
+        self.assertEqual(before, self._stock_snapshot())
+
     def test_product_field_many_to_many_crud_uniqueness_and_legacy_backfill(self) -> None:
         page = self.window.pages[30][1]
         active_id = self.db.execute(
@@ -478,7 +686,7 @@ class StabilizationTests(unittest.TestCase):
         )
 
         legacy_path = self.root / "legacy_product_fields.db"
-        with sqlite3.connect(legacy_path) as con:
+        with closing(sqlite3.connect(legacy_path)) as con, con:
             con.executescript(
                 """CREATE TABLE fields(id INTEGER PRIMARY KEY,name TEXT NOT NULL);
                    CREATE TABLE production(

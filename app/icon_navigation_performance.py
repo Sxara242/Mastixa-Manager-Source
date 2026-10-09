@@ -29,6 +29,14 @@ class _ScopedIconScheduler(QObject):
     def schedule(self, target, delay: int = 0) -> None:
         if not icon_theme._is_alive(target):
             return
+        if hasattr(self.root, "desktop_navigation"):
+            # The revamp hides the legacy navigation containers. Their stack,
+            # tab and category signals describe one destination, not six icon
+            # updates over the whole window (plus delayed repeats).
+            index = self.root._current_page_index()
+            if index is not None:
+                target = self.root.pages[index][1]
+                delay = 0
         key = (id(target), int(delay))
         if key in self._pending:
             return

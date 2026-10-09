@@ -19,7 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 from .crud import CrudPage
+from .localized_messages import _language, _text
 from .database import Database
+from .year_context_ui import working_year_mutation
 from .ui_helpers import table_widget
 from .partner_links import ensure_partner_link_schema, sync_partner_names
 
@@ -34,8 +36,54 @@ PARTNER_TYPES = [
 class PartnersPage(CrudPage):
     """Ενιαίο μητρώο προμηθευτών και αγοραστών."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_partner_id: int | None = None
         self._ensure_schema()
@@ -246,6 +294,7 @@ class PartnersPage(CrudPage):
         ):
             self.db.execute(sql)
 
+    @working_year_mutation(selection="selected_partner_id", reset="clear_form")
     def save_partner(self) -> None:
         name = self.name.text().strip()
         if not name:
@@ -358,6 +407,7 @@ class PartnersPage(CrudPage):
             "Επίλεξε συνεργάτη για προβολή σχετικών εσόδων και εξόδων."
         )
 
+    @working_year_mutation()
     def delete_partner(self) -> None:
         if self.selected_partner_id is None:
             return
@@ -528,6 +578,8 @@ class PartnersPage(CrudPage):
                 item = QTableWidgetItem(str(value or ""))
                 if column == 0:
                     item.setData(Qt.ItemDataRole.UserRole, int(row["id"]))
+                if column == 1 and row["partner_type"] in dict((v, k) for k, v in PARTNER_TYPES):
+                    self._set_body(item, self._type_label(row["partner_type"]))
                 self.table.setItem(row_index, column, item)
         all_rows = self.db.query(
             "SELECT partner_type,COUNT(*) total FROM business_partners GROUP BY partner_type"

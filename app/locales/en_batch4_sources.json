@@ -1,0 +1,22 @@
+{
+  "meta": {"code": "en", "native_name": "English"},
+  "translations": {
+    "Πηγή παραγωγής": "Production source",
+    "Οι πωλήσεις του προϊόντος «{product}» από το αγροτεμάχιο «{field}» απαιτούν τουλάχιστον {sold} {unit}. Μετά την αλλαγή απομένουν {proposed} {unit}. Η αλλαγή δεν αποθηκεύτηκε.": "Sales of product “{product}” from field “{field}” require at least {sold} {unit}. The change would leave {proposed} {unit}. The change was not saved.",
+    "Προεπιλεγμένη πηγή πώλησης": "Default sale source",
+    "Συνολικό απόθεμα": "Total stock",
+    "Ανά αγροτεμάχιο": "By field",
+    "Όλες οι πηγές": "All sources",
+    "Συνολικό απόθεμα / μη κατανεμημένες πωλήσεις": "Total-stock / unallocated sales",
+    "Ανά αγροτεμάχιο — επίλεξε αγροτεμάχιο": "By field — select a field",
+    "Συνολικό απόθεμα — διαθέσιμο {quantity} {unit}": "Total stock — available {quantity} {unit}",
+    "{field} — διαθέσιμο {quantity} {unit}": "{field} — available {quantity} {unit}",
+    "Επίλεξε αγροτεμάχιο προέλευσης ή Συνολικό απόθεμα.": "Select a source field or Total stock.",
+    "Το αγροτεμάχιο δεν έχει παραγωγή για το επιλεγμένο προϊόν.": "The field has no production for the selected product.",
+    "Διαθέσιμο για πώληση από το αγροτεμάχιο «{field}»: {quantity} {unit}.": "Available for sale from field “{field}”: {quantity} {unit}.",
+    "Το διαθέσιμο απόθεμα άλλαξε. Ελέγξτε ξανά την ποσότητα.": "Available stock changed. Check the quantity again.",
+    "Οι πωλήσεις συνολικού αποθέματος δεν έχουν κατανομή σε αγροτεμάχια. Παραγωγή και υπόλοιπο εμφανίζονται στις Όλες τις πηγές.": "Total-stock sales are not allocated to fields. Production and remaining stock are shown under All sources.",
+    "Το υπόλοιπο αγροτεμαχίου αφαιρεί μόνο πωλήσεις από αυτό το αγροτεμάχιο. Οι μη κατανεμημένες πωλήσεις μειώνουν το συνολικό απόθεμα. Το όριο νέας πώλησης είναι το μικρότερο από τα δύο υπόλοιπα.": "Field-attributed remaining production subtracts only sales from this field. Unallocated sales reduce total stock. A new sale is limited to the smaller of these two remaining quantities.",
+    "Το συνολικό απόθεμα περιλαμβάνει όλες τις πωλήσεις, κατανεμημένες και μη. Το υπόλοιπο είναι διαχρονικό· το έτος φιλτράρει παραγωγή και πωλήσεις.": "Total stock includes all allocated and unallocated sales. Remaining stock covers all years; the year filters production and sales."
+  }
+}

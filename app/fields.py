@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .localized_messages import _message
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFormLayout,
@@ -14,8 +16,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from .numeric_inputs import NumericSpinBox
 from .crud import CrudPage
 from .database import Database
+from .year_context_ui import working_year_mutation
 from .ui_helpers import compact_decimal, table_widget
 from .widgets import area_input, required_text
 
@@ -41,7 +45,7 @@ class FieldsPage(CrudPage):
         self.kaek = QLineEdit()
         self.location = QLineEdit()
         self.area = area_input()
-        self.trees = QSpinBox()
+        self.trees = NumericSpinBox()
         self.trees.setRange(0, 1_000_000)
         self.notes = QLineEdit()
 
@@ -133,6 +137,7 @@ class FieldsPage(CrudPage):
             """
         )
 
+    @working_year_mutation(selection="selected_field_id", reset="clear_form")
     def save_field(self) -> None:
         name = required_text(self.name, "Ονομασία")
         if name is None:
@@ -218,6 +223,7 @@ class FieldsPage(CrudPage):
         self.table.clearSelection()
         self.name.setFocus()
 
+    @working_year_mutation()
     def delete_field(self) -> None:
         if self.selected_field_id is None:
             return
@@ -236,13 +242,7 @@ class FieldsPage(CrudPage):
                 (self.selected_field_id,),
             )
         except Exception as exc:
-            QMessageBox.warning(
-                self,
-                "Αδυναμία διαγραφής",
-                "Το αγροτεμάχιο δεν διαγράφηκε. "
-                "Ενδέχεται να χρησιμοποιείται σε άλλες καταχωρήσεις.\n\n"
-                f"Λεπτομέρειες: {exc}",
-            )
+            _message(self, 'warning', 'Αδυναμία διαγραφής', 'Το αγροτεμάχιο δεν διαγράφηκε. Ενδέχεται να χρησιμοποιείται σε άλλες καταχωρήσεις.\n\nΛεπτομέρειες: {exc}', exc=exc)
             return
 
         self.clear_form()

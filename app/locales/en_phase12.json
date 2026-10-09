@@ -15,7 +15,6 @@
     "Περιγραφή": "Description",
     "Νέο": "New",
     "Αποθήκευση": "Save",
-    "Αρχειοθέτηση": "Archive",
     "Κανόνες εργασιών": "Work rules",
     "Εργασία": "Task",
     "Κατηγορία": "Category",
@@ -58,9 +57,14 @@
     "Σημειώσεις για την εργασία...": "Task notes...",
     "Συμπλήρωσε τίτλο εργασίας.": "Enter a task title.",
     "Συμπλήρωσε όνομα προγράμματος.": "Enter a program name.",
-    "Αρχειοθέτηση προγράμματος": "Archive program",
-    "Η αρχειοθέτηση αφαιρεί τις εκκρεμείς εργασίες και κρατά το ιστορικό όσων ολοκληρώθηκαν ή παραλείφθηκαν. Συνέχεια;": "Archiving removes pending tasks and keeps the history of completed or skipped tasks. Continue?",
     "Χρειάζεται ενεργό πρόγραμμα και αγροτεμάχιο.": "An active program and field are required.",
-    "Οι εργασίες ενημερώθηκαν. Σύνολο για την ανάθεση: ": "Tasks were updated. Total for this assignment: "
+    "Οι εργασίες ενημερώθηκαν. Σύνολο για την ανάθεση: ": "Tasks were updated. Total for this assignment: ",
+    "Απενεργοποίηση": "Deactivate",
+    "Απενεργοποίηση προγράμματος": "Deactivate program",
+    "Η απενεργοποίηση αφαιρεί τις εκκρεμείς προγραμματισμένες εργασίες. Οι ολοκληρωμένες ή παραλειφθείσες εργασίες παραμένουν στο ιστορικό. Το πρόγραμμα θα γίνει ανενεργό. Συνέχεια;": "Deactivation removes pending scheduled tasks. Completed or skipped tasks remain in history. The program will become inactive. Continue?",
+    "Κατηγορία προγράμματος": "Program category",
+    "Χωρίς κατηγορία": "No category",
+    "Κανόνες του προγράμματος": "Program rules",
+    "Αποθήκευσε πρώτα το πρόγραμμα πριν προσθέσεις κανόνες.": "Save the program before adding rules."
   }
 }

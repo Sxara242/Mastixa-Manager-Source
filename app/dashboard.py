@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from PySide6.QtCore import Qt
+
 from pathlib import Path
 
 from PySide6.QtCore import QUrl
@@ -16,12 +18,38 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .localized_messages import _text, _language, _message
 from .backup_manager import BackupError, BackupManager
+from .backup_error_ui import show_backup_error
 from .database import BASE_DIR, Database
-from .ui_helpers import format_kg
+from .report_quantities import quantities, quantity_text, money_total
+from .year_context import effective_working_year
 
 
 class DashboardPage(QWidget):
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
@@ -37,7 +65,7 @@ class DashboardPage(QWidget):
         layout.addWidget(self.subtitle)
 
         grid = QGridLayout()
-        self.production = self._card("Παραγωγή", "0 kg")
+        self.production = self._card("Παραγωγή", "—")
         self.income = self._card("Έσοδα", "0,00 €")
         self.expenses = self._card("Έξοδα", "0,00 €")
         self.balance = self._card("Καθαρό αποτέλεσμα", "0,00 €")
@@ -48,6 +76,7 @@ class DashboardPage(QWidget):
         layout.addLayout(grid)
 
         safety_box = QGroupBox()
+        self.safety_box = safety_box
         safety_layout = QVBoxLayout(safety_box)
 
         safety_title = QLabel("Ασφάλεια δεδομένων")
@@ -133,55 +162,41 @@ class DashboardPage(QWidget):
     def refresh(self) -> None:
         self.backup_manager = self._build_backup_manager()
         farm_name = self.db.get_app_setting("farm_name", "").strip()
-        self.subtitle.setText(
-            "Συνολική εικόνα εκμετάλλευσης"
-            + (f" — {farm_name}" if farm_name else "")
-        )
+        self._composed_text(self.subtitle, "Συνολική εικόνα εκμετάλλευσης — {farm_name}" if farm_name else "Συνολική εικόνα εκμετάλλευσης", farm_name=farm_name)
 
-        prod = self.db.query_one(
-            "SELECT COALESCE(SUM(quantity_kg), 0) AS total FROM production"
-        )
-        inc = self.db.query_one(
-            "SELECT COALESCE(SUM(amount), 0) AS total FROM income"
-        )
-        exp = self.db.query_one(
-            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses"
-        )
+        year = effective_working_year(self.db)
+        production = quantities(self.db, year=year)
+        income = money_total(self.db, "income", year)
+        expenses = money_total(self.db, "expenses", year)
+        self.production[1].setProperty("mastixaI18nSkipText", True)
+        self.production[1].setTextFormat(Qt.TextFormat.PlainText)
+        self.production[1].setWordWrap(True)
+        self.production[1].setText(quantity_text(production))
 
-        production = float(prod["total"] or 0)
-        income = float(inc["total"] or 0)
-        expenses = float(exp["total"] or 0)
-
-        self.production[1].setText(format_kg(production))
         self.income[1].setText(self._money(income))
         self.expenses[1].setText(self._money(expenses))
         self.balance[1].setText(self._money(income - expenses))
 
         self._refresh_backup_status()
+        if hasattr(self, "farm_home"):
+            self.farm_home.refresh()
+
+    def refresh_year_context_ui(self):
+        self.refresh()
 
     def _refresh_backup_status(self) -> None:
         auto_enabled = self.db.get_app_setting_bool(
             "auto_backup_enabled", True
         )
         if auto_enabled:
-            self.auto_backup_status.setText(
-                "Αυτόματο ημερήσιο backup: ενεργό — "
-                f"κρατούνται έως {self.backup_manager.auto_keep} "
-                "αυτόματα backups. Τα χειροκίνητα backups δεν "
-                "διαγράφονται αυτόματα."
-            )
+            self._composed_text(self.auto_backup_status, 'Αυτόματο ημερήσιο backup: ενεργό — κρατούνται έως {value0} αυτόματα backups. Τα χειροκίνητα backups δεν διαγράφονται αυτόματα.', value0=self.backup_manager.auto_keep)
         else:
-            self.auto_backup_status.setText(
-                "Αυτόματο ημερήσιο backup: απενεργοποιημένο. "
-                "Τα χειροκίνητα backups παραμένουν διαθέσιμα."
-            )
+            self._composed_text(self.auto_backup_status, 'Αυτόματο ημερήσιο backup: απενεργοποιημένο. Τα χειροκίνητα backups παραμένουν διαθέσιμα.')
 
         backups = self.backup_manager.list_backups()
 
         if not backups:
-            self.backup_status.setText(
-                "Δεν υπάρχει ακόμα αποθηκευμένο backup."
-            )
+            self._composed_text(self.backup_status, 'Δεν υπάρχει ακόμα αποθηκευμένο backup.')
             return
 
         latest = backups[0]
@@ -194,29 +209,21 @@ class DashboardPage(QWidget):
 
         auto_count = len(self.backup_manager.list_auto_backups())
 
-        self.backup_status.setText(
-            f"Τελευταίο backup: {latest.name} — {timestamp}\n"
-            f"Αυτόματα ημερήσια backups: {auto_count} / "
-            f"{self.backup_manager.auto_keep}"
-        )
+        self._composed_text(self.backup_status, 'Τελευταίο backup: {value0} — {timestamp}\nΑυτόματα ημερήσια backups: {auto_count} / {value3}', value0=latest.name, timestamp=timestamp, auto_count=auto_count, value3=self.backup_manager.auto_keep)
 
     def create_backup(self) -> None:
         try:
             target = self.backup_manager.create_backup()
         except BackupError as exc:
-            QMessageBox.critical(
-                self,
+            show_backup_error(
+                self, "critical",
                 "Αποτυχία Backup",
-                str(exc),
+                exc,
             )
             return
 
         self._refresh_backup_status()
-        QMessageBox.information(
-            self,
-            "Backup",
-            f"Το αντίγραφο δημιουργήθηκε επιτυχώς:\n{target}",
-        )
+        _message(self, 'information', 'Backup', 'Το αντίγραφο δημιουργήθηκε επιτυχώς:\n{target}', target=target)
 
     def restore_backup(self) -> None:
         backup_dir = self.backup_manager.backup_dir
@@ -224,9 +231,9 @@ class DashboardPage(QWidget):
 
         path, _ = QFileDialog.getOpenFileName(
             self,
-            "Επίλεξε backup για επαναφορά",
+            _text("Επίλεξε backup για επαναφορά"),
             str(backup_dir),
-            "SQLite Database (*.db);;Όλα τα αρχεία (*)",
+            "SQLite Database (*.db);;" + _text("Όλα τα αρχεία") + " (*)",
         )
         if not path:
             return
@@ -258,22 +265,14 @@ class DashboardPage(QWidget):
             self.refresh()
 
         except BackupError as exc:
-            QMessageBox.critical(
-                self,
+            show_backup_error(
+                self, "critical",
                 "Αποτυχία επαναφοράς",
-                str(exc),
+                exc,
             )
             return
 
-        QMessageBox.information(
-            self,
-            "Επαναφορά ολοκληρώθηκε",
-            "Η βάση δεδομένων επαναφέρθηκε επιτυχώς.\n\n"
-            f"Επαναφορά από:\n{restored_from}\n\n"
-            "Αυτόματο backup πριν την επαναφορά:\n"
-            f"{safety_backup}\n\n"
-            "Οι υπόλοιπες σελίδες θα ανανεωθούν όταν τις ανοίξεις.",
-        )
+        _message(self, 'information', 'Επαναφορά ολοκληρώθηκε', 'Η βάση δεδομένων επαναφέρθηκε επιτυχώς.\n\nΕπαναφορά από:\n{restored_from}\n\nΑυτόματο backup πριν την επαναφορά:\n{safety_backup}\n\nΟι υπόλοιπες σελίδες θα ανανεωθούν όταν τις ανοίξεις.', restored_from=restored_from, safety_backup=safety_backup)
 
     def open_backup_folder(self) -> None:
         folder = self.backup_manager.backup_dir

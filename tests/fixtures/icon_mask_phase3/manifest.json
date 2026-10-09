@@ -1,0 +1,419 @@
+{
+  "hotfix_source": "5c9316b460a8c036c48a776f611fa916c358b06a",
+  "checkpoint": "d75c337fa11626adb9a34183acee32f5d25eb4f9",
+  "oracle": "Frozen original-source cubic annotations; independent of cleanup inputs. Tests never regenerate.",
+  "icons": {
+    "alerts.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Multiple fine metallic strokes at top y=10..18 and right x=479..486 blend into the white surround; the blue-gray outer trim must not be mistaken for disposable shadow. A full independent cut boundary is unresolved.",
+      "regions": [
+        [
+          224,
+          0,
+          288,
+          38
+        ],
+        [
+          466,
+          226,
+          502,
+          286
+        ],
+        [
+          220,
+          462,
+          290,
+          506
+        ],
+        [
+          15,
+          226,
+          48,
+          286
+        ]
+      ],
+      "original_sha256": "a87b36792f0d575e6ff0959410bf0140e73fa59eeca88565b67494d1afb0e499",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "1074f6559ed01387d4070f61f0a5cfd97bcb3efe8b5bdbdfe74f214346ee1964"
+    },
+    "cultivation.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          194
+        ]
+      },
+      "protected_edge_allowance_pixels": 57,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "f897076235b4d4596bba90aa34671140c4cb9d39a397a67370fcf4a5116dc8bb",
+      "protected_sha256": "3d20befe07bff10f8d1b2be71f2dd94d7038b88868d9f9f071a20d428fc36595",
+      "removal_sha256": "7835cf794bb37f9935ead0d52d09432e815dae105704a65ab37078f5ab9de8ca",
+      "expected_rgba_sha256": "cf4afe01aede3a055b3bca28078f274ca6aa9e24db5650ba5deabd3207261ce0"
+    },
+    "declaration.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Upper metallic outline reaches the canvas edge; left and right rims are asymmetric and the lower black rim transitions into a broad shadow. No safe full closed outer-metal annotation was established.",
+      "regions": [
+        [
+          200,
+          0,
+          290,
+          36
+        ],
+        [
+          17,
+          216,
+          56,
+          286
+        ],
+        [
+          449,
+          218,
+          499,
+          282
+        ],
+        [
+          218,
+          442,
+          294,
+          490
+        ]
+      ],
+      "original_sha256": "c6110dc612035ce5ddf5f23a9b818514d69f5dd9be2e7a99dbd4ec6d5e2dd061",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "bcb5d462bb9d7a18ed42ace9f24bbacbc8a9923f516774afec62b473d96474c4"
+    },
+    "expenses.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          194
+        ]
+      },
+      "protected_edge_allowance_pixels": 57,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "3d7aae70443a505251109fdb1cde535a06ef0ac4e1ea4399f0d4ad071ecd8f2b",
+      "protected_sha256": "3d20befe07bff10f8d1b2be71f2dd94d7038b88868d9f9f071a20d428fc36595",
+      "removal_sha256": "7835cf794bb37f9935ead0d52d09432e815dae105704a65ab37078f5ab9de8ca",
+      "expected_rgba_sha256": "bf456b5f323a03686f7914bed7e9e101c8419048cf52f9b8907ee861e79afe12"
+    },
+    "fields.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Top glossy ring meets the source boundary; the left/right/bottom outer rim has unequal margins. A fitted circle could remove top highlights or retain an unrelated white strip.",
+      "regions": [
+        [
+          202,
+          0,
+          300,
+          36
+        ],
+        [
+          17,
+          216,
+          56,
+          286
+        ],
+        [
+          453,
+          218,
+          500,
+          282
+        ],
+        [
+          216,
+          443,
+          298,
+          495
+        ]
+      ],
+      "original_sha256": "11b5d9c51d15c8548f2b0d93d6bccc46dae58408f4c91f0ad337677424ceac4b",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "d080a28469e34b7da6e48f3162701a3fd018a5e34a9847f737684c8723ffc9c6"
+    },
+    "income.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          194
+        ]
+      },
+      "protected_edge_allowance_pixels": 57,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "189925a85e32f8bfa65f539f432b657ffa317fb401fbd2bd7d6e1487d6308da5",
+      "protected_sha256": "3d20befe07bff10f8d1b2be71f2dd94d7038b88868d9f9f071a20d428fc36595",
+      "removal_sha256": "7835cf794bb37f9935ead0d52d09432e815dae105704a65ab37078f5ab9de8ca",
+      "expected_rgba_sha256": "01806835eb04708478a6a70d0c790e3f60fc905145c16c91f0ac47c25c194001"
+    },
+    "invoice_documents.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          195
+        ]
+      },
+      "protected_edge_allowance_pixels": 47,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "d08d87112f1cf158e28be1b11f8f0a1ede2a5465fe277a3d109eb7580bc56af9",
+      "protected_sha256": "5abd378f9eeae9507a2ac826645de78ac3a5540d2e9e505959fe56c2036bc7e6",
+      "removal_sha256": "364304a72a6dfa0037c8a5215f715f50c2876cb68a4f861967a80b9b081b3cb9",
+      "expected_rgba_sha256": "f92e3403079f9f1816c7819aff3a14ae162c70d18002708774e3abf17d4ccc98"
+    },
+    "plant_protection.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255,
+          247.5
+        ],
+        "radii": [
+          225.5,
+          229
+        ]
+      },
+      "protected_edge_allowance_pixels": 0,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "ed86e40141a02002676d6501213b1afedf62b6f2d49abe4782f5de5e4d419139",
+      "protected_sha256": "c67edd01ae0a894988ae1d6ff1f845e1d91754983d745ce955956ecb8c6db28f",
+      "removal_sha256": "799481abda8fd6eb37b16d5d3d1a4a6ceac85914a6feb6d52d48f4dfae2b2d05",
+      "expected_rgba_sha256": "0aaae22957b0789fd43c21ada229f620db9ede085bc7398c873427fad663d9fe"
+    },
+    "producer.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Narrow detached upper arc and metallic trim are not separable with confidence at y=0..12. Removing that arc without owner interpretation may remove valid highlight pixels and alter centering.",
+      "regions": [
+        [
+          188,
+          0,
+          306,
+          34
+        ],
+        [
+          12,
+          214,
+          55,
+          282
+        ],
+        [
+          443,
+          214,
+          495,
+          286
+        ],
+        [
+          210,
+          444,
+          294,
+          492
+        ]
+      ],
+      "original_sha256": "0839783f9e34a681fc7df74960b5ea11c94814a425c89d857c3db992d9d1b81c",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "ca233bf4b3563fd15663630cbfd3c1de6a16034794237d28d9000f5a52ebb7bb"
+    },
+    "products.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Green seal protrudes across the lower-right ring (x=340..477,y=305..436); left/right exterior also approaches the canvas. Its shadow/outline versus disposable white cannot be represented safely by a badge-only mask.",
+      "regions": [
+        [
+          339,
+          305,
+          479,
+          436
+        ],
+        [
+          0,
+          194,
+          47,
+          276
+        ],
+        [
+          468,
+          187,
+          512,
+          285
+        ],
+        [
+          195,
+          0,
+          288,
+          37
+        ]
+      ],
+      "original_sha256": "e007c5b4c76319eca8273b0a4f129124be36ac2d6b6cb1fe171737ca3777b026",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "c0e71139ebbcc9aad8daa89531fd1664f8d5dc5af8df8ffeabd4770b887b26d8"
+    },
+    "sales.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          201.5,
+          205
+        ]
+      },
+      "protected_edge_allowance_pixels": 40,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "d084336012eaa99ca20d93724138773338dfa471a0f2b76ba00324781b2745ac",
+      "protected_sha256": "7cae35636d6f49bb62c2cb3bd2ded1bfab90e27627bdcaf75dbc421734a53946",
+      "removal_sha256": "4629599e3d832710d75b0e3f83abca82469640b4835506e3ffcbe86f4a087296",
+      "expected_rgba_sha256": "93e7dca58403e44b4b7398f6f66655ad9d7b81a195ccb4e35246258138d821ff"
+    },
+    "search.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "The lower edge contains dark rim and a second dark shadow band (y=482..495); bright metallic trim at x=488..491 and the left rim have different outlines. The correct retained lower contour remains ambiguous.",
+      "regions": [
+        [
+          213,
+          472,
+          298,
+          507
+        ],
+        [
+          475,
+          218,
+          503,
+          288
+        ],
+        [
+          9,
+          216,
+          40,
+          286
+        ],
+        [
+          217,
+          0,
+          289,
+          34
+        ]
+      ],
+      "original_sha256": "451f9cb8d131f77db1c3671fd850b1f8cacfbfc87a8128f999541454989bf5f5",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "d81da908aa3093e1a2fcd71c65fc5bd4a039ea8d19c9790707ebb2753b0bd4cc"
+    },
+    "settings.png": {
+      "status": "NEEDS OWNER REVIEW",
+      "reason": "Warm metallic rim and dark outer line transition into gray shadow at bottom y=481..496 and right x=487..497. Top pale metal resembles the white surround; no independently resolved closed cut line.",
+      "regions": [
+        [
+          210,
+          468,
+          300,
+          507
+        ],
+        [
+          476,
+          217,
+          505,
+          289
+        ],
+        [
+          7,
+          216,
+          41,
+          286
+        ],
+        [
+          217,
+          0,
+          291,
+          37
+        ]
+      ],
+      "original_sha256": "53454fda6ee6f961db7db9f8da5d2e1363b5680dcde714c8dafef46b87d24d1e",
+      "protected_sha256": "d8acccafa1fdcf03f3bb9112f5f2f30ad1558e446d5c12ec5644fc0d53c1e58b",
+      "removal_sha256": "65795a5b91030a2a433dae510d1edf494082a9cfa1153cd94f3797759f68f257",
+      "expected_rgba_sha256": "64241970ee32a3594a6a2aa3bcd19258566cb21f143d74f05909194169b31a31"
+    },
+    "suppliers_buyers.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          194
+        ]
+      },
+      "protected_edge_allowance_pixels": 57,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "495a1980ac4d99d8c2deb9fb33f5ef8d224eabb27c253565eedb2c29ac733a77",
+      "protected_sha256": "3d20befe07bff10f8d1b2be71f2dd94d7038b88868d9f9f071a20d428fc36595",
+      "removal_sha256": "7835cf794bb37f9935ead0d52d09432e815dae105704a65ab37078f5ab9de8ca",
+      "expected_rgba_sha256": "74f82db60bdfb2ddc974d0f5fd5d4f1221c7e00d3b59f67a6d0fa005c52cd4d0"
+    },
+    "warehouse.png": {
+      "status": "VALIDATED_SOURCE",
+      "boundary": {
+        "center": [
+          255.5,
+          247.5
+        ],
+        "radii": [
+          191.5,
+          194
+        ]
+      },
+      "protected_edge_allowance_pixels": 57,
+      "reason": "Separately inspected metal outline; no outward artwork beyond the guard.",
+      "original_sha256": "d8031a659323715143cbcf0303b26660354f508ecb7f21c1575df7e1773628fc",
+      "protected_sha256": "3d20befe07bff10f8d1b2be71f2dd94d7038b88868d9f9f071a20d428fc36595",
+      "removal_sha256": "7835cf794bb37f9935ead0d52d09432e815dae105704a65ab37078f5ab9de8ca",
+      "expected_rgba_sha256": "14876a1b1a7a26afd3de200bdbaac0cbed89a352749fb32a8ec275f60dba573b"
+    }
+  },
+  "annotations_sha256": "42afc34217e26bf6c513eaa725d73465a163f0a4e9228442d7218d0212c74891",
+  "out_of_scope_sha256": {
+    "annual_report.png": "5ecdbd1f8c711d918cbd59fc24711ba6ee489f5c9e18db341bf147317d8c4a47",
+    "calendar.png": "e51c7742d7c05828264a99714c20dae4567152b89172984a81acdd67ae3276a0",
+    "dark_mode.png": "095d7b980d9994332b20c027e6b549706a92d8293b4837a8265b3a278c0479a7",
+    "dashboard.png": "b60ccf383bbe2040a7f8c28283dd89d6e6a04df8a789cf2208a81e5d7f830866",
+    "data_quality.png": "3ec444e89d2bd63ac8e2519f45952f1dca43fabcdfddcdb4e154c3fa7b84d435",
+    "field_costs.png": "015c66bd32aebe450cc2293865d920b0a5ffb2f589ab2aa4e129579c3ec499fe",
+    "field_profile.png": "96dbb58fcdf98e5fe71abd1361e3990895ccf9143be55bb156552bc7ee06c13e",
+    "finance.png": "4e8b91feb5858d709a90f075876498ffacbcd7ab9b5fd1653d5442b496f0d99e",
+    "irrigation_fertilization.png": "d7fd365f919b417254b5467a3c612a8e164e851862201a085f2e09a5d96465a4",
+    "labor.png": "79888a966f1c6d25b4536015af74ff9e800cbd920d1d071c5b35ff20aec9c07b",
+    "light_mode.png": "124de838736539c94578ab14c2865d806b8fba9acc51901dac30b8077e88bf45",
+    "machinery_maintenance.png": "0006bc2967defc527b8802cb72f87883c6c22c75a32db82ea5624b264af51032",
+    "package_preview.png": "1925fcaa3eacb1af4c04bd980b1cfe83be6f3479559d1d9218e3d81b2d349e69",
+    "partners.png": "43793eeda59ab5d0c1f021aaa67d4ffe7f036d5492f186e2212f7004d17580bc",
+    "production.png": "450681aa2cbf88fe077199614144406d87de1b78b873845210dbdd698cbfb9d9",
+    "reports.png": "7fb4e4d4c78acd2b227d246f929131ee064ec58c4576b8a68da90ad0dffd591e",
+    "tree_planting.png": "4ac9350f66b94090199ea8dc41b0975fbd7e6364c8023c4a5dfdac9e439f1a2e",
+    "warehouse_supplies.png": "e8306896e05ec5a86103a043d6d5b985179c498e1ddf823424642c5a9147fc11",
+    "year_lock.png": "f2be63889cae3c0957e8a878655de32bdb5c53f9e892119b8e1d55cb650753c7"
+  }
+}

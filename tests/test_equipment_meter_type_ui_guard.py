@@ -24,6 +24,7 @@ class EquipmentMeterTypeUiGuardTests(unittest.TestCase):
         self.addCleanup(self.tempdir.cleanup)
         self.db = Database(Path(self.tempdir.name) / "phase11c.db")
         self.page = EquipmentPage(self.db)
+        self.addCleanup(self.page.deleteLater)
         self.addCleanup(self.page.close)
 
         self.page.name.setText("Τρακτέρ UI")

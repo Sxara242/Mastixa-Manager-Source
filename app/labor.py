@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .date_preferences import format_iso_date, refresh_date_inputs
+
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -20,18 +24,91 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .numeric_inputs import NumericDoubleSpinBox
 from .crud import CrudPage
+from .localized_messages import _language, _text
 from .database import Database
 from .ui_helpers import table_widget
 from .widgets import date_input
-from .year_lock import is_year_locked, warn_locked_year
+from .year_lock import warn_locked_year
+from .year_context_ui import working_year_mutation
+from .year_context import is_year_write_blocked as is_year_locked, working_context_date
 
 
 class LaborPage(CrudPage):
     """Μητρώο εργαζομένων και ημερολόγιο εργατικών ανά αγροτεμάχιο."""
 
+
+    def _composed_text(self, widget, template, **values):
+        if not hasattr(self, "_composed_specs"):
+            self._composed_specs = {}
+            controller = _language()
+            if controller is not None:
+                controller.language_changed.connect(self._refresh_composed_text)
+        if isinstance(widget, QGroupBox):
+            widget.setProperty("mastixaI18nSkipTitle", True)
+        else:
+            widget.setProperty("mastixaI18nSkipText", True)
+            widget.setTextFormat(widget.textFormat().PlainText)
+        self._composed_specs[widget] = (template, values)
+        self._refresh_composed_text()
+
+    def _refresh_composed_text(self, *_args):
+        for widget, (template, values) in self._composed_specs.items():
+            text = _text(template, **{key: value() if callable(value) else value
+                                     for key, value in values.items()})
+            if isinstance(widget, QGroupBox):
+                widget.setTitle(text)
+            else:
+                widget.setText(text)
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('entry_table', 'worker_table'):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_worker_id: int | None = None
         self.selected_entry_id: int | None = None
@@ -149,7 +226,7 @@ class LaborPage(CrudPage):
         self.entry_box = QGroupBox("Νέα καταχώρηση εργατικών")
         entry_form = QFormLayout(self.entry_box)
 
-        self.work_date = date_input()
+        self.work_date = date_input(self.db, selection="selected_entry_id")
         self.field = QComboBox()
         self.worker = QComboBox()
         self.worker.currentIndexChanged.connect(
@@ -286,7 +363,7 @@ class LaborPage(CrudPage):
 
     @staticmethod
     def _hours_spin() -> QDoubleSpinBox:
-        widget = QDoubleSpinBox()
+        widget = NumericDoubleSpinBox()
         widget.setRange(0, 99999)
         widget.setDecimals(2)
         widget.setSingleStep(0.5)
@@ -295,7 +372,7 @@ class LaborPage(CrudPage):
 
     @staticmethod
     def _money_spin() -> QDoubleSpinBox:
-        widget = QDoubleSpinBox()
+        widget = NumericDoubleSpinBox()
         widget.setRange(0, 999999)
         widget.setDecimals(2)
         widget.setSingleStep(0.50)
@@ -543,25 +620,7 @@ class LaborPage(CrudPage):
         self.worker_filter.blockSignals(False)
 
     def _refresh_years(self) -> None:
-        current = self.year_filter.currentData()
-        rows = self.db.query(
-            """
-            SELECT DISTINCT SUBSTR(work_date,1,4) AS year
-            FROM labor_entries
-            WHERE work_date IS NOT NULL AND work_date <> ''
-            ORDER BY year DESC
-            """
-        )
-
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-        self.year_filter.addItem("Όλα τα έτη", None)
-        for row in rows:
-            if row["year"]:
-                self.year_filter.addItem(row["year"], row["year"])
-        index = self.year_filter.findData(current)
-        self.year_filter.setCurrentIndex(index if index >= 0 else 0)
-        self.year_filter.blockSignals(False)
+        populate_year_filter(self, self.year_filter, strings=True)
 
     def _worker_selection_changed(self, _index: int) -> None:
         if self.selected_entry_id is not None:
@@ -579,6 +638,7 @@ class LaborPage(CrudPage):
         self.calculated_cost.setText(self._money(cost))
 
     # ---------------- Worker CRUD ----------------
+    @working_year_mutation(selection="selected_worker_id", reset="clear_worker_form")
     def save_worker(self) -> None:
         name = self.worker_name.text().strip()
 
@@ -699,6 +759,7 @@ class LaborPage(CrudPage):
         self.worker_delete_button.setEnabled(False)
         self.worker_table.clearSelection()
 
+    @working_year_mutation()
     def delete_worker(self) -> None:
         if self.selected_worker_id is None:
             return
@@ -783,6 +844,8 @@ class LaborPage(CrudPage):
 
     def save_entry(self) -> None:
         if self._locked_for_save():
+            if self.selected_entry_id is None:
+                self.clear_entry_form()
             return
 
         worker_id = self.worker.currentData()
@@ -919,14 +982,12 @@ class LaborPage(CrudPage):
         )
 
         if locked:
-            self.entry_box.setTitle(
-                f"Προβολή εργατικών — ΚΛΕΙΔΩΜΕΝΟ {year}"
-            )
+            self._composed_text(self.entry_box, 'Προβολή εργατικών — ΚΛΕΙΔΩΜΕΝΟ {year}', year=year)
             self.entry_save_button.setText("Κλειδωμένο")
             self.entry_save_button.setEnabled(False)
             self.entry_delete_button.setEnabled(False)
         else:
-            self.entry_box.setTitle("Επεξεργασία εργατικών")
+            self._composed_text(self.entry_box, 'Επεξεργασία εργατικών')
             self.entry_save_button.setText("Αποθήκευση")
             self.entry_save_button.setEnabled(True)
             self.entry_delete_button.setEnabled(True)
@@ -935,7 +996,7 @@ class LaborPage(CrudPage):
 
     def clear_entry_form(self) -> None:
         self.selected_entry_id = None
-        self.work_date.setDate(QDate.currentDate())
+        self.work_date.setDate(working_context_date(self.db))
         self._refresh_fields()
         self.field.setCurrentIndex(0)
         self._refresh_workers()
@@ -946,7 +1007,7 @@ class LaborPage(CrudPage):
         self.entry_notes.clear()
         self._update_calculated_cost()
 
-        self.entry_box.setTitle("Νέα καταχώρηση εργατικών")
+        self._composed_text(self.entry_box, 'Νέα καταχώρηση εργατικών')
         self.entry_save_button.setText("Προσθήκη")
         self.entry_save_button.setEnabled(True)
         self.entry_cancel_button.setEnabled(False)
@@ -977,6 +1038,7 @@ class LaborPage(CrudPage):
         self.refresh()
 
     def refresh(self, *_args) -> None:
+        refresh_date_inputs(self, self.db)
         self._ensure_schema()
         self._refresh_fields()
         self._refresh_workers()
@@ -1036,7 +1098,7 @@ class LaborPage(CrudPage):
             total_cost += float(row["cost"] or 0)
 
             values = [
-                row["work_date"] or "",
+                format_iso_date(row["work_date"], self.db),
                 row["field_name"] or "Γενική",
                 row["worker_name"] or "",
                 row["work_type"] or "",
@@ -1053,6 +1115,8 @@ class LaborPage(CrudPage):
                         Qt.ItemDataRole.UserRole,
                         int(row["id"]),
                     )
+                if column == 1 and not row["field_name"]:
+                    self._set_body(item, "Γενική")
                 self.entry_table.setItem(
                     row_index,
                     column,
@@ -1088,6 +1152,8 @@ class LaborPage(CrudPage):
                         Qt.ItemDataRole.UserRole,
                         int(row["id"]),
                     )
+                if column == 4:
+                    self._set_body(item, "Ενεργός" if active else "Ανενεργός")
                 self.worker_table.setItem(
                     row_index,
                     column,

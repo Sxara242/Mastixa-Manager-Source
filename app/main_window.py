@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .localized_messages import _message
+
 
 from .icon_theme import install_icon_theme
 from .appearance_theme import ThemeController
@@ -29,6 +31,7 @@ from .activities import ActivitiesPage
 from .alerts import AlertsPage
 from .audit import AuditPage
 from .backup_manager import BackupError, BackupManager
+from .backup_error_ui import show_backup_error
 from .database import BASE_DIR, Database
 from .dashboard import DashboardPage
 from .data_export import DataExportPage
@@ -65,6 +68,8 @@ APP_DIR = Path(__file__).resolve().parent
 DOWN_ARROW_ICON = (APP_DIR / "assets" / "chevron_down.png").as_posix()
 SPIN_UP_ICON = (APP_DIR / "assets" / "spin_up.svg").as_posix()
 SPIN_DOWN_ICON = (APP_DIR / "assets" / "spin_down.svg").as_posix()
+CROP_SPIN_UP_ICON = (APP_DIR / "assets" / "crop_spin_up.svg").as_posix()
+CROP_SPIN_DOWN_ICON = (APP_DIR / "assets" / "crop_spin_down.svg").as_posix()
 APP_ICON = APP_DIR / "assets" / "icons" / "mastixa_menu" / "dashboard.png"
 logger = get_logger(__name__)
 
@@ -181,6 +186,23 @@ QCheckBox::indicator {
 
 QLabel#pageTitle { font-size: 27px; font-weight: 700; color: #1F5A43; }
 QLabel#pageSubtitle { color: #6A7A72; margin-bottom: 12px; }
+
+QFrame#yearContextBar[yearContextState="active"] {
+    background: #E8F1EC;
+    color: #21483A;
+    border-bottom: 1px solid #B7CEC1;
+}
+QFrame#yearContextBar[yearContextState="active"] QLabel {
+    color: #21483A;
+}
+QFrame#yearContextBar[yearContextState="correction"] {
+    background: #7C2D12;
+    color: white;
+    border-bottom: 2px solid #FDBA74;
+}
+QFrame#yearContextBar[yearContextState="correction"] QLabel {
+    color: white;
+}
 QGroupBox {
     background: white;
     border: 1px solid #D6E0DA;
@@ -212,6 +234,8 @@ QComboBox,
 QDateEdit {
     padding-right: 48px;
 }
+
+QDateEdit { min-width: 148px; }
 
 QDoubleSpinBox {
     padding-right: 7px;
@@ -277,6 +301,40 @@ QDoubleSpinBox::down-arrow {
     image: none;
 }
 
+QSpinBox[mastixaCropStepControl="true"] {
+    padding-right: 30px;
+}
+QSpinBox[mastixaCropStepControl="true"]::up-button,
+QSpinBox[mastixaCropStepControl="true"]::down-button {
+    subcontrol-origin: border;
+    width: 26px;
+    height: 16px;
+    border-left: 1px solid #35664F;
+    background: #3F765B;
+}
+QSpinBox[mastixaCropStepControl="true"]::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 5px;
+}
+QSpinBox[mastixaCropStepControl="true"]::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 5px;
+}
+QSpinBox[mastixaCropStepControl="true"]::up-button:hover,
+QSpinBox[mastixaCropStepControl="true"]::down-button:hover {
+    background: #315F49;
+}
+QSpinBox[mastixaCropStepControl="true"]::up-arrow {
+    image: url("__CROP_SPIN_UP_ICON__");
+    width: 12px;
+    height: 8px;
+}
+QSpinBox[mastixaCropStepControl="true"]::down-arrow {
+    image: url("__CROP_SPIN_DOWN_ICON__");
+    width: 12px;
+    height: 8px;
+}
+
 QComboBox QAbstractItemView {
     background-color: white;
     color: #24312B;
@@ -286,6 +344,12 @@ QComboBox QAbstractItemView {
 
 QComboBox QAbstractItemView::item {
     color: #24312B;
+    padding: 6px 10px;
+}
+QComboBox QAbstractItemView::item:hover:enabled,
+QComboBox QAbstractItemView::item:selected:enabled {
+    background: #3F765B;
+    color: white;
 }
 QScrollArea#activitiesScroll {
     background: #f5f6f3;
@@ -443,6 +507,8 @@ QHeaderView::section {
 STYLESHEET = STYLESHEET.replace("__DOWN_ARROW_ICON__", DOWN_ARROW_ICON)
 STYLESHEET = STYLESHEET.replace("__SPIN_UP_ICON__", SPIN_UP_ICON)
 STYLESHEET = STYLESHEET.replace("__SPIN_DOWN_ICON__", SPIN_DOWN_ICON)
+STYLESHEET = STYLESHEET.replace("__CROP_SPIN_UP_ICON__", CROP_SPIN_UP_ICON)
+STYLESHEET = STYLESHEET.replace("__CROP_SPIN_DOWN_ICON__", CROP_SPIN_DOWN_ICON)
 
 
 
@@ -870,47 +936,90 @@ class MainWindow(QMainWindow):
         self._apply_context_help()
 
     def _build_recording_tabs(self) -> None:
-        for group_index, (group_name, entries) in enumerate(
-            self.recording_groups
-        ):
-            inner_tabs = QTabWidget()
-            inner_tabs.setObjectName("recordingInnerTabs")
-            inner_tabs.setDocumentMode(True)
-            inner_tabs.setMovable(False)
-            inner_tabs.setTabsClosable(False)
-            inner_tabs.setIconSize(QSize(16, 16))
+        signature = tuple(
+            (group_name, tuple(entries))
+            for group_name, entries in self.recording_groups
+        )
+        cached = getattr(self, "_recording_tabs_cache", None)
 
-            page_indices: list[int] = []
-
-            for label, page_index in entries:
-                page = self.pages[page_index][1]
-                icon = self._tab_icon_for_page(page_index)
-                inner_tabs.addTab(page, icon, label)
-                page_indices.append(page_index)
-
-            inner_tabs.currentChanged.connect(
-                self._recording_inner_tab_changed
+        if cached is not None and cached["signature"] == signature:
+            cached_tabs = cached["tabs"]
+            cached_page_indices = cached["page_indices"]
+            self._recording_group_tabs.extend(cached_tabs)
+            self._recording_group_page_indices.extend(
+                [list(indices) for indices in cached_page_indices]
             )
 
-            remembered_inner = self._last_recording_tab_by_group.get(
-                group_index,
-                0,
-            )
+            for group_index, (group_name, _entries) in enumerate(
+                self.recording_groups
+            ):
+                inner_tabs = cached_tabs[group_index]
+                remembered_inner = self._last_recording_tab_by_group.get(
+                    group_index,
+                    0,
+                )
+                if remembered_inner >= inner_tabs.count():
+                    remembered_inner = 0
+                if inner_tabs.count():
+                    inner_tabs.setCurrentIndex(remembered_inner)
 
-            if remembered_inner >= inner_tabs.count():
-                remembered_inner = 0
+                self.tabs.addTab(
+                    inner_tabs,
+                    self._standard_icon("SP_DirOpenIcon"),
+                    group_name,
+                )
+        else:
+            for group_index, (group_name, entries) in enumerate(
+                self.recording_groups
+            ):
+                inner_tabs = QTabWidget()
+                inner_tabs.setObjectName("recordingInnerTabs")
+                inner_tabs.setProperty("mastixaHiddenNavigation", hasattr(self, "desktop_navigation"))
+                inner_tabs.setDocumentMode(True)
+                inner_tabs.setMovable(False)
+                inner_tabs.setTabsClosable(False)
+                inner_tabs.setIconSize(QSize(16, 16))
 
-            if inner_tabs.count():
-                inner_tabs.setCurrentIndex(remembered_inner)
+                page_indices: list[int] = []
 
-            self._recording_group_tabs.append(inner_tabs)
-            self._recording_group_page_indices.append(page_indices)
+                for label, page_index in entries:
+                    page = self.pages[page_index][1]
+                    icon = self._tab_icon_for_page(page_index)
+                    inner_tabs.addTab(page, icon, label)
+                    page_indices.append(page_index)
 
-            self.tabs.addTab(
-                inner_tabs,
-                self._standard_icon("SP_DirOpenIcon"),
-                group_name,
-            )
+                inner_tabs.currentChanged.connect(
+                    self._recording_inner_tab_changed
+                )
+
+                remembered_inner = self._last_recording_tab_by_group.get(
+                    group_index,
+                    0,
+                )
+
+                if remembered_inner >= inner_tabs.count():
+                    remembered_inner = 0
+
+                if inner_tabs.count():
+                    inner_tabs.setCurrentIndex(remembered_inner)
+
+                self._recording_group_tabs.append(inner_tabs)
+                self._recording_group_page_indices.append(page_indices)
+
+                self.tabs.addTab(
+                    inner_tabs,
+                    self._standard_icon("SP_DirOpenIcon"),
+                    group_name,
+                )
+
+            self._recording_tabs_cache = {
+                "signature": signature,
+                "tabs": tuple(self._recording_group_tabs),
+                "page_indices": tuple(
+                    tuple(indices)
+                    for indices in self._recording_group_page_indices
+                ),
+            }
 
         group_index = self._last_recording_group
 
@@ -926,6 +1035,7 @@ class MainWindow(QMainWindow):
         ):
             inner_tabs = QTabWidget()
             inner_tabs.setObjectName("recordingInnerTabs")
+            inner_tabs.setProperty("mastixaHiddenNavigation", hasattr(self, "desktop_navigation"))
             inner_tabs.setDocumentMode(True)
             inner_tabs.setMovable(False)
             inner_tabs.setTabsClosable(False)
@@ -1218,11 +1328,12 @@ class MainWindow(QMainWindow):
         try:
             self.backup_manager.create_or_update_daily_backup()
         except BackupError as exc:
-            QMessageBox.warning(
-                self,
+            show_backup_error(
+                self, "warning",
                 "Αυτόματο Backup",
+                exc,
                 "Δεν ήταν δυνατή η δημιουργία του αυτόματου ημερήσιου "
-                f"backup κατά την εκκίνηση.\n\n{exc}",
+                "backup κατά την εκκίνηση.\n\n{error}",
             )
             return
 
@@ -1247,11 +1358,12 @@ class MainWindow(QMainWindow):
         try:
             self.backup_manager.create_or_update_daily_backup()
         except BackupError as exc:
-            answer = QMessageBox.warning(
-                self,
+            answer = show_backup_error(
+                self, "warning",
                 "Αποτυχία αυτόματου Backup",
+                exc,
                 "Το αυτόματο backup κατά το κλείσιμο απέτυχε.\n\n"
-                f"{exc}\n\n"
+                "{error}\n\n"
                 "Θέλεις να κλείσεις την εφαρμογή χωρίς νέο backup;",
                 QMessageBox.StandardButton.Yes
                 | QMessageBox.StandardButton.No,
@@ -1301,7 +1413,7 @@ class ApplicationController(QObject):
         try:
             target = self.profiles.get(profile_id)
         except ProfileError as exc:
-            QMessageBox.warning(self.window, "Ενεργοποίηση προφίλ", str(exc))
+            _message(self.window, 'warning', 'Ενεργοποίηση προφίλ', '{error}', error=str(exc))
             return
         if target.is_active:
             return
@@ -1316,11 +1428,12 @@ class ApplicationController(QObject):
                 old_window.backup_manager = old_window._build_backup_manager()
                 old_window.backup_manager.create_or_update_daily_backup()
             except BackupError as exc:
-                answer = QMessageBox.warning(
-                    old_window,
+                answer = show_backup_error(
+                    old_window, "warning",
                     "Backup πριν την αλλαγή προφίλ",
+                    exc,
                     "Δεν δημιουργήθηκε backup του τρέχοντος προφίλ.\n\n"
-                    f"{exc}\n\nΝα συνεχιστεί η αλλαγή προφίλ;",
+                    "{error}\n\nΝα συνεχιστεί η αλλαγή προφίλ;",
                     QMessageBox.StandardButton.Yes
                     | QMessageBox.StandardButton.No,
                     QMessageBox.StandardButton.No,
@@ -1340,12 +1453,7 @@ class ApplicationController(QObject):
                 self.language.sync_active_profile()
             except ProfileError:
                 pass
-            QMessageBox.critical(
-                old_window,
-                "Ενεργοποίηση προφίλ",
-                "Δεν ήταν δυνατή η ενεργοποίηση του προφίλ.\n\n"
-                f"{exc}",
-            )
+            _message(old_window, 'critical', 'Ενεργοποίηση προφίλ', 'Δεν ήταν δυνατή η ενεργοποίηση του προφίλ.\n\n{exc}', exc=exc)
             return
 
         self.window = new_window

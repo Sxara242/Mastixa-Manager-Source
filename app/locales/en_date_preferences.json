@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Μορφή ημερομηνίας": "Date format",
+    "Η μορφή αλλάζει αμέσως και αποθηκεύεται ξεχωριστά για κάθε προφίλ. Οι ημερομηνίες παραμένουν εσωτερικά αποθηκευμένες σε ασφαλή μορφή ISO.": "The format changes immediately and is saved separately for each profile. Dates remain stored internally in a safe ISO format.",
+    "DD/MM/YYYY (προαιρετικό)": "DD/MM/YYYY (optional)",
+    "MM/DD/YYYY (προαιρετικό)": "MM/DD/YYYY (optional)",
+    "YYYY-MM-DD (προαιρετικό)": "YYYY-MM-DD (optional)",
+    "Η ημερομηνία πρέπει να έχει μορφή": "Date must use format"
+  }
+}

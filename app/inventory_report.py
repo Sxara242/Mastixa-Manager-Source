@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from .database import Database
 from .language import tr
+from .localized_messages import _language, _message, _text
 from .ui_helpers import compact_decimal, table_widget
 
 
@@ -54,14 +55,14 @@ class InventoryReportPage(QWidget):
         layout.setSpacing(12)
         scroll.setWidget(content)
 
-        title = QLabel("Αναφορά Αποθήκης & Αξίας Stock")
+        title = QLabel("Αναφορά Αποθήκης & Αξίας Αποθέματος")
         title.setObjectName("pageTitle")
         title.setMinimumHeight(42)
         layout.addWidget(title)
 
         subtitle = QLabel(
             "Τρέχον απόθεμα, αγορές, καταναλώσεις, μέση τιμή αγοράς και "
-            "εκτιμώμενη αξία stock ανά είδος"
+            "εκτιμώμενη αξία αποθέματος ανά είδος"
         )
         subtitle.setObjectName("pageSubtitle")
         subtitle.setWordWrap(True)
@@ -71,6 +72,8 @@ class InventoryReportPage(QWidget):
         filters = QHBoxLayout(filters_box)
 
         self.category_filter = QComboBox()
+        # String itemData values here are database categories, not UI enums.
+        self.category_filter.setProperty("mastixaI18nSkipItems", True)
         self.category_filter.currentIndexChanged.connect(self.refresh)
 
         self.stock_filter = QComboBox()
@@ -91,7 +94,7 @@ class InventoryReportPage(QWidget):
 
         filters.addWidget(QLabel("Κατηγορία"))
         filters.addWidget(self.category_filter)
-        filters.addWidget(QLabel("Stock"))
+        filters.addWidget(QLabel("Απόθεμα"))
         filters.addWidget(self.stock_filter)
         filters.addWidget(self.search, 1)
         filters.addWidget(self.export_button)
@@ -102,10 +105,10 @@ class InventoryReportPage(QWidget):
         metrics = QGridLayout(metrics_box)
 
         self.items_metric = self._metric("Είδη")
-        self.stock_items_metric = self._metric("Είδη με stock")
+        self.stock_items_metric = self._metric("Είδη με απόθεμα")
         self.low_metric = self._metric("Χαμηλά / εξαντλημένα")
         self.purchase_metric = self._metric("Αξία παραλαβών")
-        self.stock_value_metric = self._metric("Εκτιμώμενη αξία stock")
+        self.stock_value_metric = self._metric("Εκτιμώμενη αξία αποθέματος")
         self.consumed_metric = self._metric("Καταναλώσεις")
 
         cards = (
@@ -134,12 +137,12 @@ class InventoryReportPage(QWidget):
                 "Είδος",
                 "Κατηγορία",
                 "Μονάδα",
-                "Τρέχον stock",
+                "Τρέχον απόθεμα",
                 "Ελάχιστο",
                 "Παραλαβές",
                 "Καταναλώσεις",
                 "Μέση τιμή αγοράς",
-                "Αξία stock",
+                "Αξία αποθέματος",
                 "Κατάσταση",
             ]
         )
@@ -151,15 +154,23 @@ class InventoryReportPage(QWidget):
 
         note = QLabel(
             "Η «Μέση τιμή αγοράς» υπολογίζεται σταθμισμένα από τις Παραλαβές "
-            "που έχουν καταχωρημένη τιμή μονάδας. Η «Αξία stock» είναι "
-            "Τρέχον stock × Μέση τιμή αγοράς και αποτελεί εκτίμηση."
+            "που έχουν καταχωρημένη τιμή μονάδας. Η «Αξία αποθέματος» είναι "
+            "Τρέχον απόθεμα × Μέση τιμή αγοράς και αποτελεί εκτίμηση."
         )
         note.setWordWrap(True)
         note.setObjectName("pageSubtitle")
         layout.addWidget(note)
 
         layout.addStretch()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_localized_values)
         self.refresh()
+
+    def _refresh_localized_values(self, *_args) -> None:
+        self.category_filter.setItemText(0, tr("Όλες"))
+        for index, row in enumerate(self._rows_cache):
+            self.table.item(index, 9).setText(tr(row["status"]))
 
     @staticmethod
     def _metric(caption: str):
@@ -214,7 +225,7 @@ class InventoryReportPage(QWidget):
 
         self.category_filter.blockSignals(True)
         self.category_filter.clear()
-        self.category_filter.addItem("Όλες", None)
+        self.category_filter.addItem(tr("Όλες"), None)
 
         if self._table_exists("inventory_items"):
             rows = self.db.query(
@@ -454,7 +465,7 @@ class InventoryReportPage(QWidget):
                     else "—"
                 ),
                 self._money(float(row["stock_value"])),
-                row["status"],
+                tr(row["status"]),
             ]
 
             for c, value in enumerate(display):
@@ -472,7 +483,7 @@ class InventoryReportPage(QWidget):
 
         filename, _ = QFileDialog.getSaveFileName(
             self,
-            "Αποθήκευση Αναφοράς Αποθήκης",
+            _text("Αποθήκευση Αναφοράς Αποθήκης"),
             "inventory_stock_report.csv",
             "CSV (*.csv)",
         )
@@ -498,12 +509,12 @@ class InventoryReportPage(QWidget):
                         "Είδος",
                         "Κατηγορία",
                         "Μονάδα",
-                        "Τρέχον stock",
+                        "Τρέχον απόθεμα",
                         "Ελάχιστο",
                         "Παραλαβές",
                         "Καταναλώσεις",
                         "Μέση τιμή αγοράς",
-                        "Αξία stock",
+                        "Αξία αποθέματος",
                         "Κατάσταση",
                     ]]
                 )
@@ -524,14 +535,12 @@ class InventoryReportPage(QWidget):
                         ]
                     )
 
-            QMessageBox.information(
-                self,
-                "Εξαγωγή CSV",
-                f"Η αναφορά αποθηκεύτηκε:\n{path}",
+            _message(
+                self, "information", "Εξαγωγή CSV",
+                "Η αναφορά αποθηκεύτηκε:\n{path}", path=path,
             )
         except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Σφάλμα εξαγωγής",
-                str(exc),
+            _message(
+                self, "critical", "Σφάλμα εξαγωγής",
+                "{error}", error=str(exc),
             )

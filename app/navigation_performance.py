@@ -25,10 +25,10 @@ def _mark_theme_tree(controller, root: QWidget) -> None:
 def install_navigation_performance() -> None:
     """Avoid repeated full-tree work when already-built pages are shown again.
 
-    The desktop keeps its full dark-theme coverage. A full local-style scan still
-    runs on every actual Light/Dark switch and for genuinely new widgets. Widgets
-    that were already styled in the current theme generation are not rescanned on
-    every QEvent.Show caused by category/tab navigation.
+    The scoped theme controller styles exposed widgets on an actual switch and
+    catches up cached pages on Show in both directions. The legacy controller
+    retains its full-tree scan and generation guard. Already-current widgets
+    are not rescanned on every Show caused by category/tab navigation.
 
     Context help is still applied to every page once at startup. Later navigation
     rescans only the current page after its refresh, which preserves help for
@@ -68,6 +68,8 @@ def install_navigation_performance() -> None:
         _mark_theme_tree(self, root)
 
     def event_filter(self, watched, event):
+        if getattr(self, "_uses_scoped_styles", False):
+            return original_event_filter(self, watched, event)
         if (
             self._theme == "dark"
             and not self._applying

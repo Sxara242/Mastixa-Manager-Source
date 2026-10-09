@@ -1,0 +1,150 @@
+{
+  "schema": 1,
+  "scope": "B2 only; central canonical CRT; no Microsoft code redistributed",
+  "route": "independently-installed-official-x64-redist",
+  "minimum_version": "14.51.36247.0",
+  "official_installer_sha256": "843068991daaa1f73ad9f6239bce4d0f6a07a51f18c37ea2a867e9beca71295c",
+  "official_installer_source": "Visual Studio Community 2026 / VC/Redist/MSVC/14.51.36231/vc_redist.x64.exe",
+  "removed_inputs": [
+    {
+      "destination": "PySide6/MSVCP140.dll",
+      "sha256": "4c667b706893593812cd111b369ba6a77f54d1f1b1ae87cf3bf37692663cfba2",
+      "original_filename": "msvcp140.dll"
+    },
+    {
+      "destination": "PySide6/MSVCP140_1.dll",
+      "sha256": "d419d24b0a76366f5c9d908b0e45fe70e9e9154bb8ad5f3de42070f2337f857b",
+      "original_filename": "msvcp140_1.dll"
+    },
+    {
+      "destination": "PySide6/MSVCP140_2.dll",
+      "sha256": "89917964abb6ca16a260cab258e180c3abc239b5af00eed659d0edf0efdd339c",
+      "original_filename": "msvcp140_2.dll"
+    },
+    {
+      "destination": "PySide6/VCRUNTIME140.dll",
+      "sha256": "f893ae75a1a24eea174d982f94bc80ce2448201eaa919a73c0653a5657685de4",
+      "original_filename": "vcruntime140.dll"
+    },
+    {
+      "destination": "PySide6/VCRUNTIME140_1.dll",
+      "sha256": "48aa2783793ea18ab3c2c71d420d4fff9814e662a1ff810053c6e5250061a716",
+      "original_filename": "vcruntime140_1.dll"
+    },
+    {
+      "destination": "Shapely.libs/msvcp140-90bc62d4947a5878f1dc1057312f3be2.dll",
+      "sha256": "90bc62d4947a5878f1dc1057312f3be2137eb376039f4afda2f64c06353f2198",
+      "original_filename": "msvcp140.dll"
+    },
+    {
+      "destination": "VCRUNTIME140.dll",
+      "sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+      "original_filename": "vcruntime140.dll"
+    },
+    {
+      "destination": "VCRUNTIME140_1.dll",
+      "sha256": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e",
+      "original_filename": "vcruntime140_1.dll"
+    },
+    {
+      "destination": "numpy.libs/msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "sha256": "a4c2229bdc2a2a630acdc095b4d86008e5c3e3bc7773174354f3da4f5beb9cde",
+      "original_filename": "msvcp140.dll"
+    },
+    {
+      "destination": "pyproj.libs/msvcp140-7c26614e1d733892c2deac7e245ce115.dll",
+      "sha256": "7c26614e1d733892c2deac7e245ce115504b1d80592dd0a01b08e3e5a55f89ca",
+      "original_filename": "msvcp140.dll"
+    },
+    {
+      "destination": "shiboken6/MSVCP140.dll",
+      "sha256": "fd4a8c046fa3fea9ca6132f50cf8a56cf1e783b2d3093ba5c85fa063bc6b3845",
+      "original_filename": "msvcp140.dll"
+    },
+    {
+      "destination": "shiboken6/VCRUNTIME140.dll",
+      "sha256": "de617641d82eac15595d2e39394163ac33e49bb032cf2c2ea0044ed39d3675e9",
+      "original_filename": "vcruntime140.dll"
+    },
+    {
+      "destination": "shiboken6/VCRUNTIME140_1.dll",
+      "sha256": "fa577d54bd10a91e52472da784a619da6cf241af45f0a0c48b27e91fa0fe6104",
+      "original_filename": "vcruntime140_1.dll"
+    }
+  ],
+  "import_normalization": [
+    {
+      "destination": "Shapely.libs/geos-ae6efa0782962b98e358f10ea539ae5f.dll",
+      "source_sha256": "094508747b6bb6eb785b2aa67d7899724ce78ee6cc375e7a66e11be3bcf5a08e",
+      "output_sha256": "2c768a1e7b35233676106778f04e37bac4bdf03a2cfac289a8412e5b8f9a4440",
+      "old_import": "msvcp140-90bc62d4947a5878f1dc1057312f3be2.dll",
+      "new_import": "msvcp140.dll"
+    },
+    {
+      "destination": "Shapely.libs/geos_c-072b7a9224d16d3e4ab2395bb855b2d3.dll",
+      "source_sha256": "7e4d87ccb640eda92f150b7cee178ef13abe282acd36af08f6dca5eddaf931a4",
+      "output_sha256": "cc29e683f82167ee44c1d3ac03fc410ca7f2ecde8de26e9cde45dedff2921b69",
+      "old_import": "msvcp140-90bc62d4947a5878f1dc1057312f3be2.dll",
+      "new_import": "msvcp140.dll"
+    },
+    {
+      "destination": "numpy/_core/_multiarray_umath.cp314-win_amd64.pyd",
+      "source_sha256": "b95589a363451f9695640b8f177dc07b71c845be81f2df6d1ee1c680797912af",
+      "output_sha256": "5d56348b43b6b0fa0056818a30c5e37e8e9a00c72822ff9bc040399314609b55",
+      "old_import": "msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "new_import": "msvcp140.dll"
+    },
+    {
+      "destination": "numpy/fft/_pocketfft_umath.cp314-win_amd64.pyd",
+      "source_sha256": "33e546545a830506c9fde2ea7c389fecbf1c1bb32609a6ff9967661557c923d9",
+      "output_sha256": "a7a189223e3f422de588f81d0ae07c19540ef1a29685e92a821dd6609331f230",
+      "old_import": "msvcp140-a4c2229bdc2a2a630acdc095b4d86008.dll",
+      "new_import": "msvcp140.dll"
+    },
+    {
+      "destination": "pyproj.libs/proj_9-7e5618bddacc5af688a84f477cf114c3.dll",
+      "source_sha256": "a2bbe765d31e257b018c1792f10e009427841b3383f83c5c8b781845461d9343",
+      "output_sha256": "09b77db2fb53fea5d2724c3b94b24232544a38bd349fbb28f0c0ed216b2b624f",
+      "old_import": "msvcp140-7c26614e1d733892c2deac7e245ce115.dll",
+      "new_import": "msvcp140.dll"
+    }
+  ],
+  "runtime_dependencies": [
+    {
+      "name": "msvcp140.dll",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Redist\\MSVC\\14.51.36231\\x64\\Microsoft.VC145.CRT\\msvcp140.dll",
+      "sha256": "7c26614e1d733892c2deac7e245ce115504b1d80592dd0a01b08e3e5a55f89ca",
+      "system32_sha256": "7c26614e1d733892c2deac7e245ce115504b1d80592dd0a01b08e3e5a55f89ca",
+      "system_matches": true
+    },
+    {
+      "name": "msvcp140_1.dll",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Redist\\MSVC\\14.51.36231\\x64\\Microsoft.VC145.CRT\\msvcp140_1.dll",
+      "sha256": "206c931bf90fdad8816de3b5e2ef80b2bcaa9406c89ecc05fe6fddffe251e982",
+      "system32_sha256": "206c931bf90fdad8816de3b5e2ef80b2bcaa9406c89ecc05fe6fddffe251e982",
+      "system_matches": true
+    },
+    {
+      "name": "msvcp140_2.dll",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Redist\\MSVC\\14.51.36231\\x64\\Microsoft.VC145.CRT\\msvcp140_2.dll",
+      "sha256": "d50d7883f20d1dc6191768d3746f52dd9cac89c346ffaed5be1f110c2f34a838",
+      "system32_sha256": "d50d7883f20d1dc6191768d3746f52dd9cac89c346ffaed5be1f110c2f34a838",
+      "system_matches": true
+    },
+    {
+      "name": "vcruntime140.dll",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Redist\\MSVC\\14.51.36231\\x64\\Microsoft.VC145.CRT\\vcruntime140.dll",
+      "sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+      "system32_sha256": "d1f4225df2cd877dbf130d5668a021dce3f94118455ff5ec952061c30afc9ce7",
+      "system_matches": true
+    },
+    {
+      "name": "vcruntime140_1.dll",
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Redist\\MSVC\\14.51.36231\\x64\\Microsoft.VC145.CRT\\vcruntime140_1.dll",
+      "sha256": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e",
+      "system32_sha256": "a7146c08f89fe5b04541ab507cdb59ff7b44534d4ba3c668a426c6450a03434e",
+      "system_matches": true
+    }
+  ],
+  "qualification_evidence": "../WindowsB2NormalizationEvidence"
+}

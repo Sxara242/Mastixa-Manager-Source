@@ -2,23 +2,73 @@ from __future__ import annotations
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
-    QAbstractItemView, QCheckBox, QComboBox, QDateEdit, QFormLayout,
+    QAbstractItemView, QCheckBox, QComboBox, QDateEdit, QFormLayout, QGridLayout,
     QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
     QPushButton, QScrollArea, QSizePolicy, QTableWidgetItem, QVBoxLayout,
     QWidget,
 )
 
 from .crud import CrudPage
+from .localized_messages import _language, _text
 from .database import Database
+from .year_context_ui import working_year_mutation
 from .language import combo_source_text, tr
 from .ui_helpers import table_widget
+from .widgets import UnitLineEdit
+from .date_preferences import format_iso_date, refresh_date_inputs
 
 
 class ProductsPage(CrudPage):
     """General product registry with non-destructive field associations."""
 
+
+    @staticmethod
+    def _body_render(spec):
+        template, values, labels = spec
+        return _text(template, **dict(values, **{k: _text(v) for k, v in labels.items()}))
+
+    def _set_body(self, item, template, *, _labels=None, **values):
+        spec = (template, values, _labels or {})
+        item.setData(2367, spec)
+        item.setText(self._body_render(spec))
+
+    def _body_label(self, label, template, **values):
+        label.setProperty("mastixaI18nSkipText", True)
+        label.setTextFormat(label.textFormat().PlainText)
+        spec = (template, values, {})
+        label.setProperty("mastixaBodyTemplate", spec)
+        label.setText(self._body_render(spec))
+
+    def _refresh_body_language(self, *_args):
+        # Only explicitly owned cells are projected; canonical rows remain opaque.
+        for name in ('table',):
+            table = getattr(self, name, None)
+            if table is None:
+                continue
+            blocked = table.blockSignals(True)
+            try:
+                for row in range(table.rowCount()):
+                    for column in range(table.columnCount()):
+                        item = table.item(row, column)
+                        spec = item.data(2367) if item is not None else None
+                        if spec is not None:
+                            text = self._body_render(spec)
+                            if item.toolTip():
+                                item.setToolTip(text)
+                            item.setText(text)
+            finally:
+                table.blockSignals(blocked)
+        for name in ():
+            label = getattr(self, name, None)
+            spec = label.property("mastixaBodyTemplate") if label is not None else None
+            if spec is not None:
+                label.setText(self._body_render(spec))
+
     def __init__(self, db: Database) -> None:
         super().__init__()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self._refresh_body_language)
         self.db = db
         self.selected_id: int | None = None
         self.selected_link: tuple[int, int] | None = None
@@ -26,7 +76,7 @@ class ProductsPage(CrudPage):
         outer.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         outer.addWidget(scroll)
         content = QWidget()
@@ -52,7 +102,12 @@ class ProductsPage(CrudPage):
         self.name.setPlaceholderText("π.χ. Ντομάτες, Καρύδια")
         self.unit = QComboBox()
         self.unit.setEditable(True)
+        self.unit.setLineEdit(UnitLineEdit())
+        self.unit.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.unit.setProperty("mastixaI18nSkipItems", True)
         self.unit.addItems(["kg", "τεμάχια", "λίτρα", "τόνοι", "κιβώτια"])
+        self.unit.setCurrentIndex(-1)
+        self.unit.lineEdit().setPlaceholderText("Επίλεξε ή γράψε μονάδα")
         form.addRow("Όνομα", self.name)
         form.addRow("Μονάδα μέτρησης", self.unit)
         buttons = QHBoxLayout()
@@ -73,6 +128,7 @@ class ProductsPage(CrudPage):
 
         filters = QHBoxLayout()
         self.status_filter = QComboBox()
+        self.status_filter.setProperty("mastixaI18nStaticItems", True)
         self.status_filter.addItem("Όλα", "all")
         self.status_filter.addItem("Ενεργά", 1)
         self.status_filter.addItem("Ανενεργά", 0)
@@ -89,7 +145,7 @@ class ProductsPage(CrudPage):
         self.table.setMinimumHeight(190)
         self.table.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         layout.addWidget(self.table)
@@ -97,18 +153,19 @@ class ProductsPage(CrudPage):
         links_box = QGroupBox("Συσχετίσεις προϊόντων με αγροτεμάχια")
         links_box.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         links_layout = QVBoxLayout(links_box)
-        link_form = QHBoxLayout()
+        link_form = QGridLayout()
         self.link_product = QComboBox()
         self.link_product.setMinimumWidth(180)
         self.link_field = QComboBox()
         self.link_field.setMinimumWidth(180)
         self.add_link_button = QPushButton("Προσθήκη σύνδεσης")
         self.add_link_button.clicked.connect(self.add_link)
-        link_form.addWidget(QLabel("Προϊόν"))
-        link_form.addWidget(self.link_product, 1)
-        link_form.addWidget(QLabel("Αγροτεμάχιο"))
-        link_form.addWidget(self.link_field, 1)
-        link_form.addWidget(self.add_link_button)
+        link_form.addWidget(QLabel("Προϊόν"), 0, 0)
+        link_form.addWidget(self.link_product, 0, 1)
+        link_form.addWidget(QLabel("Αγροτεμάχιο"), 1, 0)
+        link_form.addWidget(self.link_field, 1, 1)
+        link_form.addWidget(self.add_link_button, 2, 1)
+        link_form.setColumnStretch(1, 1)
         links_layout.addLayout(link_form)
         self.links_table = table_widget([
             "Προϊόν", "Μονάδα", "Κατάσταση προϊόντος", "Αγροτεμάχιο",
@@ -166,6 +223,7 @@ class ProductsPage(CrudPage):
                 return row
         return None
 
+    @working_year_mutation(selection="selected_id", reset="clear_form")
     def save_product(self) -> None:
         name = self.name.text().strip()
         unit = combo_source_text(self.unit).strip()
@@ -200,6 +258,7 @@ class ProductsPage(CrudPage):
         self.status_button.setText("Απενεργοποίηση" if record["is_active"] else "Ενεργοποίηση")
         self.status_button.setEnabled(True)
 
+    @working_year_mutation()
     def toggle_status(self) -> None:
         if self.selected_id is None:
             return
@@ -215,7 +274,8 @@ class ProductsPage(CrudPage):
     def clear_form(self) -> None:
         self.selected_id = None
         self.name.clear()
-        self.unit.setCurrentText("kg")
+        self.unit.setCurrentIndex(-1)
+        self.unit.clearEditText()
         self.form_box.setTitle("Νέο προϊόν")
         self.save_button.setText("Προσθήκη")
         self.cancel_button.setEnabled(False)
@@ -238,6 +298,7 @@ class ProductsPage(CrudPage):
         index = self.link_field.findData(field_id)
         self.link_field.setCurrentIndex(index if index >= 0 else 0)
 
+    @working_year_mutation()
     def add_link(self) -> None:
         product_id = self.link_product.currentData()
         field_id = self.link_field.currentData()
@@ -278,6 +339,7 @@ class ProductsPage(CrudPage):
         if planting_date and not QDate.fromString(planting_date, "yyyy-MM-dd").isValid():
             raise ValueError("invalid planting date")
 
+    @working_year_mutation()
     def save_link_profile(self) -> None:
         if self.selected_link is None:
             return
@@ -295,6 +357,7 @@ class ProductsPage(CrudPage):
         )
         self.refresh()
 
+    @working_year_mutation()
     def remove_link(self) -> None:
         if self.selected_link is None:
             return
@@ -324,7 +387,7 @@ class ProductsPage(CrudPage):
             values = [
                 row["product_name"], row["unit"],
                 tr("Ενεργό" if row["is_active"] else "Ανενεργό"), row["field_name"],
-                row["variety"] or "—", row["planting_date"] or "—",
+                row["variety"] or "—", format_iso_date(row["planting_date"], self.db) or "—",
                 tr("Ενεργή" if row["cultivation_status"] == "active" else "Ανενεργή"),
             ]
             for column, value in enumerate(values):
@@ -334,6 +397,7 @@ class ProductsPage(CrudPage):
                     item.setData(Qt.ItemDataRole.UserRole, (int(row["product_id"]), int(row["field_id"])))
 
     def refresh(self, *_args) -> None:
+        refresh_date_inputs(self, self.db)
         where: list[str] = []
         params: list[object] = []
         status = self.status_filter.currentData()
@@ -358,6 +422,8 @@ class ProductsPage(CrudPage):
             ]
             for column, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
+                if column == 2:
+                    self._set_body(item, "Ενεργό" if row["is_active"] else "Ανενεργό")
                 self.table.setItem(row_index, column, item)
                 if column == 0:
                     item.setData(Qt.ItemDataRole.UserRole, row["id"])

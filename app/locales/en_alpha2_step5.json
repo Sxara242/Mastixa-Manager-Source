@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "code": "en",
+    "native_name": "English"
+  },
+  "translations": {
+    "Υπό κατασκευή": "Under construction",
+    "Δήλωση & Αποστολή": "Declaration & Submission",
+    "Η δημιουργία, προεπισκόπηση και αποστολή δηλώσεων θα ενεργοποιηθεί σε επόμενη έκδοση. Τα υπάρχοντα τοπικά δεδομένα διατηρούνται.": "Declaration creation, preview and submission will be enabled in a future release. Existing local data is preserved.",
+    "Έγγραφα Τιμολογίων": "Invoice Documents",
+    "Η εισαγωγή, OCR, επεξεργασία και οικονομική καταχώριση τιμολογίων θα ενεργοποιηθούν σε επόμενη έκδοση. Τα υπάρχοντα δεδομένα διατηρούνται.": "Invoice import, OCR, editing and financial posting will be enabled in a future release. Existing data is preserved.",
+    "AI εισαγωγή από έγγραφο / φωτογραφία — Υπό κατασκευή": "AI import from document / photo — Under construction",
+    "Μελλοντικά θα εξάγει στοιχεία από έγγραφο ή φωτογραφία για έλεγχο πριν την αποθήκευση.": "In a future release this will extract data from a document or photo for review before saving.",
+    "Κτηματολόγιο": "Cadastre",
+    "Ανάκτηση ορίων από Κτηματολόγιο — Υπό κατασκευή": "Retrieve cadastre boundary — Under construction",
+    "Η αυτόματη online ανάκτηση ορίων είναι προσωρινά μη διαθέσιμη. Χρησιμοποίησε εισαγωγή αρχείου ή χειροκίνητες συντεταγμένες.": "Automatic online boundary retrieval is temporarily unavailable. Use file import or manual coordinates.",
+    "Η αυτόματη online ανάκτηση ορίων είναι προσωρινά μη διαθέσιμη. Η εισαγωγή αρχείου και οι χειροκίνητες συντεταγμένες παραμένουν διαθέσιμες.": "Automatic online boundary retrieval is temporarily unavailable. File import and manual coordinates remain available."
+  }
+}

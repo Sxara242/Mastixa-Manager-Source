@@ -5,6 +5,7 @@ from datetime import date
 from uuid import uuid4
 
 from .database import Database
+from .year_context import require_writable_years
 
 
 @dataclass(frozen=True)
@@ -99,6 +100,7 @@ class PlantingHistoryStore:
             notes=str(notes).strip(),
         )
         event.validate()
+        require_writable_years(self.db, (int(event.replanting_date[:4]),))
         batch_id = self._batch_id(event.planting_batch_id)
         with self.db.connect() as con:
             batch = con.execute(

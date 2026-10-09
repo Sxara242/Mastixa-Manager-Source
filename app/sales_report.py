@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from .year_filters import populate_year_filter, YearFilteredPage
+
+from .date_preferences import format_iso_date
+
 import csv
 from pathlib import Path
 
@@ -21,11 +25,14 @@ from PySide6.QtWidgets import (
 )
 
 from .database import Database
+from .report_quantities import quantities, quantity_text, stock_quantities, average_price_text, identify_rows, group_quantities, product_rows
+from .localized_messages import _message, _text, _language
+from .report_quantities import sale_source_quantities, sale_source_fields, matches_sale_source
 from .language import tr
-from .ui_helpers import compact_decimal, format_kg, table_widget
+from .ui_helpers import compact_decimal, table_widget
 
 
-class SalesReportPage(QWidget):
+class SalesReportPage(YearFilteredPage):
     def __init__(self, db: Database) -> None:
         super().__init__()
         self.db = db
@@ -68,6 +75,13 @@ class SalesReportPage(QWidget):
         self.year_filter = QComboBox()
         self.year_filter.currentIndexChanged.connect(self.refresh)
 
+        self.product_filter = QComboBox()
+        self.product_filter.currentIndexChanged.connect(self.refresh)
+
+        self.source_filter = QComboBox()
+        self.source_filter.setProperty("mastixaI18nSkipItems", True)
+        self.source_filter.currentIndexChanged.connect(self.refresh)
+
         self.buyer_filter = QComboBox()
         self.buyer_filter.currentIndexChanged.connect(self.refresh)
 
@@ -81,12 +95,21 @@ class SalesReportPage(QWidget):
 
         filters.addWidget(QLabel("Έτος"))
         filters.addWidget(self.year_filter)
+        filters.addWidget(QLabel("Προϊόν"))
+        filters.addWidget(self.product_filter)
+        filters.addWidget(QLabel("Πηγή παραγωγής"))
+        filters.addWidget(self.source_filter)
         filters.addWidget(QLabel("Αγοραστής"))
         filters.addWidget(self.buyer_filter)
         filters.addWidget(self.search, 1)
         filters.addWidget(self.export_button)
 
         layout.addWidget(filters_box)
+        self.source_note = QLabel()
+        self.source_note.setWordWrap(True)
+        self.source_note.setProperty("mastixaI18nSkipText", True)
+        self.source_note.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self.source_note)
 
         metrics_box = QGroupBox()
         metrics = QGridLayout(metrics_box)
@@ -95,7 +118,7 @@ class SalesReportPage(QWidget):
         self.sold_metric = self._metric("Πωλημένα")
         self.stock_metric = self._metric("Διαθέσιμο stock")
         self.revenue_metric = self._metric("Έσοδα πωλήσεων")
-        self.avg_price_metric = self._metric("Μέση τιμή / kg")
+        self.avg_price_metric = self._metric("Μέση τιμή / μονάδα")
         self.sales_count_metric = self._metric("Αριθμός πωλήσεων")
 
         cards = (
@@ -116,7 +139,7 @@ class SalesReportPage(QWidget):
         buyer_box = QGroupBox("Ανάλυση ανά αγοραστή")
         buyer_layout = QVBoxLayout(buyer_box)
         self.buyer_table = table_widget(
-            ["Αγοραστής", "Πωλήσεις", "Ποσότητα kg", "Έσοδα", "Μέση τιμή / kg"]
+            ["Αγοραστής", "Πωλήσεις", "Ποσότητα", "Έσοδα", "Μέση τιμή / μονάδα"]
         )
         self.buyer_table.setMinimumHeight(260)
         buyer_layout.addWidget(self.buyer_table)
@@ -126,8 +149,8 @@ class SalesReportPage(QWidget):
         detail_layout = QVBoxLayout(detail_box)
         self.detail_table = table_widget(
             [
-                "Ημερομηνία", "Αγοραστής", "Ποσότητα kg",
-                "Τιμή / kg", "Σύνολο", "Πληρωμή", "Σημειώσεις",
+                "Ημερομηνία", "Αγοραστής", "Ποσότητα",
+                "Τιμή / μονάδα", "Σύνολο", "Πληρωμή", "Σημειώσεις", "Προϊόν", "Μονάδα", "Πηγή παραγωγής",
             ]
         )
         self.detail_table.setMinimumHeight(320)
@@ -135,6 +158,9 @@ class SalesReportPage(QWidget):
         layout.addWidget(detail_box)
 
         layout.addStretch()
+        controller = _language()
+        if controller is not None:
+            controller.language_changed.connect(self.refresh)
         self.refresh()
 
     @staticmethod
@@ -163,28 +189,26 @@ class SalesReportPage(QWidget):
         ) is not None
 
     def _refresh_filters(self) -> None:
-        year = self.year_filter.currentData()
+        product = self.product_filter.currentData()
+        self.product_filter.blockSignals(True)
+        self.product_filter.clear()
+        self.product_filter.addItem("Όλα τα προϊόντα", None)
+        for row in product_rows(self.db):
+            self.product_filter.addItem(row["name"], int(row["id"]))
+        idx = self.product_filter.findData(product)
+        self.product_filter.setCurrentIndex(idx if idx >= 0 else 0)
+        self.product_filter.blockSignals(False)
+        source = self.source_filter.currentData()
+        self.source_filter.blockSignals(True)
+        self.source_filter.clear()
+        self.source_filter.addItem(_text("Όλες οι πηγές"), "all")
+        self.source_filter.addItem(_text("Συνολικό απόθεμα / μη κατανεμημένες πωλήσεις"), "pooled")
+        for field, name in sale_source_fields(self.db, self.product_filter.currentData()):
+            self.source_filter.addItem(name, field)
+        self.source_filter.setCurrentIndex(max(0,self.source_filter.findData(source)))
+        self.source_filter.blockSignals(False)
         buyer = self.buyer_filter.currentData()
-
-        self.year_filter.blockSignals(True)
-        self.year_filter.clear()
-        self.year_filter.addItem("Όλα τα έτη", None)
-
-        if self._table_exists("production_sales"):
-            for row in self.db.query(
-                """
-                SELECT DISTINCT SUBSTR(sale_date,1,4) AS year
-                FROM production_sales
-                WHERE sale_date IS NOT NULL AND sale_date<>''
-                ORDER BY year DESC
-                """
-            ):
-                if row["year"]:
-                    self.year_filter.addItem(row["year"], row["year"])
-
-        idx = self.year_filter.findData(year)
-        self.year_filter.setCurrentIndex(idx if idx >= 0 else 0)
-        self.year_filter.blockSignals(False)
+        populate_year_filter(self, self.year_filter, strings=True)
 
         self.buyer_filter.blockSignals(True)
         self.buyer_filter.clear()
@@ -229,7 +253,7 @@ class SalesReportPage(QWidget):
             where.append("(COALESCE(buyer_name,'') LIKE ? OR COALESCE(notes,'') LIKE ?)")
             params.extend([token, token])
 
-        return self.db.query(
+        rows = self.db.query(
             f"""
             SELECT *
             FROM production_sales
@@ -239,89 +263,64 @@ class SalesReportPage(QWidget):
             params,
         )
 
+        rows = identify_rows(self.db, rows)
+        product = self.product_filter.currentData()
+        return [r for r in rows if (product is None or r["product_key"] == ("id", product))
+                and matches_sale_source(r, self.source_filter.currentData())]
+
     def refresh(self, *_args) -> None:
         self._refresh_filters()
         rows = self._sales_rows()
 
-        qty = sum(float(r["quantity_kg"] or 0) for r in rows)
+        product = self.product_filter.currentData()
+        year = self.year_filter.currentData()
+        sold = group_quantities(rows)
+        source = self.source_filter.currentData()
+        production, _, _ = sale_source_quantities(self.db, product, source=source, year=year)
+        _, _, stock = sale_source_quantities(self.db, product, source=source)
+        if source == "pooled":
+            production, stock = [], []
+            note = "Οι πωλήσεις συνολικού αποθέματος δεν έχουν κατανομή σε αγροτεμάχια. Παραγωγή και υπόλοιπο εμφανίζονται στις Όλες τις πηγές."
+        elif isinstance(source, int):
+            note = "Το υπόλοιπο αγροτεμαχίου αφαιρεί μόνο πωλήσεις από αυτό το αγροτεμάχιο. Οι μη κατανεμημένες πωλήσεις μειώνουν το συνολικό απόθεμα. Το όριο νέας πώλησης είναι το μικρότερο από τα δύο υπόλοιπα."
+        else:
+            note = "Το συνολικό απόθεμα περιλαμβάνει όλες τις πωλήσεις, κατανεμημένες και μη. Το υπόλοιπο είναι διαχρονικό· το έτος φιλτράρει παραγωγή και πωλήσεις."
+        self.source_note.setText(_text(note))
         revenue = sum(float(r["total_amount"] or 0) for r in rows)
-        avg = revenue / qty if qty > 0 else 0.0
-
-        production = 0.0
-        production_all = 0.0
-        if self._table_exists("production"):
-            year = self.year_filter.currentData()
-            if year:
-                row = self.db.query_one(
-                    """SELECT COALESCE(SUM(quantity_kg),0) AS total
-                       FROM production
-                       WHERE SUBSTR(entry_date,1,4)=?""",
-                    (year,),
-                )
-            else:
-                row = self.db.query_one(
-                    "SELECT COALESCE(SUM(quantity_kg),0) AS total FROM production"
-                )
-            production = float(row["total"] or 0) if row else 0.0
-
-            row = self.db.query_one(
-                "SELECT COALESCE(SUM(quantity_kg),0) AS total FROM production"
-            )
-            production_all = float(row["total"] or 0) if row else 0.0
-
-        sold_all = 0.0
-        if self._table_exists("production_sales"):
-            row = self.db.query_one(
-                "SELECT COALESCE(SUM(quantity_kg),0) AS total FROM production_sales"
-            )
-            sold_all = float(row["total"] or 0) if row else 0.0
-
-        stock = max(production_all - sold_all, 0.0)
-
-        self.production_metric[1].setText(format_kg(production))
-        self.sold_metric[1].setText(format_kg(qty))
-        self.stock_metric[1].setText(format_kg(stock))
+        for metric, groups in ((self.production_metric, production), (self.sold_metric, sold), (self.stock_metric, stock)):
+            metric[1].setProperty("mastixaI18nSkipText", True)
+            metric[1].setTextFormat(Qt.TextFormat.PlainText)
+            metric[1].setText(quantity_text(groups))
         self.revenue_metric[1].setText(self._money(revenue))
-        self.avg_price_metric[1].setText(f"{compact_decimal(avg, 2)} €/kg")
+        self.avg_price_metric[1].setProperty("mastixaI18nSkipText", True)
+        self.avg_price_metric[1].setTextFormat(Qt.TextFormat.PlainText)
+        self.avg_price_metric[1].setText(average_price_text(sold))
         self.sales_count_metric[1].setText(str(len(rows)))
 
         grouped = {}
         for row in rows:
-            buyer = row["buyer_name"] or "Χωρίς όνομα"
-            bucket = grouped.setdefault(buyer, [0, 0.0, 0.0])
-            bucket[0] += 1
-            bucket[1] += float(row["quantity_kg"] or 0)
-            bucket[2] += float(row["total_amount"] or 0)
-
-        buyer_rows = sorted(
-            grouped.items(),
-            key=lambda x: (-x[1][2], x[0]),
-        )
-
+            grouped.setdefault(row["buyer_name"] or "—", []).append(row)
+        buyer_rows = sorted(grouped.items())
         self.buyer_table.setRowCount(len(buyer_rows))
-        for r, (buyer, values) in enumerate(buyer_rows):
-            count, bqty, brevenue = values
-            bavg = brevenue / bqty if bqty > 0 else 0.0
-            display = [
-                buyer,
-                count,
-                compact_decimal(bqty, 3),
-                self._money(brevenue),
-                f"{compact_decimal(bavg, 2)} €/kg",
-            ]
-            for c, value in enumerate(display):
-                self.buyer_table.setItem(r, c, QTableWidgetItem(str(value)))
+        for index, (buyer, sales) in enumerate(buyer_rows):
+            groups = group_quantities(sales)
+            display = [buyer, len(sales), quantity_text(groups),
+                       self._money(sum(float(r["total_amount"] or 0) for r in sales)), average_price_text(groups)]
+            for column, value in enumerate(display):
+                self.buyer_table.setItem(index, column, QTableWidgetItem(str(value)))
 
         self.detail_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             display = [
-                row["sale_date"] or "",
+                format_iso_date(row["sale_date"], self.db),
                 row["buyer_name"] or "",
                 compact_decimal(row["quantity_kg"], 3),
-                f"{compact_decimal(row['price_per_kg'], 2)} €/kg",
+                f"{compact_decimal(row['price_per_kg'], 2)} €/{row['unit']}" if row["unit"] else "—",
                 self._money(float(row["total_amount"] or 0)),
                 row["payment_method"] or "",
                 row["notes"] or "",
+                row["product_name"], row["unit"] or "[?]",
+                row.get("source_field_name", "") if row.get("source_field_id") is not None else _text("Συνολικό απόθεμα / μη κατανεμημένες πωλήσεις"),
             ]
             for c, value in enumerate(display):
                 item = QTableWidgetItem(str(value))
@@ -341,7 +340,7 @@ class SalesReportPage(QWidget):
 
         filename, _ = QFileDialog.getSaveFileName(
             self,
-            "Αποθήκευση Αναφοράς Πωλήσεων",
+            _text("Αποθήκευση Αναφοράς Πωλήσεων"),
             "sales_report.csv",
             "CSV (*.csv)",
         )
@@ -356,8 +355,8 @@ class SalesReportPage(QWidget):
             writer = csv.writer(handle, delimiter=";")
             writer.writerow(
                 [tr(value) for value in [
-                    "Ημερομηνία", "Αγοραστής", "Ποσότητα kg",
-                    "Τιμή / kg", "Σύνολο", "Πληρωμή", "Σημειώσεις",
+                    "Ημερομηνία", "Αγοραστής", "Ποσότητα",
+                    "Τιμή / μονάδα", "Σύνολο", "Πληρωμή", "Σημειώσεις", "Προϊόν", "Μονάδα", "Πηγή παραγωγής",
                 ]]
             )
             for row in rows:
@@ -370,11 +369,12 @@ class SalesReportPage(QWidget):
                         compact_decimal(row["total_amount"], 2),
                         row["payment_method"] or "",
                         row["notes"] or "",
+                        row["product_name"], row["unit"] or "[?]",
+                        row.get("source_field_name", "") if row.get("source_field_id") is not None else _text("Συνολικό απόθεμα / μη κατανεμημένες πωλήσεις"),
                     ]
                 )
 
-        QMessageBox.information(
-            self,
-            "Εξαγωγή CSV",
-            f"Η αναφορά αποθηκεύτηκε:\n{path}",
+        _message(
+            self, "information", "Εξαγωγή CSV",
+            "Η αναφορά αποθηκεύτηκε:\n{path}", path=path,
         )
