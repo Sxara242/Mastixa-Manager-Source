@@ -39,6 +39,11 @@ Source audit passed. Android SDK setup failed before build because its action
 requested the retired tools package. Workflows now request platform-tools
 explicitly (plus emulator for manual instrumentation), as supported by
 [the action's package input](https://github.com/android-actions/setup-android#additional-packages).
+That correction passed SDK setup in hosted run 37972481782. The next failure
+revealed Windows CRLF in the Unix Gradle launcher; normalize android/gradlew
+to LF and enforce that checkout format through .gitattributes. This changes
+launcher line endings only and preserves the wrapper JAR/distribution locks
+and all third-party license texts. A fresh hosted build/lint must validate it.
 Packaging/legal preflight runs even when source tests fail; normal CI still builds
 no installers and uploads no artifacts. One-day optional QA retention is unchanged.
 

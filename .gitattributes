@@ -1,5 +1,6 @@
 # Recognize native Windows CRLF without treating carriage returns as whitespace.
 * whitespace=cr-at-eol
+android/gradlew text eol=lf
 # Preserve inherited legal bytes, including original formatting, on every host.
 LICENSE -text -whitespace
 licenses/** -text -whitespace
