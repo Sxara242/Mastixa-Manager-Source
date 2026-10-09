@@ -1,6 +1,6 @@
 # Release status — 2026-10-09
 
-**Public AGPL development snapshot: publication audits PASS.**
+**Public AGPL development snapshot: PUBLISHED; hosted CI PASS.**
 **Windows public binary release: NO-GO. Android: IN DEVELOPMENT.**
 
 Windows x64 is the current release target. Current source metadata is
@@ -15,8 +15,8 @@ offline staging updater. No release feed is activated by this snapshot.
 | Windows rc.2 candidate | BLOCKED BEFORE BUILD | Existing preparation is paused for owner confirmation of exact antivirus paths; no rc.2 frozen/installer/owner acceptance exists |
 | B1–B5 legal/material preparation and scoped EPSG remedy | PASS in current retained release configuration | Preserve exact locked inputs and notices; B1 audit/B4 reproduction gaps are separately labelled, not waived legal inputs |
 | Corresponding source for a new public binary | PENDING | Publish matching covered source/build/patch/replacement materials with final artifact binding and equivalent access |
-| Public hosted CI | ACTIVE, runners verified | Baseline d98f041 starts Windows/Ubuntu jobs; source audit passes, initial Android SDK setup fails; complete corrected validation is Phase 5 work |
-| Current full Windows source suite | PASS locally; hosted confirmation pending | 133 modules / 994 cases pass; initial hosted findings and corrections tracked in PHASE5_WINDOWS_BLOCKERS.md |
+| Public hosted CI | PASS, runners verified | Corrected commit 23c98fa passes source audit, Windows tests/preflight and Android build/lint on standard hosted runners; no stored artifacts |
+| Current full Windows source suite | PASS locally and hosted | 133 modules / 994 cases pass with zero blocked modules; Phase 5 source blockers are closed |
 | Android | IN DEVELOPMENT | Build/lint and instrumentation do not qualify a public Android release; complete binary notices/native and CRS rights review remains required |
 
 The rc.1 application SHA-256 recorded in retained evidence is
@@ -38,5 +38,8 @@ the public snapshot. No private repository mutation or publication is implied.
 The public repository is now the primary active development repository after
 the audited source push and actual hosted-runner verification. Phase 5 and all
 rc.2 work use its public checkout. Windows source failures block rc.2 build,
-not this explicitly authorized development-source publication. Hosted CI has not
-yet been claimed green. See [Phase 5 diagnosis and validation](PHASE5_WINDOWS_BLOCKERS.md).
+not this explicitly authorized development-source publication. Corrected source,
+tests and workflows at `23c98fa8da4286a7c26e9062e67c90dd6df58a23` passed
+[hosted run 37973487436](https://github.com/Sxara242/Mastixa-Manager-Source/actions/runs/37973487436)
+before advancing public main. Subsequent status-only documentation updates do not
+change those validated inputs. See [Phase 5 diagnosis and validation](PHASE5_WINDOWS_BLOCKERS.md).

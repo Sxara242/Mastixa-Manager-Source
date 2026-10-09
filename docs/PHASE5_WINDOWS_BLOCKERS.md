@@ -5,6 +5,15 @@ The active development baseline is
 All changes below are developed in the public checkout; private archives remain
 untouched. Windows rc.2 is still unbuilt and unqualified. Android remains in development.
 
+**Phase 5 source closure: PASS.** Corrected commit
+`23c98fa8da4286a7c26e9062e67c90dd6df58a23` passed
+[hosted run 37973487436](https://github.com/Sxara242/Mastixa-Manager-Source/actions/runs/37973487436):
+Windows 133/133 modules, 994 cases, zero blocked modules; packaging/legal
+preflight PASS; Ubuntu source/privacy audit PASS; Android build/lint and test
+APK compilation PASS. No artifacts were stored. Public main contains these
+fixes. No unresolved genuine Windows source blocker remains. This does not
+qualify a frozen rc.2 candidate or substitute for manual owner acceptance.
+
 The initial publication audit passed. The initial Windows baseline was 123/133
 modules passing, nine failing and one timed out. This page distinguishes source
 defects from stale fixture contracts; no failing test is skipped or marked xfail.
@@ -20,12 +29,12 @@ defects from stale fixture contracts; no failing test is skipped or marked xfail
 | test_phase16j_file_dialog_localization | C: stale export mock | Export consumes an immutable AnnualSnapshot; the mock only provided the former year selector. Provide snapshot.year=2027 and retain exact filenames/cancellation checks. |
 | test_phase16j_generated_tables_localization | C: year fixture defect | Synthetic 2027 rows were filtered by default working year; crop test snapshots preceded year initialization. Set explicit matching contexts before snapshots; retain canonical search/body/identity/database assertions. |
 | test_phase16j_static_selectors_localization | C: year fixture defect | Service records dated 2027 were filtered out. Set fixture working year 2027; preserve real upcoming/overdue/date calculations and selector assertions. |
-| test_stabilization | C/E: Qt fixture lifecycle and process budget | Whole-window fixture left application-owned theme/language filters alive across tests. Delete owned controllers/widgets, restore prior language/style/palette before deleting DBs. All 23 assertions completed in a measured 284-second diagnostic; use an explicit 360-second module bound, with stack diagnostics and unsuccessful process exit still failing. Final complete verification pending. |
+| test_stabilization | C/E: Qt fixture lifecycle and process budget | Whole-window fixture left application-owned theme/language filters alive across tests. Delete owned controllers/widgets, restore prior language/style/palette before deleting DBs. All 23 assertions completed in a measured 284-second diagnostic; use an explicit 360-second module bound, with stack diagnostics and unsuccessful process exit still failing. Complete local and hosted verification now passes all 23 cases within the explicit bound. |
 
 No suite-order/inter-module contamination (D) is asserted without evidence.
 The runner isolates modules and executes unittest classes plus plain functions.
-The normal bound remains 120 seconds, with only the measured stabilization
-override visible in the CI command. A timeout still fails and kills only the
+The normal bound remains 120 seconds, with the four measured module-specific
+overrides visible in the CI command. A timeout still fails and kills only the
 owned test process tree. No blanket timeout waiver is introduced.
 
 The completed baseline hosted Windows run reported 119/133 passing modules,
@@ -36,7 +45,7 @@ Resolve the fixture root before retaining the exact path equality assertions.
 Three additional modules made assertion progress until the hosted 120-second
 bound: activity-expense sync (20 cases, 67 seconds locally), composed localization
 (33 cases, 21 seconds locally), and sale sources (29 cases, 58 seconds locally).
-These are E: hosted runtime-budget findings pending complete bounded confirmation.
+These are E: hosted runtime-budget findings, now confirmed by the complete passing run.
 Use explicit 240/180/360-second hosted bounds respectively; all assertions and
 unsuccessful-exit/timeout handling remain required. Stack diagnostics distinguish
 any remaining blocked call from slow progress. The default remains 120 seconds
@@ -46,7 +55,8 @@ All nine originally failing modules pass focused local checks after correction.
 Focused year-context/owner-fix/transaction checks also pass. Complete local
 validation passes: 133 modules, 994 cases, zero failures/timeouts. The subsequent
 hosted path-fixture delta passes all ten appearance tests locally. Hosted validation
-of the corrected tree is pending; this is not rc.2 build clearance.
+of the corrected tree passes all 133 modules / 994 cases; rc.2 build still requires
+the owner's explicit manual antivirus confirmation for its public output paths.
 
 The first hosted run actually started Windows on windows-latest and source audit/
 Android on ubuntu-latest:
@@ -59,7 +69,9 @@ That correction passed SDK setup in hosted run 37972481782. The next failure
 revealed Windows CRLF in the Unix Gradle launcher; normalize android/gradlew
 to LF and enforce that checkout format through .gitattributes. This changes
 launcher line endings only and preserves the wrapper JAR/distribution locks
-and all third-party license texts. A fresh hosted build/lint must validate it.
+and all third-party license texts. Corrected hosted Android build/lint passes
+(95 Gradle tasks); JVM unit testing reports NO-SOURCE, and runtime instrumentation
+is a separate manual workflow rather than a claimed emulator test result.
 Packaging/legal preflight runs even when source tests fail; normal CI still builds
 no installers and uploads no artifacts. One-day optional QA retention is unchanged.
 
