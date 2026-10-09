@@ -16,7 +16,7 @@ offline staging updater. No release feed is activated by this snapshot.
 | B1–B5 legal/material preparation and scoped EPSG remedy | PASS in current retained release configuration | Preserve exact locked inputs and notices; B1 audit/B4 reproduction gaps are separately labelled, not waived legal inputs |
 | Corresponding source for a new public binary | PENDING | Publish matching covered source/build/patch/replacement materials with final artifact binding and equivalent access |
 | Public hosted CI | ACTIVE, runners verified | Baseline d98f041 starts Windows/Ubuntu jobs; source audit passes, initial Android SDK setup fails; complete corrected validation is Phase 5 work |
-| Current full Windows source suite | BLOCKED | Independent module verification exposes failures/timeouts; see PUBLIC_SOURCE_AUDIT.md |
+| Current full Windows source suite | PASS locally; hosted confirmation pending | 133 modules / 994 cases pass; initial hosted findings and corrections tracked in PHASE5_WINDOWS_BLOCKERS.md |
 | Android | IN DEVELOPMENT | Build/lint and instrumentation do not qualify a public Android release; complete binary notices/native and CRS rights review remains required |
 
 The rc.1 application SHA-256 recorded in retained evidence is

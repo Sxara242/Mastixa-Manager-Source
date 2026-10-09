@@ -28,9 +28,25 @@ The normal bound remains 120 seconds, with only the measured stabilization
 override visible in the CI command. A timeout still fails and kills only the
 owned test process tree. No blanket timeout waiver is introduced.
 
+The completed baseline hosted Windows run reported 119/133 passing modules,
+ten failed modules and four timeouts (888 completed cases). In addition to the
+local baseline, it found appearance-persistence fixture comparisons between
+Windows 8.3 temporary-directory aliases and their canonical long paths (C).
+Resolve the fixture root before retaining the exact path equality assertions.
+Three additional modules made assertion progress until the hosted 120-second
+bound: activity-expense sync (20 cases, 67 seconds locally), composed localization
+(33 cases, 21 seconds locally), and sale sources (29 cases, 58 seconds locally).
+These are E: hosted runtime-budget findings pending complete bounded confirmation.
+Use explicit 240/180/360-second hosted bounds respectively; all assertions and
+unsuccessful-exit/timeout handling remain required. Stack diagnostics distinguish
+any remaining blocked call from slow progress. The default remains 120 seconds
+for other modules. Final hosted source clearance requires every module to pass.
+
 All nine originally failing modules pass focused local checks after correction.
-Focused year-context/owner-fix/transaction checks also pass. Complete local and
-hosted validation of the final tree is pending; this is not rc.2 build clearance.
+Focused year-context/owner-fix/transaction checks also pass. Complete local
+validation passes: 133 modules, 994 cases, zero failures/timeouts. The subsequent
+hosted path-fixture delta passes all ten appearance tests locally. Hosted validation
+of the corrected tree is pending; this is not rc.2 build clearance.
 
 The first hosted run actually started Windows on windows-latest and source audit/
 Android on ubuntu-latest:

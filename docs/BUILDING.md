@@ -33,6 +33,12 @@ silently skipped. Both unittest classes and the existing plain test functions
 are executed. Direct unittest discovery remains available for diagnosis but does
 not discover those plain functions.
 
+The hosted command also names three measured slow-module bounds: activity-expense
+sync 240 seconds, composed UI localization 180 seconds, sale sources 360 seconds.
+Each made assertion progress up to the original hosted bound and passes locally.
+These explicit limits preserve all cases and fail on unsuccessful process exit;
+they are not skip/xfail policies. Hosted CI must pass the complete corpus.
+
 ## Hosted CI
 
 `verify.yml` runs Windows tests/packaging contracts on `windows-latest` and source

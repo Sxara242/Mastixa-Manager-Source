@@ -25,7 +25,9 @@ class AppearancePersistenceTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # Native Windows temp paths may use an 8.3 alias (RUNNER~1). Production
+        # runtime paths resolve that alias; compare the same canonical path.
+        self.root = Path(self.temp.name).resolve()
         self.new = self.root / "user" / "data" / "appearance.ini"
         self.install = self.root / "install"
         self.legacy = self.install / "_internal" / "data" / "appearance.ini"

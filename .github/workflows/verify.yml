@@ -49,7 +49,12 @@ jobs:
       - name: Windows tests
         env:
           MASTIXA_DATA_HOME: ${{ runner.temp }}\mastixa-tests-${{ github.run_id }}-${{ github.run_attempt }}
-        run: python tools/run_windows_tests.py --jobs 2 --timeout 120 --module-timeout tests.test_stabilization=360
+        run: >-
+          python tools/run_windows_tests.py --jobs 2 --timeout 120
+          --module-timeout tests.test_activity_expense_sync=240
+          --module-timeout tests.test_phase16j_composed_ui_localization=180
+          --module-timeout tests.test_sale_sources=360
+          --module-timeout tests.test_stabilization=360
       - name: Packaging and legal preflight (no installer)
         if: ${{ !cancelled() }}
         run: python packaging/validate_windows_release.py
