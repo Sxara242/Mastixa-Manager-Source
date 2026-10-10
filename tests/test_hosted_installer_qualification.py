@@ -5,8 +5,10 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import traceback
 import unittest
 from unittest.mock import patch
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / 'tools/hosted_installer_qualification.py'
@@ -210,6 +212,187 @@ class ShortcutObservationTests(unittest.TestCase):
         for value in ('synthetic-person', 'opaque-value', 'private-signature', 'private-bearer', 'private-password'):
             self.assertNotIn(value, redacted)
         self.assertEqual(len(module.redact_observation('x' * 20000, {})), 16384)
+
+    def test_authorization_headers_remove_the_complete_secret(self):
+        cases = (
+            'Authorization: Bearer synthetic-bearer-value',
+            'aUtHoRiZaTiOn: bEaReR synthetic-mixed-value',
+            'Proxy-Authorization: Basic synthetic-basic-value',
+            'Authorization: Digest username="synthetic-user", nonce="synthetic-nonce", response="synthetic-response"',
+            'Authorization: CustomScheme synthetic-custom-value extra-sensitive-value',
+            'Authorization: Bearer\n synthetic-folded-value',
+            'Cookie: session=synthetic-cookie-value; other=synthetic-other-value',
+            'Set-Cookie: session=synthetic-session-value; HttpOnly',
+            'Authentication-Info: nextnonce="synthetic-next-value", rspauth="synthetic-response-value"',
+        )
+        for raw in cases:
+            with self.subTest(raw=raw):
+                redacted = module.redact_observation('phase=file-hash\n' + raw, {})
+                self.assertNotIn('synthetic-', redacted)
+                self.assertNotIn('extra-sensitive-value', redacted)
+                self.assertIn('phase=file-hash', redacted)
+
+    def test_standalone_bearer_and_basic_tokens_are_redacted_before_field_names(self):
+        for raw in ('Bearer synthetic-standalone-value', 'Basic synthetic-encoded-value',
+                    'Bearer "synthetic-quoted value"', "Bearer 'synthetic-single value'"):
+            with self.subTest(raw=raw):
+                self.assertNotIn('synthetic-', module.redact_observation(raw, {}))
+
+    def test_nested_json_authorization_values_and_secret_objects_are_removed(self):
+        raw = json.dumps({'phase': 'com-open', 'folder_empty': False, 'hresult': -1,
+                          'details': [{'Authorization': 'Bearer synthetic-json-value',
+                                       'proxy_authorization': {'scheme': 'Custom', 'value': 'synthetic-object-value'},
+                                       'clientSecret': 'synthetic-client value with spaces',
+                                       'access_token': 'synthetic-access-value',
+                                       'refreshToken': 'synthetic-refresh-value',
+                                       'X-Api-Key': 'synthetic-api-value',
+                                       'credentials': ['synthetic-list-value'],
+                                       'auth': 'synthetic-auth-value',
+                                       'signature': 'synthetic-signature-value',
+                                       'session_id': 'synthetic-session-id-value',
+                                       'cookie': 'synthetic-json-cookie-value'}]})
+        # The decoder must handle escaped JSON keys/values before classification.
+        raw = raw.replace('Authorization', '\\u0041uthorization').replace('synthetic', '\\u0073ynthetic')
+        redacted = module.redact_observation(raw, {})
+        self.assertNotIn('synthetic-', redacted)
+        detail = json.loads(redacted)
+        self.assertEqual(detail['phase'], 'com-open')
+        self.assertFalse(detail['folder_empty'])
+        self.assertEqual(detail['hresult'], -1)
+
+    def test_secret_values_in_json_encoded_messages_and_environment_are_removed(self):
+        inner = json.dumps({'password': 'synthetic-multi word value',
+                            'Authorization': 'Bearer synthetic-inner-value'})
+        raw = json.dumps({'message': inner, 'env_error': 'synthetic-env-value',
+                          'arguments': ['synthetic-argument-value'], 'phase': 'hash-open'})
+        redacted = module.redact_observation(raw, {'CUSTOM_AUTH': 'synthetic-env-value'})
+        self.assertNotIn('synthetic-', redacted)
+        self.assertEqual(json.loads(redacted)['phase'], 'hash-open')
+
+    def test_plain_quoted_secret_fields_and_private_key_blocks_are_removed(self):
+        raw = 'phase=file-hash\nclient_secret="synthetic-secret with spaces"\n'
+        raw += "'password': 'synthetic-password with spaces'\napi_key=synthetic-api-value\n"
+        raw += 'signature=synthetic-first-value,synthetic-second-value;synthetic-third-value\n'
+        raw += 'password synthetic-space-value\n--auth synthetic-flag-value\n'
+        raw += '-----BEGIN ' + 'PRIVATE KEY-----\nsynthetic-key-material\n-----END ' + 'PRIVATE KEY-----'
+        self.assertNotIn('synthetic-', module.redact_observation(raw, {}))
+
+    def test_child_failure_and_timeout_evidence_cannot_leak_authorization(self):
+        raw = 'Authorization: Bearer synthetic-evidence-value'
+        failures = (subprocess.CompletedProcess([], 9, raw, raw),
+                    subprocess.TimeoutExpired(['synthetic-command-secret'], 30,
+                                              output=raw.encode(), stderr=raw.encode()))
+        for failure in failures:
+            with self.subTest(failure=type(failure).__name__):
+                detail = self.failure(child=failure if isinstance(failure, subprocess.CompletedProcess) else None,
+                                      error=failure if isinstance(failure, subprocess.TimeoutExpired) else None)
+                self.assertNotIn('synthetic-', json.dumps(detail))
+                self.assertEqual(detail['status'], 'FAIL')
+
+    def test_rendered_exception_suppresses_child_command_output_and_write_errors(self):
+        raw = 'Authorization: Bearer synthetic-exception-value'
+        errors = (subprocess.TimeoutExpired([raw], 30, output=raw, stderr=raw),
+                  OSError(5, raw))
+        for error in errors:
+            with tempfile.TemporaryDirectory() as directory, \
+                    patch.object(module.subprocess, 'run', side_effect=error):
+                try:
+                    module.read_shortcuts(Path(directory), 'initial', {})
+                except RuntimeError as raised:
+                    rendered = ''.join(traceback.format_exception(raised))
+                    self.assertNotIn('synthetic-exception-value', rendered)
+                    self.assertNotIn('synthetic-exception-value', repr(raised))
+                    self.assertTrue(raised.__suppress_context__)
+                else:
+                    self.fail('Native failure was accepted')
+
+    def test_all_observer_failure_phases_keep_safe_diagnostic_context(self):
+        for phase in ('output-encoding', 'com-create', 'folder-resolve', 'folder-exists',
+                      'link-path', 'link-exists', 'com-open', 'com-properties', 'file-metadata',
+                      'hash-open', 'hash-create', 'file-hash', 'json-serialize'):
+            context = {'phase': phase, 'kind': 'Programs', 'folder_empty': False,
+                       'folder_exists': True, 'link_exists': True, 'error_code': 'ShortcutObservationError',
+                       'error_category': 'ReadError', 'exception_type': 'IOException', 'hresult': -1,
+                       'exception_chain': [{'type': 'MethodInvocationException', 'hresult': -2},
+                                           {'type': 'IOException', 'hresult': -1}],
+                       'powershell': '5.1', 'edition': 'Desktop',
+                       'hash_provider': 'System.Security.Cryptography.SHA256'}
+            detail = self.failure(child=subprocess.CompletedProcess([], 1, '', json.dumps(context)))
+            self.assertEqual(json.loads(detail['stderr']), context)
+            self.assertEqual(detail['exit_code'], 1)
+
+    def test_observer_has_no_raw_error_message_or_id_and_resets_folder_context(self):
+        script = module.SHORTCUT_OBSERVATION_SCRIPT
+        self.assertNotIn('FullyQualifiedErrorId', script)
+        self.assertNotIn('.Exception.Message', script)
+        self.assertIn('$context.error_category=$_.CategoryInfo.Category.ToString()', script)
+        self.assertIn('$context.folder_empty=$null', script)
+        self.assertIn('$errorObject=$errorObject.InnerException', script)
+        self.assertIn('$depth -lt 4', script)
+        self.assertLess(script.index("$context.phase='output-encoding'"), script.index('New-Object -ComObject'))
+
+    def test_hash_observer_opens_only_for_reading_and_disposes_on_failure(self):
+        script = module.SHORTCUT_OBSERVATION_SCRIPT
+        start = script.index("$context.phase='hash-open'")
+        end = script.index('$items+=$item')
+        hashing = script[start:end]
+        self.assertIn('[IO.File]::OpenRead($path)', hashing)
+        self.assertIn('[Security.Cryptography.SHA256]::Create()', hashing)
+        self.assertIn('$hasher.ComputeHash($stream)', hashing)
+        self.assertIn(".Replace('-','').ToLowerInvariant()", hashing)
+        self.assertLess(hashing.index('finally {'), hashing.index('$hasher.Dispose()'))
+        self.assertLess(hashing.index('finally {'), hashing.index('$stream.Dispose()'))
+        self.assertNotIn('OpenWrite', script)
+        self.assertNotIn('.Save(', script)
+
+    def production_save(self, out, report, environment):
+        main = next(node for node in ast.parse(HARNESS.read_text()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == 'main')
+        save = next(node for node in main.body if isinstance(node, ast.FunctionDef) and node.name == 'save')
+        namespace = {'out': out, 'report': report, 'env': environment, 'json': json,
+                     'os': module.os, 'redact_observation': module.redact_observation}
+        exec(compile(ast.Module(body=[save], type_ignores=[]), str(HARNESS), 'exec'), namespace)
+        return namespace['save']
+
+    def test_result_evidence_redacts_a_copy_without_changing_qualification_state(self):
+        items = self.items()
+        items[0].update(exists=True, arguments='Bearer synthetic-success-value')
+        report = {'status': 'FAIL', 'observations': [{'shortcuts': items}],
+                  'error': 'Authorization: Bearer synthetic-error-value', 'safe_large_detail': 'x' * 20000}
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            self.production_save(out, report, {})()
+            serialized = (out / 'result.json').read_text()
+            self.assertNotIn('synthetic-', serialized)
+            self.assertEqual(len(json.loads(serialized)['safe_large_detail']), 20000)
+        self.assertEqual(items[0]['arguments'], 'Bearer synthetic-success-value')
+        self.assertEqual(report['error'], 'Authorization: Bearer synthetic-error-value')
+
+    def test_top_level_failure_evidence_and_traceback_do_not_leak_original_errors(self):
+        main = next(node for node in ast.parse(HARNESS.read_text()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == 'main')
+        handler = next(node for node in reversed(main.body) if isinstance(node, ast.Try)).handlers[0]
+        # Exercise only the real exception handler/save; no main(), native import or launch.
+        probe = ast.parse('def probe():\n    try:\n        raise failure\n    except Exception:\n        pass\n')
+        probe.body[0].body[0].handlers = [handler]
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory)
+            report = {}
+            raw = 'Authorization: Bearer synthetic-handler-value'
+            namespace = {'failure': OSError(5, raw), 'report': report,
+                         'observe': Mock(side_effect=RuntimeError(raw)),
+                         'save': self.production_save(out, report, {})}
+            exec(compile(ast.fix_missing_locations(probe), str(HARNESS), 'exec'), namespace)
+            try:
+                namespace['probe']()
+            except RuntimeError as raised:
+                self.assertNotIn('synthetic-handler-value', ''.join(traceback.format_exception(raised)))
+                self.assertTrue(raised.__suppress_context__)
+            else:
+                self.fail('Top-level failure was accepted')
+            detail = json.loads((out / 'result.json').read_text())
+            self.assertEqual(detail['status'], 'FAIL')
+            self.assertNotIn('synthetic-handler-value', json.dumps(detail))
 
     def test_production_observation_has_no_cmdlet_hash_or_link_save_dependency(self):
         self.assertNotIn('Get-FileHash', module.SHORTCUT_OBSERVATION_SCRIPT)

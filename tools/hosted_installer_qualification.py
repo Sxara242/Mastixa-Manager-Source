@@ -22,39 +22,46 @@ UNINSTALL = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B9B946A2-8711
 SHORTCUT_OBSERVATION_SCRIPT = r"""
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
-$OutputEncoding=[Text.UTF8Encoding]::new($false)
-[Console]::OutputEncoding=$OutputEncoding
-$context=[ordered]@{phase='com-create';kind=$null;folder_empty=$null;
+$context=[ordered]@{phase='output-encoding';kind=$null;folder_empty=$null;
   folder_exists=$null;link_exists=$null;powershell=$PSVersionTable.PSVersion.ToString();
   edition=$PSVersionTable.PSEdition;hash_provider='System.Security.Cryptography.SHA256'}
 try {
+  $context.phase='output-encoding'
+  $OutputEncoding=[Text.UTF8Encoding]::new($false)
+  [Console]::OutputEncoding=$OutputEncoding
+  $context.phase='com-create'
   $shell=New-Object -ComObject WScript.Shell
   $items=@()
   foreach($kind in @('Programs','CommonPrograms','DesktopDirectory','CommonDesktopDirectory')) {
     $context.kind=$kind;$context.phase='folder-resolve'
-    $context.folder_exists=$null;$context.link_exists=$null
+    $context.folder_empty=$null;$context.folder_exists=$null;$context.link_exists=$null
     $folder=[Environment]::GetFolderPath([Environment+SpecialFolder]::$kind)
     $context.folder_empty=[string]::IsNullOrWhiteSpace($folder)
     if($context.folder_empty) { throw 'SpecialFolderEmpty' }
+    $context.phase='folder-exists'
     $context.folder_exists=Test-Path -LiteralPath $folder -PathType Container
+    $context.phase='link-path'
     $path=Join-Path $folder 'Mastixa Manager.lnk'
     $context.phase='link-exists'
     $item=[ordered]@{kind=$kind;path=$path;exists=(Test-Path -LiteralPath $path)}
     $context.link_exists=$item.exists
     if($item.exists) {
-      $context.phase='com-read'
+      $context.phase='com-open'
       $link=$shell.CreateShortcut($path)
+      $context.phase='com-properties'
       $item.target=$link.TargetPath;$item.arguments=$link.Arguments
       $item.working_directory=$link.WorkingDirectory;$item.icon_location=$link.IconLocation
       $context.phase='file-metadata'
       $file=Get-Item -LiteralPath $path
       $item.creation_utc=$file.CreationTimeUtc.ToString('o')
       $item.last_write_utc=$file.LastWriteTimeUtc.ToString('o')
-      $context.phase='file-hash'
       $stream=$null;$hasher=$null
       try {
+        $context.phase='hash-open'
         $stream=[IO.File]::OpenRead($path)
+        $context.phase='hash-create'
         $hasher=[Security.Cryptography.SHA256]::Create()
+        $context.phase='file-hash'
         $item.sha256=[BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-','').ToLowerInvariant()
       } finally {
         if($null -ne $hasher) { $hasher.Dispose() }
@@ -66,31 +73,72 @@ try {
   $context.phase='json-serialize'
   ConvertTo-Json -InputObject $items -Depth 5 -Compress
 } catch {
-  # Structured context contains no file paths, shortcut arguments or environment.
-  $context.error_id=$_.FullyQualifiedErrorId
+  # Raw messages/fully-qualified IDs may contain paths or arbitrary secret text.
+  $context.error_code='ShortcutObservationError'
+  if($context.phase -eq 'folder-resolve' -and $context.folder_empty -eq $true) {
+    $context.error_code='SpecialFolderEmpty'
+  }
+  $context.error_category=$_.CategoryInfo.Category.ToString()
   $context.exception_type=$_.Exception.GetType().Name
   $context.hresult=$_.Exception.HResult
+  $context.exception_chain=@()
+  $errorObject=$_.Exception
+  for($depth=0;$null -ne $errorObject -and $depth -lt 4;$depth++) {
+    $context.exception_chain+=[ordered]@{type=$errorObject.GetType().Name;hresult=$errorObject.HResult}
+    $errorObject=$errorObject.InnerException
+  }
   [Console]::Error.WriteLine((ConvertTo-Json -InputObject $context -Depth 4 -Compress))
   exit 1
 }
 """
 
 
-def redact_observation(text, environment):
+def redact_observation(text, environment, *, limit=16384):
     """Bounded diagnostics only; never retain environment secrets or paths."""
     text = text.decode('utf-8', errors='replace') if isinstance(text, bytes) else str(text or '')
+    sensitive = r'auth|token|password|passwd|secret|credential|cookie|signature|assertion|session[-_ ]?id|api[-_ ]?key|private[-_ ]?key|arguments'
+    secret_field = re.compile(sensitive, re.I)
+    hidden = []
     for name, value in sorted(environment.items(), key=lambda item: len(item[1]), reverse=True):
         if value and (re.search(r'TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|KEY', name, re.I)
                       or name in ('USERPROFILE', 'LOCALAPPDATA', 'APPDATA', 'RUNNER_TEMP', 'GITHUB_WORKSPACE', 'TEMP', 'TMP')):
-            for form in (value, json.dumps(value)[1:-1]):
-                text = text.replace(form, '<REDACTED>')
-    text = re.sub(r'https?://[^\s"<>]+', '<URL>', text, flags=re.I)
-    text = re.sub(r'(?i)(?:gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)', '<SECRET>', text)
-    text = re.sub(r'(?i)(?:authorization|bearer|token|password|secret|credential|api[_-]?key)\s*[:= ]+[^\s,;"<>]+', '<SECRET>', text)
-    text = re.sub(r'(?i)[a-z]:[\\/][^\r\n"<>]*|\\\\[^\r\n"<>]+|/(?:home|Users)/[^\r\n"<>]+', '<PATH>', text)
-    # Shortcut argument strings can contain arbitrary credentials, even in JSON.
-    text = re.sub(r'("arguments"\s*:\s*)"(?:\\.|[^"\\])*"', r'\1"<REDACTED>"', text)
-    return text[:16384]
+            hidden.extend((value, json.dumps(value)[1:-1]))
+    quoted = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
+
+    def clean_value(value):
+        if isinstance(value, dict):
+            return {key: '<REDACTED>' if secret_field.search(key) else clean_value(item)
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [clean_value(item) for item in value]
+        return clean_text(value) if isinstance(value, str) else value
+
+    def clean_text(value):
+        # Decode structured/JSON-encoded messages before classifying their keys.
+        if value.lstrip().startswith(('{', '[')):
+            try:
+                parsed = json.loads(value)
+            except (ValueError, RecursionError):
+                pass
+            else:
+                return json.dumps(clean_value(parsed), ensure_ascii=True)
+        for form in hidden:
+            value = value.replace(form, '<REDACTED>')
+        value = re.sub(r'-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----.*?-----END (?:[A-Z]+ )?PRIVATE KEY-----',
+                       '<SECRET>', value, flags=re.S)
+        value = re.sub(r'https?://[^\s"<>]+', '<URL>', value, flags=re.I)
+        value = re.sub(r'(?i)(?:gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)', '<SECRET>', value)
+        # Remove the whole scheme/credential before matching generic field names.
+        value = re.sub(r'\b(?:bearer|basic)\s+(?:' + quoted + r'''|[^\s,;"'<>]+)''',
+                       '<SECRET>', value, flags=re.I)
+        # Authorization and cookies can contain schemes, commas and folded lines.
+        value = re.sub(r'''\b(?:(?:proxy[-_]?)?(?:authorization|authentication-info)|www-authenticate|set-cookie|cookie)["']?\s*[:=]\s*[^\r\n]*(?:\r?\n[ \t]+[^\r\n]*)*''',
+                       '<SECRET>', value, flags=re.I)
+        value = re.sub(r'''\b[a-z0-9_-]*(?:''' + sensitive + r''')[a-z0-9_-]*["']?\s*(?::|=|\s)\s*(?:''' + quoted + r'''|[^\r\n]+)''',
+                       '<SECRET>', value, flags=re.I)
+        return re.sub(r'(?i)[a-z]:[\\/][^\r\n"<>]*|\\\\[^\r\n"<>]+|/(?:home|Users)/[^\r\n"<>]+', '<PATH>', value)
+
+    return clean_text(text)[:limit]
 
 
 def read_shortcuts(out, label, environment):
@@ -245,7 +293,9 @@ def main(argv=None):
 
     def save():
         with (out / 'result.json').open('w', encoding='utf-8') as stream:
-            json.dump(report, stream, indent=2)
+            # Sanitize only the serialized copy; qualification uses original state.
+            # Full result JSON must remain valid even when larger than diagnostics.
+            stream.write(redact_observation(json.dumps(report), env, limit=None))
             stream.flush()
             os.fsync(stream.fileno())
 
@@ -417,7 +467,8 @@ def main(argv=None):
         except Exception as observation_error:
             report['observation_error'] = repr(observation_error)
         save()
-        raise
+        # Raw child/OS exceptions can contain command lines and credentials.
+        raise RuntimeError('Hosted qualification failed; see sanitized result.json') from None
     print(json.dumps({'status': report['status'], 'scenario': args.scenario, 'evidence': str(out)}))
     return 0
 
