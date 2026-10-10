@@ -1,0 +1,24 @@
+name: RC2 resource hash fixture (isolated)
+run-name: RC2 resource hash fixture ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resource-hash-fixture:
+    if: github.ref == 'refs/heads/qa/rc2-hosted-native-20261010'
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out QA branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run synthetic PowerShell resource hash fixture only
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\tests\test_packaged_resource_hash.ps1
