@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -17,6 +18,121 @@ BLOCKED = (
 )
 PREFERENCES = r'Software\Mastixa\Mastixa Manager'
 UNINSTALL = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{B9B946A2-8711-4B35-9BCB-B40210E67357}_is1'
+
+SHORTCUT_OBSERVATION_SCRIPT = r"""
+$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
+$OutputEncoding=[Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding=$OutputEncoding
+$context=[ordered]@{phase='com-create';kind=$null;folder_empty=$null;
+  folder_exists=$null;link_exists=$null;powershell=$PSVersionTable.PSVersion.ToString();
+  edition=$PSVersionTable.PSEdition;hash_provider='System.Security.Cryptography.SHA256'}
+try {
+  $shell=New-Object -ComObject WScript.Shell
+  $items=@()
+  foreach($kind in @('Programs','CommonPrograms','DesktopDirectory','CommonDesktopDirectory')) {
+    $context.kind=$kind;$context.phase='folder-resolve'
+    $context.folder_exists=$null;$context.link_exists=$null
+    $folder=[Environment]::GetFolderPath([Environment+SpecialFolder]::$kind)
+    $context.folder_empty=[string]::IsNullOrWhiteSpace($folder)
+    if($context.folder_empty) { throw 'SpecialFolderEmpty' }
+    $context.folder_exists=Test-Path -LiteralPath $folder -PathType Container
+    $path=Join-Path $folder 'Mastixa Manager.lnk'
+    $context.phase='link-exists'
+    $item=[ordered]@{kind=$kind;path=$path;exists=(Test-Path -LiteralPath $path)}
+    $context.link_exists=$item.exists
+    if($item.exists) {
+      $context.phase='com-read'
+      $link=$shell.CreateShortcut($path)
+      $item.target=$link.TargetPath;$item.arguments=$link.Arguments
+      $item.working_directory=$link.WorkingDirectory;$item.icon_location=$link.IconLocation
+      $context.phase='file-metadata'
+      $file=Get-Item -LiteralPath $path
+      $item.creation_utc=$file.CreationTimeUtc.ToString('o')
+      $item.last_write_utc=$file.LastWriteTimeUtc.ToString('o')
+      $context.phase='file-hash'
+      $stream=$null;$hasher=$null
+      try {
+        $stream=[IO.File]::OpenRead($path)
+        $hasher=[Security.Cryptography.SHA256]::Create()
+        $item.sha256=[BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-','').ToLowerInvariant()
+      } finally {
+        if($null -ne $hasher) { $hasher.Dispose() }
+        if($null -ne $stream) { $stream.Dispose() }
+      }
+    }
+    $items+=$item
+  }
+  $context.phase='json-serialize'
+  ConvertTo-Json -InputObject $items -Depth 5 -Compress
+} catch {
+  # Structured context contains no file paths, shortcut arguments or environment.
+  $context.error_id=$_.FullyQualifiedErrorId
+  $context.exception_type=$_.Exception.GetType().Name
+  $context.hresult=$_.Exception.HResult
+  [Console]::Error.WriteLine((ConvertTo-Json -InputObject $context -Depth 4 -Compress))
+  exit 1
+}
+"""
+
+
+def redact_observation(text, environment):
+    """Bounded diagnostics only; never retain environment secrets or paths."""
+    text = text.decode('utf-8', errors='replace') if isinstance(text, bytes) else str(text or '')
+    for name, value in sorted(environment.items(), key=lambda item: len(item[1]), reverse=True):
+        if value and (re.search(r'TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|KEY', name, re.I)
+                      or name in ('USERPROFILE', 'LOCALAPPDATA', 'APPDATA', 'RUNNER_TEMP', 'GITHUB_WORKSPACE', 'TEMP', 'TMP')):
+            for form in (value, json.dumps(value)[1:-1]):
+                text = text.replace(form, '<REDACTED>')
+    text = re.sub(r'https?://[^\s"<>]+', '<URL>', text, flags=re.I)
+    text = re.sub(r'(?i)(?:gh[pousr]_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)', '<SECRET>', text)
+    text = re.sub(r'(?i)(?:authorization|bearer|token|password|secret|credential|api[_-]?key)\s*[:= ]+[^\s,;"<>]+', '<SECRET>', text)
+    text = re.sub(r'(?i)[a-z]:[\\/][^\r\n"<>]*|\\\\[^\r\n"<>]+|/(?:home|Users)/[^\r\n"<>]+', '<PATH>', text)
+    # Shortcut argument strings can contain arbitrary credentials, even in JSON.
+    text = re.sub(r'("arguments"\s*:\s*)"(?:\\.|[^"\\])*"', r'\1"<REDACTED>"', text)
+    return text[:16384]
+
+
+def read_shortcuts(out, label, environment):
+    """Fail closed and preserve sanitized child diagnostics before raising."""
+    command = ['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', SHORTCUT_OBSERVATION_SCRIPT]
+    context = {'operation': 'shortcut-observation', 'label': label, 'shell': 'powershell.exe',
+               'timeout_seconds': 30, 'exit_code': None, 'status': 'FAIL'}
+    stdout = stderr = ''
+    try:
+        completed = subprocess.run(command, env=environment, capture_output=True, text=True,
+                                   encoding='utf-8', errors='replace', timeout=30, check=False)
+        context['exit_code'] = completed.returncode
+        stdout, stderr = completed.stdout, completed.stderr
+        if completed.returncode != 0:
+            raise RuntimeError('Shortcut observation child failed')
+        items = json.loads(stdout)
+        kinds = ('Programs', 'CommonPrograms', 'DesktopDirectory', 'CommonDesktopDirectory')
+        if (not isinstance(items, list) or len(items) != len(kinds)
+                or {item['kind'] for item in items} != set(kinds)
+                or any(not isinstance(item['path'], str) or not item['path']
+                       or type(item['exists']) is not bool for item in items)):
+            raise ValueError('Incomplete shortcut observation')
+        return items
+    except (subprocess.TimeoutExpired, OSError, RuntimeError, ValueError, KeyError, TypeError) as error:
+        context['exception_type'] = type(error).__name__
+        if isinstance(error, subprocess.TimeoutExpired):
+            stdout, stderr = error.stdout, error.stderr
+            context['timed_out'] = True
+        if isinstance(error, OSError):
+            context['errno'] = error.errno
+        context['stdout'] = redact_observation(stdout, environment)
+        context['stderr'] = redact_observation(stderr, environment)
+        evidence = out / ('shortcut-observation-' + label + '.json')
+        try:
+            with evidence.open('x', encoding='utf-8') as stream:
+                json.dump(context, stream, indent=2)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except OSError:
+            raise RuntimeError('Shortcut observation failed; sanitized diagnostics could not be persisted') from None
+        # Do not let CalledProcessError/TimeoutExpired print the command/output.
+        raise RuntimeError('Shortcut observation failed; diagnostic=' + evidence.name) from None
 
 
 def require_hosted(env, platform):
@@ -133,31 +249,8 @@ def main(argv=None):
             stream.flush()
             os.fsync(stream.fileno())
 
-    def links():
-        script = r'''
-        $ErrorActionPreference='Stop'
-        $shell=New-Object -ComObject WScript.Shell
-        $items=@()
-        foreach($kind in @('Programs','CommonPrograms','DesktopDirectory','CommonDesktopDirectory')) {
-          $folder=[Environment]::GetFolderPath([Environment+SpecialFolder]::$kind)
-          $path=Join-Path $folder 'Mastixa Manager.lnk'
-          $item=[ordered]@{kind=$kind;path=$path;exists=(Test-Path -LiteralPath $path)}
-          if($item.exists) {
-            $link=$shell.CreateShortcut($path)
-            $file=Get-Item -LiteralPath $path
-            $item.target=$link.TargetPath;$item.arguments=$link.Arguments
-            $item.working_directory=$link.WorkingDirectory;$item.icon_location=$link.IconLocation
-            $item.sha256=(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
-            $item.creation_utc=$file.CreationTimeUtc.ToString('o')
-            $item.last_write_utc=$file.LastWriteTimeUtc.ToString('o')
-          }
-          $items+=$item
-        }
-        ConvertTo-Json -InputObject $items -Depth 5 -Compress
-        '''
-        completed = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script],
-                                   capture_output=True, text=True, timeout=30, check=True)
-        items = json.loads(completed.stdout)
+    def links(label):
+        items = read_shortcuts(out, label, env)
         report['shortcut_paths'] = {item['kind']: item['path'] for item in items}
         return {item['kind']: item if item['exists'] else None for item in items}
 
@@ -165,7 +258,7 @@ def main(argv=None):
         state = {'label': label, 'preferences': snapshot(winreg, PREFERENCES),
                  'uninstall_registration': snapshot(winreg, UNINSTALL),
                  'user_data': tree(data), 'unrelated_registry': snapshot(winreg, unrelated_key),
-                 'unrelated_data': tree(unrelated_data), 'shortcuts': links(),
+                 'unrelated_data': tree(unrelated_data), 'shortcuts': links(label),
                  'target_exists': target.exists()}
         report['observations'].append(state)
         save()
