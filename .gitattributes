@@ -6,3 +6,7 @@ LICENSE -text -whitespace
 licenses/** -text -whitespace
 # Upstream reStructuredText heading delimiters use seven '=' characters.
 licenses/CRS/IAU-collection/AUTHORS.rst conflict-marker-size=32
+
+# Packaged resources are verified byte-for-byte against Git on every host.
+app/assets/** -text
+app/locales/** -text

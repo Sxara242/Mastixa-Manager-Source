@@ -48,6 +48,18 @@ try {
         throw 'SHA-256 known vector failed.'
     }
     & $validate
+    # Newline-only differences must still fail the actual production preflight.
+    $localeSource = Join-Path $repoRoot 'app\locales\nested\newlines.json'
+    $localePackaged = Join-Path $bundle '_internal\app\locales\nested\newlines.json'
+    $lfBytes = [System.Text.Encoding]::UTF8.GetBytes("{`n  `"label`": `"test`"`n}`n")
+    $crlfBytes = [System.Text.Encoding]::UTF8.GetBytes("{`r`n  `"label`": `"test`"`r`n}`r`n")
+    [System.IO.File]::WriteAllBytes($localeSource, $lfBytes)
+    [System.IO.File]::WriteAllBytes($localePackaged, $lfBytes)
+    & $validate
+    [System.IO.File]::WriteAllBytes($localePackaged, $crlfBytes)
+    Assert-Fails { & $validate } '*Packaged resource differs*'
+    [System.IO.File]::WriteAllBytes($localePackaged, $lfBytes)
+    & $validate
     # Inject a ComputeHash failure into a test-only copy of the actual helper.
     # Production retains its .NET SHA256 factory with no injection hook.
     $script:hasherDisposed = $false
@@ -81,7 +93,7 @@ try {
         $handle = [System.IO.File]::Open($path, 'Open', 'ReadWrite', 'None')
         $handle.Dispose()
     }
-    Write-Host 'PASS: SHA-256 vector, matches, mismatch, missing, read/hash errors, handle disposal.'
+    Write-Host 'PASS: SHA-256 vector, matches, mismatch (including LF/CRLF), missing, read/hash errors, handle disposal.'
 }
 finally {
     # Only this test's newly created synthetic GUID directory is removed.
