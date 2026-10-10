@@ -5,6 +5,25 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+function Get-ResourceSha256 {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    $stream = $null
+    $sha256 = $null
+    try {
+        # Hash the file bytes directly; do not depend on Get-FileHash availability.
+        # Open/read/hash errors propagate and stop validation before app launch.
+        $stream = [System.IO.File]::OpenRead($LiteralPath)
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        return [System.BitConverter]::ToString($sha256.ComputeHash($stream)).Replace("-", "")
+    }
+    finally {
+        if ($null -ne $sha256) { $sha256.Dispose() }
+        if ($null -ne $stream) { $stream.Dispose() }
+    }
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $exe = (Resolve-Path -LiteralPath $ExecutablePath -ErrorAction Stop).Path
 if ((Split-Path -Leaf $exe) -cne "MastixaManager.exe" -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) {
@@ -25,8 +44,8 @@ foreach ($resource in @("assets", "locales")) {
         if (-not (Test-Path -LiteralPath $packaged -PathType Leaf)) {
             throw "Missing packaged resource: app/$resource/$relative"
         }
-        if ((Get-FileHash -LiteralPath $source.FullName -Algorithm SHA256).Hash -ne
-            (Get-FileHash -LiteralPath $packaged -Algorithm SHA256).Hash) {
+        if ((Get-ResourceSha256 -LiteralPath $source.FullName) -ne
+            (Get-ResourceSha256 -LiteralPath $packaged)) {
             throw "Packaged resource differs from this checkout: app/$resource/$relative"
         }
     }
