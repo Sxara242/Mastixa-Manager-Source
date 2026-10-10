@@ -15,6 +15,7 @@ LicenseFile=..\LICENSE
 DefaultDirName={%LOCALAPPDATA}\Programs\Mastixa Manager
 DefaultGroupName=Mastixa Manager
 DisableProgramGroupPage=yes
+AllowNoIcons=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
@@ -42,14 +43,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\Mastixa Manager"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autoprograms}\Mastixa Manager"; Filename: "{app}\{#MyAppExeName}"; Check: not WizardNoIcons
 Name: "{autodesktop}\Mastixa Manager"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
-[Registry]
-; Application preferences are user-scoped and should not survive an explicit uninstall.
-; Keep the parent Mastixa key only when another Mastixa application still uses it.
-Root: HKCU; Subkey: "Software\Mastixa"; Flags: uninsdeletekeyifempty
-Root: HKCU; Subkey: "Software\Mastixa\Mastixa Manager"; Flags: uninsdeletekey
+; No installer-created preference namespace is required by the application.
+; Ordinary uninstall/reinstall keeps existing preferences. Only full purge deletes them.
 
 [UninstallDelete]
 ; The install directory is dedicated to Mastixa Manager. Remove any runtime/build residue
@@ -161,14 +159,14 @@ end;
 
 function InitializeUninstall: Boolean;
 begin
-  { Safe default: keep user data. Explicit /PURGEDATA also supports scripted cleanup. }
+  { Safe default: keep user data and preferences. /PURGEDATA explicitly purges both. }
   DeleteUserDataOnUninstall := CmdLineParamExists('/PURGEDATA');
 
   if (not DeleteUserDataOnUninstall) and (not IsSilentUninstall) then
   begin
     DeleteUserDataOnUninstall :=
       SuppressibleMsgBox(
-        'Do you also want to permanently delete all Mastixa Manager local data, profiles, documents, logs and backups?' + #13#10 + #13#10 +
+        'Do you also want to permanently delete all Mastixa Manager local data, preferences, profiles, documents, logs and backups?' + #13#10 + #13#10 +
         'Choose No to keep your data for a reinstall or upgrade.',
         mbConfirmation,
         MB_YESNO or MB_DEFBUTTON2,
@@ -184,6 +182,12 @@ var
 begin
   if (CurUninstallStep = usPostUninstall) and DeleteUserDataOnUninstall then
   begin
+    if RegKeyExists(HKCU, 'Software\Mastixa\Mastixa Manager') then
+    begin
+      Log('Full uninstall requested. Removing Mastixa Manager preferences.');
+      if not RegDeleteKeyIncludingSubkeys(HKCU, 'Software\Mastixa\Mastixa Manager') then
+        Log('Warning: Mastixa Manager preferences could not be removed.');
+    end;
     UserDataDir := ExpandConstant('{localappdata}\MastixaManager');
     if DirExists(UserDataDir) then
     begin

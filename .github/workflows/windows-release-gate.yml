@@ -1,15 +1,61 @@
-name: Windows packaging checks
+name: Temporary RC.2 hosted native qualification
+run-name: RC.2 native qualification ${{ github.ref_name }}
 on:
   workflow_dispatch:
+    inputs:
+      upload_public_key:
+        description: Ephemeral local RSA public key (base64 PEM); no private key
+        type: string
+        required: true
 permissions:
   contents: read
+  actions: read
+concurrency:
+  group: rc2-native-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  packaging:
+  ingress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Prepare encrypted exact-candidate upload
+        uses: actions/github-script@v7
+        env:
+          UPLOAD_PUBLIC_KEY: ${{ inputs.upload_public_key }}
+        with:
+          script: |
+            await require('./tools/hosted_candidate_ingress.cjs')({core, mode: 'prepare', publicKey: process.env.UPLOAD_PUBLIC_KEY});
+      - name: Preserve encrypted upload authorization
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-upload-${{ github.run_id }}
+          path: ${{ runner.temp }}/rc2-ingress/encrypted-upload.json
+          retention-days: 1
+          if-no-files-found: error
+      - name: Wait for and verify the retained candidate archive
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await require('./tools/hosted_candidate_ingress.cjs')({core, mode: 'wait'});
+      - name: Preserve transfer verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transfer-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/rc2-ingress/verified-transfer.json
+          retention-days: 1
+          if-no-files-found: warn
+  noicons:
+    needs: ingress
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
-      QT_QPA_PLATFORM: offscreen
       PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      MASTIXA_HOSTED_NATIVE_EXECUTE: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -18,15 +64,295 @@ jobs:
         with:
           python-version: '3.14'
           architecture: x64
-      - name: Install source-test dependencies
-        run: python -m pip install -r requirements-dev.txt -c requirements-windows-rc.txt
-      - name: Source privacy audit
-        run: python tools/audit_public_source.py
-      - name: Packaging, real smoke-runner failure paths and legal contracts
-        env:
-          MASTIXA_DATA_HOME: ${{ runner.temp }}\mastixa-packaging-${{ github.run_id }}-${{ github.run_attempt }}
-        run: python -m unittest tests.test_phase16g_windows_packaging tests.test_windows_rc_release tests.test_windows_legal_gate tests.test_windows_legal_selection tests.test_windows_crt_policy tests.test_windows_tls_inputs tests.test_windows_mesa_policy tests.test_windows_epsg_provenance -v
-      - name: Release configuration preflight
-        run: python packaging/validate_windows_release.py
-      # Actual installers require qualified supplier provisioning and owner
-      # acceptance. This check workflow deliberately generates no release binary.
+      - uses: actions/download-artifact@v4
+        with:
+          name: rc2-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}\rc2-candidate
+      - name: Independent Microsoft VC++ prerequisite provisioning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'rc2-prerequisite'
+          New-Item -ItemType Directory -Path $evidence -ErrorAction Stop | Out-Null
+          $minimum = [version]'14.51.36247.0'
+          $names = @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','vcruntime140.dll','vcruntime140_1.dll')
+          $ready = $true
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            if (-not (Test-Path -LiteralPath $file) -or [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0]) -lt $minimum) { $ready = $false }
+          }
+          $provision = [ordered]@{preexistingFilesReady=$ready;downloaded=$false}
+          if (-not $ready) {
+            $url = 'https://aka.ms/vc14/vc_redist.x64.exe'
+            $redist = Join-Path $evidence 'vc_redist.x64.exe'
+            Invoke-WebRequest -Uri $url -OutFile $redist
+            $signature = Get-AuthenticodeSignature -LiteralPath $redist
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'Official Microsoft prerequisite signature refused' }
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($redist).ProductVersion.Split(' ')[0])
+            if ($version -lt $minimum) { throw 'Official prerequisite version is insufficient' }
+            $provision.downloaded=$true;$provision.url=$url
+            $provision.sha256=(Get-FileHash -LiteralPath $redist -Algorithm SHA256).Hash.ToLowerInvariant()
+            $provision.version=$version.ToString();$provision.signer=$signature.SignerCertificate.Subject
+            $process = Start-Process -FilePath $redist -ArgumentList @('/install','/quiet','/norestart',('/log ' + (Join-Path $evidence 'vc-install.log'))) -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit(180000)) { throw 'Official prerequisite provisioning timed out' }
+            $provision.exit=$process.ExitCode
+            if ($process.ExitCode -notin @(0,3010)) { throw "Official prerequisite exit $($process.ExitCode)" }
+          }
+          $observed = @()
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0])
+            $observed += [ordered]@{path=$file;version=$version.ToString();sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
+            if ($version -lt $minimum) { throw 'Canonical prerequisite DLL version remains insufficient' }
+          }
+          $registration = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+          $registeredVersion=[version]("$($registration.Major).$($registration.Minor).$($registration.Bld).$($registration.Rbld)")
+          if ($registration.Installed -ne 1 -or $registeredVersion -lt $minimum) { throw 'VC++ prerequisite registry version is insufficient' }
+          [ordered]@{status='PASS';provision=$provision;canonicalFiles=$observed;registeredVersion=$registeredVersion.ToString()} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath (Join-Path $evidence 'result.json') -Encoding UTF8
+      - name: Hosted harness safety contracts (no native execution)
+        run: python -B -m unittest tests.test_hosted_installer_qualification -v
+      - name: noicons native qualification
+        run: python -B tools/hosted_installer_qualification.py --scenario noicons --candidate "${{ runner.temp }}\rc2-candidate" --output "${{ runner.temp }}\rc2-noicons-evidence"
+      - name: Preserve noicons evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-noicons-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rc2-noicons-evidence/
+            ${{ runner.temp }}/rc2-prerequisite/*.json
+            ${{ runner.temp }}/rc2-prerequisite/*.log
+            ${{ runner.temp }}/rc2-prerequisite/vc-install*.txt
+          retention-days: 1
+          if-no-files-found: error
+  normal:
+    needs: noicons
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      MASTIXA_HOSTED_NATIVE_EXECUTE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          architecture: x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: rc2-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}\rc2-candidate
+      - name: Independent Microsoft VC++ prerequisite provisioning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'rc2-prerequisite'
+          New-Item -ItemType Directory -Path $evidence -ErrorAction Stop | Out-Null
+          $minimum = [version]'14.51.36247.0'
+          $names = @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','vcruntime140.dll','vcruntime140_1.dll')
+          $ready = $true
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            if (-not (Test-Path -LiteralPath $file) -or [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0]) -lt $minimum) { $ready = $false }
+          }
+          $provision = [ordered]@{preexistingFilesReady=$ready;downloaded=$false}
+          if (-not $ready) {
+            $url = 'https://aka.ms/vc14/vc_redist.x64.exe'
+            $redist = Join-Path $evidence 'vc_redist.x64.exe'
+            Invoke-WebRequest -Uri $url -OutFile $redist
+            $signature = Get-AuthenticodeSignature -LiteralPath $redist
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'Official Microsoft prerequisite signature refused' }
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($redist).ProductVersion.Split(' ')[0])
+            if ($version -lt $minimum) { throw 'Official prerequisite version is insufficient' }
+            $provision.downloaded=$true;$provision.url=$url
+            $provision.sha256=(Get-FileHash -LiteralPath $redist -Algorithm SHA256).Hash.ToLowerInvariant()
+            $provision.version=$version.ToString();$provision.signer=$signature.SignerCertificate.Subject
+            $process = Start-Process -FilePath $redist -ArgumentList @('/install','/quiet','/norestart',('/log ' + (Join-Path $evidence 'vc-install.log'))) -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit(180000)) { throw 'Official prerequisite provisioning timed out' }
+            $provision.exit=$process.ExitCode
+            if ($process.ExitCode -notin @(0,3010)) { throw "Official prerequisite exit $($process.ExitCode)" }
+          }
+          $observed = @()
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0])
+            $observed += [ordered]@{path=$file;version=$version.ToString();sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
+            if ($version -lt $minimum) { throw 'Canonical prerequisite DLL version remains insufficient' }
+          }
+          $registration = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+          $registeredVersion=[version]("$($registration.Major).$($registration.Minor).$($registration.Bld).$($registration.Rbld)")
+          if ($registration.Installed -ne 1 -or $registeredVersion -lt $minimum) { throw 'VC++ prerequisite registry version is insufficient' }
+          [ordered]@{status='PASS';provision=$provision;canonicalFiles=$observed;registeredVersion=$registeredVersion.ToString()} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath (Join-Path $evidence 'result.json') -Encoding UTF8
+      - name: Hosted harness safety contracts (no native execution)
+        run: python -B -m unittest tests.test_hosted_installer_qualification -v
+      - name: normal native qualification
+        run: python -B tools/hosted_installer_qualification.py --scenario normal --candidate "${{ runner.temp }}\rc2-candidate" --output "${{ runner.temp }}\rc2-normal-evidence"
+      - name: Preserve normal evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-normal-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rc2-normal-evidence/
+            ${{ runner.temp }}/rc2-prerequisite/*.json
+            ${{ runner.temp }}/rc2-prerequisite/*.log
+            ${{ runner.temp }}/rc2-prerequisite/vc-install*.txt
+          retention-days: 1
+          if-no-files-found: error
+  preservation:
+    needs: normal
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      MASTIXA_HOSTED_NATIVE_EXECUTE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          architecture: x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: rc2-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}\rc2-candidate
+      - name: Independent Microsoft VC++ prerequisite provisioning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'rc2-prerequisite'
+          New-Item -ItemType Directory -Path $evidence -ErrorAction Stop | Out-Null
+          $minimum = [version]'14.51.36247.0'
+          $names = @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','vcruntime140.dll','vcruntime140_1.dll')
+          $ready = $true
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            if (-not (Test-Path -LiteralPath $file) -or [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0]) -lt $minimum) { $ready = $false }
+          }
+          $provision = [ordered]@{preexistingFilesReady=$ready;downloaded=$false}
+          if (-not $ready) {
+            $url = 'https://aka.ms/vc14/vc_redist.x64.exe'
+            $redist = Join-Path $evidence 'vc_redist.x64.exe'
+            Invoke-WebRequest -Uri $url -OutFile $redist
+            $signature = Get-AuthenticodeSignature -LiteralPath $redist
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'Official Microsoft prerequisite signature refused' }
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($redist).ProductVersion.Split(' ')[0])
+            if ($version -lt $minimum) { throw 'Official prerequisite version is insufficient' }
+            $provision.downloaded=$true;$provision.url=$url
+            $provision.sha256=(Get-FileHash -LiteralPath $redist -Algorithm SHA256).Hash.ToLowerInvariant()
+            $provision.version=$version.ToString();$provision.signer=$signature.SignerCertificate.Subject
+            $process = Start-Process -FilePath $redist -ArgumentList @('/install','/quiet','/norestart',('/log ' + (Join-Path $evidence 'vc-install.log'))) -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit(180000)) { throw 'Official prerequisite provisioning timed out' }
+            $provision.exit=$process.ExitCode
+            if ($process.ExitCode -notin @(0,3010)) { throw "Official prerequisite exit $($process.ExitCode)" }
+          }
+          $observed = @()
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0])
+            $observed += [ordered]@{path=$file;version=$version.ToString();sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
+            if ($version -lt $minimum) { throw 'Canonical prerequisite DLL version remains insufficient' }
+          }
+          $registration = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+          $registeredVersion=[version]("$($registration.Major).$($registration.Minor).$($registration.Bld).$($registration.Rbld)")
+          if ($registration.Installed -ne 1 -or $registeredVersion -lt $minimum) { throw 'VC++ prerequisite registry version is insufficient' }
+          [ordered]@{status='PASS';provision=$provision;canonicalFiles=$observed;registeredVersion=$registeredVersion.ToString()} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath (Join-Path $evidence 'result.json') -Encoding UTF8
+      - name: Hosted harness safety contracts (no native execution)
+        run: python -B -m unittest tests.test_hosted_installer_qualification -v
+      - name: preservation native qualification
+        run: python -B tools/hosted_installer_qualification.py --scenario preservation --candidate "${{ runner.temp }}\rc2-candidate" --output "${{ runner.temp }}\rc2-preservation-evidence"
+      - name: Preserve preservation evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-preservation-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rc2-preservation-evidence/
+            ${{ runner.temp }}/rc2-prerequisite/*.json
+            ${{ runner.temp }}/rc2-prerequisite/*.log
+            ${{ runner.temp }}/rc2-prerequisite/vc-install*.txt
+          retention-days: 1
+          if-no-files-found: error
+  purge:
+    needs: preservation
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      MASTIXA_HOSTED_NATIVE_EXECUTE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          architecture: x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: rc2-candidate-${{ github.run_id }}
+          path: ${{ runner.temp }}\rc2-candidate
+      - name: Independent Microsoft VC++ prerequisite provisioning
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $evidence = Join-Path $env:RUNNER_TEMP 'rc2-prerequisite'
+          New-Item -ItemType Directory -Path $evidence -ErrorAction Stop | Out-Null
+          $minimum = [version]'14.51.36247.0'
+          $names = @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll','vcruntime140.dll','vcruntime140_1.dll')
+          $ready = $true
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            if (-not (Test-Path -LiteralPath $file) -or [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0]) -lt $minimum) { $ready = $false }
+          }
+          $provision = [ordered]@{preexistingFilesReady=$ready;downloaded=$false}
+          if (-not $ready) {
+            $url = 'https://aka.ms/vc14/vc_redist.x64.exe'
+            $redist = Join-Path $evidence 'vc_redist.x64.exe'
+            Invoke-WebRequest -Uri $url -OutFile $redist
+            $signature = Get-AuthenticodeSignature -LiteralPath $redist
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'Official Microsoft prerequisite signature refused' }
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($redist).ProductVersion.Split(' ')[0])
+            if ($version -lt $minimum) { throw 'Official prerequisite version is insufficient' }
+            $provision.downloaded=$true;$provision.url=$url
+            $provision.sha256=(Get-FileHash -LiteralPath $redist -Algorithm SHA256).Hash.ToLowerInvariant()
+            $provision.version=$version.ToString();$provision.signer=$signature.SignerCertificate.Subject
+            $process = Start-Process -FilePath $redist -ArgumentList @('/install','/quiet','/norestart',('/log ' + (Join-Path $evidence 'vc-install.log'))) -WindowStyle Hidden -PassThru
+            if (-not $process.WaitForExit(180000)) { throw 'Official prerequisite provisioning timed out' }
+            $provision.exit=$process.ExitCode
+            if ($process.ExitCode -notin @(0,3010)) { throw "Official prerequisite exit $($process.ExitCode)" }
+          }
+          $observed = @()
+          foreach ($name in $names) {
+            $file = Join-Path $env:WINDIR "System32\$name"
+            $version = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($file).FileVersion.Split(' ')[0])
+            $observed += [ordered]@{path=$file;version=$version.ToString();sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}
+            if ($version -lt $minimum) { throw 'Canonical prerequisite DLL version remains insufficient' }
+          }
+          $registration = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64'
+          $registeredVersion=[version]("$($registration.Major).$($registration.Minor).$($registration.Bld).$($registration.Rbld)")
+          if ($registration.Installed -ne 1 -or $registeredVersion -lt $minimum) { throw 'VC++ prerequisite registry version is insufficient' }
+          [ordered]@{status='PASS';provision=$provision;canonicalFiles=$observed;registeredVersion=$registeredVersion.ToString()} | ConvertTo-Json -Depth 7 | Set-Content -LiteralPath (Join-Path $evidence 'result.json') -Encoding UTF8
+      - name: Hosted harness safety contracts (no native execution)
+        run: python -B -m unittest tests.test_hosted_installer_qualification -v
+      - name: purge native qualification
+        run: python -B tools/hosted_installer_qualification.py --scenario purge --candidate "${{ runner.temp }}\rc2-candidate" --output "${{ runner.temp }}\rc2-purge-evidence"
+      - name: Preserve purge evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-purge-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rc2-purge-evidence/
+            ${{ runner.temp }}/rc2-prerequisite/*.json
+            ${{ runner.temp }}/rc2-prerequisite/*.log
+            ${{ runner.temp }}/rc2-prerequisite/vc-install*.txt
+          retention-days: 1
+          if-no-files-found: error
